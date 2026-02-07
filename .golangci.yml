@@ -1,4 +1,7 @@
+version: "2"
+
 linters:
+  default: none
   enable:
     - errcheck
     - govet
@@ -6,17 +9,16 @@ linters:
     - unused
     - ineffassign
     - misspell
-    - gofmt
     - revive
+  settings:
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - "checkPrivateReceivers"
+  exclusions:
+    presets: []
 
-linters-settings:
-  revive:
-    rules:
-      - name: exported
-        arguments:
-          - "checkPrivateReceivers"
-
-issues:
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
