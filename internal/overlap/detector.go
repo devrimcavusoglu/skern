@@ -16,9 +16,9 @@ const (
 
 // Match represents a detected overlap between a new skill and an existing one.
 type Match struct {
-	Name  string     `json:"name"`
+	Name  string      `json:"name"`
 	Scope skill.Scope `json:"scope"`
-	Score float64    `json:"score"`
+	Score float64     `json:"score"`
 }
 
 // Check evaluates a candidate skill name and description against a set of existing skills,

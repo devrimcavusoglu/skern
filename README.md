@@ -40,8 +40,11 @@ scribe version
 # Initialize scribe in your project
 scribe init
 
-# Create a new skill
+# Create a new skill (overlap detection warns on similar existing skills)
 scribe skill create my-skill --description "Automates X for Y"
+
+# Create with author provenance
+scribe skill create my-skill --author "alice" --author-type human --description "Automates X"
 
 # List skills
 scribe skill list
@@ -74,6 +77,36 @@ scribe version                                 # Print version info
 ```
 
 **Global flags:** `--json`, `--quiet`, `--scope user|project`
+
+**`skill create` flags:** `--author`, `--author-type human|agent`, `--author-platform`, `--description`, `--force` (bypass overlap block)
+
+### Validation
+
+`scribe skill validate <name>` checks skills against the Agent Skills spec:
+
+- **Name format** — must match `[a-z0-9]+(-[a-z0-9]+)*`, 1-64 characters
+- **Description** — required, max 1024 characters
+- **Body** — SKILL.md must have non-empty body content
+- **Allowed-tools** — no empty entries
+- **Metadata** — author type must be `human` or `agent`, version should follow semver
+
+Validation also runs automatically during `scribe skill create`, issuing warnings for any issues.
+
+### Overlap Detection
+
+When creating a skill, scribe checks existing skills for similarity using:
+
+- **Fuzzy name matching** — Levenshtein distance with prefix/suffix bonuses
+- **Description similarity** — keyword overlap scoring (Jaccard similarity)
+- **Tools overlap** — shared `allowed-tools` entries
+
+| Score | Behavior |
+|-------|----------|
+| < 0.6 | Proceed normally |
+| >= 0.6 | Warn — show similar skills, continue |
+| >= 0.9 | Block — require `--force` to override |
+
+Skill count warnings trigger at > 20 skills (project scope) or > 50 skills (user scope).
 
 ## Supported Platforms
 

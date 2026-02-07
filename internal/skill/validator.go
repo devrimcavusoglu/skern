@@ -8,6 +8,7 @@ import (
 // Severity represents the severity of a validation issue.
 type Severity string
 
+// Severity constants for validation issues.
 const (
 	SeverityError   Severity = "error"
 	SeverityWarning Severity = "warning"

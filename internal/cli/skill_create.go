@@ -128,7 +128,9 @@ const (
 	userSkillCountWarn    = 50
 )
 
-func checkSkillCountWarnings(reg interface{ List(skill.Scope) ([]skill.Skill, error) }, scope skill.Scope) {
+func checkSkillCountWarnings(reg interface {
+	List(skill.Scope) ([]skill.Skill, error)
+}, scope skill.Scope) {
 	skills, err := reg.List(scope)
 	if err != nil {
 		return
