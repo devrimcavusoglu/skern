@@ -70,7 +70,7 @@ golangci-lint run ./internal/skill/...
 
 Configuration lives in `.golangci.yml`.
 
-## Issue Tracking
+## Issue Tracking Workflow
 
 Development is tracked using **beads-rust (`br`)**, an agent-first CLI issue tracker.
 
@@ -83,6 +83,22 @@ br sync --flush-only              # Flush local changes
 ```
 
 Each milestone (M0-M6) maps to a `br` epic. Reference issues in commit messages as `br#<id>`.
+
+### Mandatory Workflow
+
+1. **Before starting work**: Create a `br` epic for the milestone and individual issues for each task
+2. **During development**: Update issue status (`in-progress`, `done`) as work progresses
+3. **In commit messages**: Reference `br#<id>` to link commits to issues
+
+## Branching Strategy
+
+All work is organized by milestone using feature branches:
+
+- **Branch naming**: `feature/m<N>-<slug>` (e.g., `feature/m1-skill-registry`)
+- **Created from**: `main`
+- **Merged back via**: Pull request to `main`
+
+Each milestone gets its own feature branch. All commits for that milestone go on the branch, then a PR merges everything back to `main` upon completion.
 
 ## Code Conventions
 
@@ -194,4 +210,67 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ## Current Status
 
-The project is in **M0 — Bootstrap**. See `PLAN.md` for the full roadmap with milestones M0 through M6.
+The project is in **M1 — Skill Manifest & Registry**. See `PLAN.md` for the full roadmap with milestones M0 through M6.
+
+<!-- bv-agent-instructions-v1 -->
+
+---
+
+## Beads Workflow Integration
+
+This project uses [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) for issue tracking. Issues are stored in `.beads/` and tracked in git.
+
+### Essential Commands
+
+```bash
+# View issues (launches TUI - avoid in automated sessions)
+bv
+
+# CLI commands for agents (use these instead)
+bd ready              # Show issues ready to work (no blockers)
+bd list --status=open # All open issues
+bd show <id>          # Full issue details with dependencies
+bd create --title="..." --type=task --priority=2
+bd update <id> --status=in_progress
+bd close <id> --reason="Completed"
+bd close <id1> <id2>  # Close multiple issues at once
+bd sync               # Commit and push changes
+```
+
+### Workflow Pattern
+
+1. **Start**: Run `bd ready` to find actionable work
+2. **Claim**: Use `bd update <id> --status=in_progress`
+3. **Work**: Implement the task
+4. **Complete**: Use `bd close <id>`
+5. **Sync**: Always run `bd sync` at session end
+
+### Key Concepts
+
+- **Dependencies**: Issues can block other issues. `bd ready` shows only unblocked work.
+- **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers, not words)
+- **Types**: task, bug, feature, epic, question, docs
+- **Blocking**: `bd dep add <issue> <depends-on>` to add dependencies
+
+### Session Protocol
+
+**Before ending any session, run this checklist:**
+
+```bash
+git status              # Check what changed
+git add <files>         # Stage code changes
+bd sync                 # Commit beads changes
+git commit -m "..."     # Commit code
+bd sync                 # Commit any new beads changes
+git push                # Push to remote
+```
+
+### Best Practices
+
+- Check `bd ready` at session start to find available work
+- Update status as you work (in_progress → closed)
+- Create new issues with `bd create` when you discover tasks
+- Use descriptive titles and set appropriate priority/type
+- Always `bd sync` before ending session
+
+<!-- end-bv-agent-instructions -->

@@ -2,6 +2,8 @@
 package cli
 
 import (
+	"errors"
+
 	"github.com/devrimcavusoglu/scribe/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +22,8 @@ func NewRootCmd() *cobra.Command {
 		Long:  "scribe is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			printer = output.NewPrinter(jsonFlag, quietFlag)
+			printer.SetOut(cmd.OutOrStdout())
+			printer.SetErrOut(cmd.ErrOrStderr())
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -29,6 +33,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&quietFlag, "quiet", false, "suppress non-essential output")
 
 	cmd.AddCommand(newVersionCmd())
+	cmd.AddCommand(newSkillCmd())
 
 	return cmd
 }
@@ -41,6 +46,11 @@ func Execute() int {
 			printer = output.NewPrinter(false, false)
 		}
 		printer.PrintErrorResult(err)
+
+		var ve *ValidationError
+		if errors.As(err, &ve) {
+			return 2
+		}
 		return 1
 	}
 	return 0

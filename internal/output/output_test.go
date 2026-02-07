@@ -58,12 +58,12 @@ func TestPrinter_Print(t *testing.T) {
 
 func TestPrinter_PrintResult(t *testing.T) {
 	tests := []struct {
-		name string
-		json bool
+		name  string
+		json  bool
 		quiet bool
-		data any
-		text string
-		want string
+		data  any
+		text  string
+		want  string
 	}{
 		{
 			name: "text mode uses text representation",
