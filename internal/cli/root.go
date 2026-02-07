@@ -34,6 +34,7 @@ func NewRootCmd() *cobra.Command {
 
 	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newSkillCmd())
+	cmd.AddCommand(newPlatformCmd())
 
 	return cmd
 }
