@@ -285,6 +285,68 @@ func TestSkillRemove_InvalidName(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// --- skill validate ---
+
+func TestSkillValidate(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "create", "valid-skill", "--description", "A valid skill", "--author", "alice")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, "skill", "validate", "valid-skill", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillValidateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "valid-skill", result.Name)
+	assert.True(t, result.Valid)
+	assert.Equal(t, 0, result.Errors)
+}
+
+func TestSkillValidate_NotFound(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "validate", "nonexistent")
+	assert.Error(t, err)
+}
+
+func TestSkillValidate_Text(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "create", "text-skill", "--description", "A skill", "--author", "alice")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, "skill", "validate", "text-skill")
+	require.NoError(t, err)
+	assert.Contains(t, out, "valid")
+}
+
+// --- skill create with overlap ---
+
+func TestSkillCreate_OverlapWarn(t *testing.T) {
+	setupTestRegistry(t)
+
+	// Create first skill
+	_, err := runCmd(t, "skill", "create", "code-review", "--description", "Reviews code")
+	require.NoError(t, err)
+
+	// Create similar skill — should succeed with warning
+	out, err := runCmd(t, "skill", "create", "code-reviewer", "--description", "Reviews code changes")
+	require.NoError(t, err)
+	assert.Contains(t, out, "similar")
+}
+
+func TestSkillCreate_Force(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "create", "my-tool", "--description", "Does things")
+	require.NoError(t, err)
+
+	// Even with high overlap, --force should allow creation
+	_, err = runCmd(t, "skill", "create", "my-tools", "--description", "Does things", "--force")
+	require.NoError(t, err)
+}
+
 // --- Validation error exit code ---
 
 func TestValidationError_ExitCode(t *testing.T) {

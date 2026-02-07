@@ -2,8 +2,10 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/devrimcavusoglu/scribe/internal/output"
+	"github.com/devrimcavusoglu/scribe/internal/overlap"
 	"github.com/devrimcavusoglu/scribe/internal/skill"
 	"github.com/spf13/cobra"
 )
@@ -15,6 +17,7 @@ func newSkillCreateCmd() *cobra.Command {
 		authorPlatform string
 		description    string
 		scope          string
+		force          bool
 	)
 
 	cmd := &cobra.Command{
@@ -38,7 +41,61 @@ func newSkillCreateCmd() *cobra.Command {
 				return err
 			}
 
+			// Overlap detection: check existing skills for similarity
+			discovered, err := reg.ListAll()
+			if err != nil {
+				return fmt.Errorf("checking for overlapping skills: %w", err)
+			}
+
+			if len(discovered) > 0 {
+				var existing []skill.Skill
+				var scopes []skill.Scope
+				for _, d := range discovered {
+					existing = append(existing, d.Skill)
+					scopes = append(scopes, d.Scope)
+				}
+
+				matches := overlap.Check(name, description, existing, scopes)
+				if len(matches) > 0 {
+					maxScore := overlap.MaxScore(matches)
+					blocked := overlap.ShouldBlock(matches) && !force
+
+					overlapResult := output.OverlapCheckResult{
+						Blocked:  blocked,
+						MaxScore: maxScore,
+					}
+					for _, m := range matches {
+						overlapResult.Matches = append(overlapResult.Matches, output.OverlapResult{
+							Name:  m.Name,
+							Score: m.Score,
+							Scope: string(m.Scope),
+						})
+					}
+
+					if blocked {
+						text := formatOverlapBlock(name, matches)
+						printer.PrintResult(overlapResult, text)
+						return &ValidationError{Message: fmt.Sprintf("skill %q blocked due to near-duplicate (score %.2f); use --force to override", name, maxScore)}
+					}
+
+					// Warn but proceed
+					text := formatOverlapWarn(name, matches)
+					printer.Print("%s", text)
+				}
+			}
+
+			// Skill count threshold warnings
+			checkSkillCountWarnings(reg, scopeVal)
+
 			s := skill.NewSkill(name, description, author, authorType, authorPlatform)
+
+			// Validate on create (warnings only, don't block)
+			issues := skill.Validate(s)
+			if len(issues) > 0 {
+				warnText := formatCreateValidationWarnings(issues)
+				printer.Print("%s", warnText)
+			}
+
 			path, err := reg.Create(s, scopeVal)
 			if err != nil {
 				return err
@@ -60,6 +117,62 @@ func newSkillCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&authorPlatform, "author-platform", "", "author platform (e.g., claude-code)")
 	cmd.Flags().StringVar(&description, "description", "", "skill description")
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
+	cmd.Flags().BoolVar(&force, "force", false, "bypass overlap detection block")
 
 	return cmd
+}
+
+// Skill count thresholds
+const (
+	projectSkillCountWarn = 20
+	userSkillCountWarn    = 50
+)
+
+func checkSkillCountWarnings(reg interface{ List(skill.Scope) ([]skill.Skill, error) }, scope skill.Scope) {
+	skills, err := reg.List(scope)
+	if err != nil {
+		return
+	}
+	count := len(skills)
+
+	threshold := userSkillCountWarn
+	if scope == skill.ScopeProject {
+		threshold = projectSkillCountWarn
+	}
+
+	if count >= threshold {
+		printer.Print("Warning: %s scope has %d skills (threshold: %d). Consider reviewing for duplicates.\n", scope, count, threshold)
+	}
+}
+
+func formatOverlapBlock(name string, matches []overlap.Match) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Skill %q blocked — near-duplicate detected:\n", name))
+	for _, m := range matches {
+		b.WriteString(fmt.Sprintf("  - %s (score: %.2f, scope: %s)\n", m.Name, m.Score, m.Scope))
+	}
+	b.WriteString("Use --force to override.\n")
+	return b.String()
+}
+
+func formatOverlapWarn(name string, matches []overlap.Match) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Warning: skill %q has similar existing skills:\n", name))
+	for _, m := range matches {
+		b.WriteString(fmt.Sprintf("  - %s (score: %.2f, scope: %s)\n", m.Name, m.Score, m.Scope))
+	}
+	b.WriteString("Proceeding with creation...\n")
+	return b.String()
+}
+
+func formatCreateValidationWarnings(issues []skill.ValidationIssue) string {
+	var b strings.Builder
+	for _, issue := range issues {
+		prefix := "  !"
+		if issue.Severity == skill.SeverityError {
+			prefix = "  ✗"
+		}
+		b.WriteString(fmt.Sprintf("%s %s: %s\n", prefix, issue.Field, issue.Message))
+	}
+	return b.String()
 }
