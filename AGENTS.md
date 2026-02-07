@@ -1,0 +1,197 @@
+# AGENTS.md — Scribe Development Guide
+
+## Project Overview
+
+Scribe is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
+
+The project is written in **Go 1.23+** and is currently in its bootstrap phase.
+
+## Repository Layout
+
+```
+cmd/scribe/main.go           # Entry point
+internal/
+  cli/                        # Cobra command definitions (root, version, skill_*, platform_*)
+  skill/                      # Domain logic: Skill struct, manifest parsing, validation, scaffolding
+  overlap/                    # Fuzzy name matching and description similarity scoring
+  registry/                   # Filesystem CRUD over ~/.scribe/skills/ and .scribe/skills/
+  platform/                   # Platform adapters (Claude Code, Codex CLI, OpenCode)
+  output/                     # JSON/text structured output formatting
+go.mod, go.sum
+Makefile
+.goreleaser.yaml
+.golangci.yml
+.github/workflows/ci.yml
+PLAN.md                       # Full project plan with milestones and architecture
+```
+
+## Build & Run
+
+```sh
+# Build
+make build
+# or directly:
+go build -o scribe ./cmd/scribe
+
+# Run
+./scribe version
+```
+
+## Testing
+
+```sh
+# Run all tests
+go test ./...
+
+# Run tests for a specific package
+go test ./internal/skill/...
+
+# Run tests with verbose output
+go test -v ./...
+
+# Run tests with coverage
+go test -coverprofile=coverage.out ./...
+```
+
+Tests use stdlib `testing` + `testify`. Follow table-driven test patterns. Integration tests should use temporary directories to simulate filesystem layouts.
+
+## Linting & Formatting
+
+```sh
+# Format code
+gofmt -w .
+
+# Run linter
+golangci-lint run
+
+# Lint a specific package
+golangci-lint run ./internal/skill/...
+```
+
+Configuration lives in `.golangci.yml`.
+
+## Issue Tracking
+
+Development is tracked using **beads-rust (`br`)**, an agent-first CLI issue tracker.
+
+```sh
+br issue list                     # List all open issues
+br issue list --epic M0           # List issues for a milestone
+br issue create "Title"           # Create a new issue
+br issue update <id> --status done
+br sync --flush-only              # Flush local changes
+```
+
+Each milestone (M0-M6) maps to a `br` epic. Reference issues in commit messages as `br#<id>`.
+
+## Code Conventions
+
+### Go Style
+
+- Follow standard Go idioms and `gofmt` formatting
+- Exported names use `CamelCase`; unexported use `camelCase`
+- Prefer stdlib over third-party packages unless there is a strong reason
+- Keep packages small and focused on a single responsibility
+- Use `internal/` to prevent external imports of implementation details
+
+### Package Responsibilities
+
+- **`cli/`** — Only command wiring, flag parsing, and output. No business logic.
+- **`skill/`** — Domain types and operations. The `Skill` struct, `Author`, `ModifiedByEntry` types, manifest parsing/serialization, validation rules, and scaffolding templates.
+- **`registry/`** — Filesystem operations for skill storage. CRUD and discovery across user/project scopes.
+- **`platform/`** — Each adapter implements the `Platform` interface: `Name()`, `Detect()`, `UserSkillsDir()`, `ProjectSkillsDir()`, `Install()`, `Uninstall()`, `InstalledSkills()`.
+- **`overlap/`** — Similarity scoring (Levenshtein distance, keyword overlap). Returns a float64 score in [0, 1].
+- **`output/`** — Handles `--json` and `--quiet` flags. All commands go through this package for consistent formatting.
+
+### Testing Conventions
+
+- Use table-driven tests with descriptive subtest names
+- Use `testify/assert` and `testify/require` for assertions
+- Integration tests that touch the filesystem must use `t.TempDir()`
+- Name test files as `*_test.go` in the same package
+
+### Error Handling
+
+- Return `error` values; do not panic
+- Wrap errors with `fmt.Errorf("context: %w", err)` for stack tracing
+- Use semantic exit codes: 0 = success, 1 = error, 2 = validation failure
+
+### CLI Output
+
+- Every command must support `--json` for machine-readable output
+- Default output is human-friendly text
+- Use `--quiet` to suppress non-essential output
+- Error messages should include actionable suggestions
+
+### Commit Messages
+
+- Keep the subject line concise and imperative ("Add manifest parser", not "Added manifest parser")
+- Reference `br` issues when applicable: `br#<id>`
+
+## Architecture Notes
+
+### SKILL.md Format (Agent Skills Spec)
+
+```markdown
+---
+name: skill-name
+description: |
+  What this skill does and when to use it
+allowed-tools: []
+metadata:
+  author:
+    name: author-name
+    type: human           # human | agent
+    platform: claude-code  # only when type=agent
+  version: "0.1.0"
+  modified-by:            # append-only provenance list
+    - name: codex-cli
+      type: agent
+      platform: codex-cli
+      date: "2025-07-15T10:30:00Z"
+---
+
+## Instructions
+
+Step-by-step instructions for the agent.
+```
+
+Required fields: `name`, `description`. Directory name must match the `name` field.
+
+### Skill Name Validation
+
+Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
+
+### Registry Paths
+
+| Scope   | Path                    |
+|---------|-------------------------|
+| User    | `~/.scribe/skills/`     |
+| Project | `.scribe/skills/`       |
+
+### Platform Paths
+
+| Platform    | User-level                         | Project-level            |
+|-------------|-------------------------------------|--------------------------|
+| Claude Code | `~/.claude/skills/<name>/`         | `.claude/skills/<name>/` |
+| Codex CLI   | `~/.agents/skills/<name>/`         | `.agents/skills/<name>/` |
+| OpenCode    | `~/.config/opencode/skills/<name>/`| `.opencode/skills/<name>/`|
+
+### Overlap Detection Thresholds
+
+- Score < 0.6 — proceed normally
+- Score >= 0.6 — warn, show similar skills
+- Score >= 0.9 — block creation, require `--force`
+
+### Dependencies
+
+| Dependency | Purpose |
+|------------|---------|
+| `github.com/spf13/cobra` | CLI framework |
+| `gopkg.in/yaml.v3` | YAML frontmatter parsing |
+| `santhosh-tekuri/jsonschema/v6` | Agent Skills spec validation |
+| `github.com/stretchr/testify` | Test assertions |
+
+## Current Status
+
+The project is in **M0 — Bootstrap**. See `PLAN.md` for the full roadmap with milestones M0 through M6.
