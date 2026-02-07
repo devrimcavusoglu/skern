@@ -55,6 +55,18 @@ scribe skill validate my-skill
 # Install a skill to a platform
 scribe skill install my-skill --platform claude-code
 
+# Install to all detected platforms at once
+scribe skill install my-skill --platform all
+
+# Uninstall a skill from a platform
+scribe skill uninstall my-skill --platform claude-code
+
+# List detected platforms
+scribe platform list
+
+# Show skill installation status across platforms
+scribe platform status
+
 # Search for existing skills
 scribe skill search "code review"
 ```
@@ -79,6 +91,10 @@ scribe version                                 # Print version info
 **Global flags:** `--json`, `--quiet`, `--scope user|project`
 
 **`skill create` flags:** `--author`, `--author-type human|agent`, `--author-platform`, `--description`, `--force` (bypass overlap block)
+
+**`skill install/uninstall` flags:** `--platform claude-code|codex-cli|opencode|all` (required), `--scope user|project`
+
+**`platform status` flags:** `--scope user|project`
 
 ### Validation
 

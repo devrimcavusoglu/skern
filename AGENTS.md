@@ -211,7 +211,7 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ## Current Status
 
-The project has completed **M2 — Skill Validation & Overlap Detection**. See `PLAN.md` for the full roadmap with milestones M0 through M6.
+The project has completed **M3 — Platform Adapters** (Claude Code, Codex CLI, OpenCode). See `PLAN.md` for the full roadmap with milestones M0 through M6.
 
 <!-- br-agent-instructions-v1 -->
 

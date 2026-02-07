@@ -7,12 +7,16 @@ import (
 	"strings"
 
 	"github.com/devrimcavusoglu/scribe/internal/output"
+	"github.com/devrimcavusoglu/scribe/internal/platform"
 	"github.com/devrimcavusoglu/scribe/internal/registry"
 	"github.com/devrimcavusoglu/scribe/internal/skill"
 )
 
 // newRegistryFunc creates a Registry. Overridable in tests.
 var newRegistryFunc = defaultNewRegistry
+
+// newDetectorFunc creates a platform Detector. Overridable in tests.
+var newDetectorFunc = defaultNewDetector
 
 func defaultNewRegistry() (*registry.Registry, error) {
 	home, err := os.UserHomeDir()
@@ -24,6 +28,10 @@ func defaultNewRegistry() (*registry.Registry, error) {
 	projectDir := filepath.Join(".", ".scribe", "skills")
 
 	return registry.New(userDir, projectDir), nil
+}
+
+func defaultNewDetector() (*platform.Detector, error) {
+	return platform.NewDetector()
 }
 
 // parseScope converts a scope string flag to a skill.Scope.
