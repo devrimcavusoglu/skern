@@ -75,11 +75,12 @@ Configuration lives in `.golangci.yml`.
 Development is tracked using **beads-rust (`br`)**, an agent-first CLI issue tracker.
 
 ```sh
-br issue list                     # List all open issues
-br issue list --epic M0           # List issues for a milestone
-br issue create "Title"           # Create a new issue
-br issue update <id> --status done
-br sync --flush-only              # Flush local changes
+br list                           # List all open issues
+br ready                          # Show issues ready to work
+br create "Title" --type task     # Create a new issue
+br update <id> --status in_progress
+br close <id> --reason "Done"
+br sync --flush-only              # Export JSONL (then git add .beads/ && git commit)
 ```
 
 Each milestone (M0-M6) maps to a `br` epic. Reference issues in commit messages as `br#<id>`.
@@ -87,7 +88,7 @@ Each milestone (M0-M6) maps to a `br` epic. Reference issues in commit messages 
 ### Mandatory Workflow
 
 1. **Before starting work**: Create a `br` epic for the milestone and individual issues for each task
-2. **During development**: Update issue status (`in-progress`, `done`) as work progresses
+2. **During development**: Update issue status (`in_progress`, `closed`) as work progresses
 3. **In commit messages**: Reference `br#<id>` to link commits to issues
 
 ## Branching Strategy
@@ -210,15 +211,17 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ## Current Status
 
-The project is in **M1 — Skill Manifest & Registry**. See `PLAN.md` for the full roadmap with milestones M0 through M6.
+The project has completed **M2 — Skill Validation & Overlap Detection**. See `PLAN.md` for the full roadmap with milestones M0 through M6.
 
-<!-- bv-agent-instructions-v1 -->
+<!-- br-agent-instructions-v1 -->
 
 ---
 
 ## Beads Workflow Integration
 
-This project uses [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) for issue tracking. Issues are stored in `.beads/` and tracked in git.
+This project uses [beads_rust](https://github.com/Dicklesworthstone/beads_rust) for issue tracking. Issues are stored in `.beads/` and tracked in git.
+
+**Note:** `br` is non-invasive and never executes git commands. After `br sync --flush-only`, you must manually run `git add .beads/ && git commit`.
 
 ### Essential Commands
 
@@ -227,30 +230,32 @@ This project uses [beads_viewer](https://github.com/Dicklesworthstone/beads_view
 bv
 
 # CLI commands for agents (use these instead)
-bd ready              # Show issues ready to work (no blockers)
-bd list --status=open # All open issues
-bd show <id>          # Full issue details with dependencies
-bd create --title="..." --type=task --priority=2
-bd update <id> --status=in_progress
-bd close <id> --reason="Completed"
-bd close <id1> <id2>  # Close multiple issues at once
-bd sync               # Commit and push changes
+br ready              # Show issues ready to work (no blockers)
+br list --status=open # All open issues
+br show <id>          # Full issue details with dependencies
+br create --title="..." --type=task --priority=2
+br update <id> --status=in_progress
+br close <id> --reason="Completed"
+br close <id1> <id2>  # Close multiple issues at once
+br sync --flush-only  # Export JSONL (does NOT commit)
+git add .beads/
+git commit -m "sync beads"
 ```
 
 ### Workflow Pattern
 
-1. **Start**: Run `bd ready` to find actionable work
-2. **Claim**: Use `bd update <id> --status=in_progress`
+1. **Start**: Run `br ready` to find actionable work
+2. **Claim**: Use `br update <id> --status=in_progress`
 3. **Work**: Implement the task
-4. **Complete**: Use `bd close <id>`
-5. **Sync**: Always run `bd sync` at session end
+4. **Complete**: Use `br close <id>`
+5. **Sync**: Run `br sync --flush-only`, then `git add .beads/ && git commit`
 
 ### Key Concepts
 
-- **Dependencies**: Issues can block other issues. `bd ready` shows only unblocked work.
+- **Dependencies**: Issues can block other issues. `br ready` shows only unblocked work.
 - **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers, not words)
 - **Types**: task, bug, feature, epic, question, docs
-- **Blocking**: `bd dep add <issue> <depends-on>` to add dependencies
+- **Blocking**: `br dep add <issue> <depends-on>` to add dependencies
 
 ### Session Protocol
 
@@ -259,18 +264,18 @@ bd sync               # Commit and push changes
 ```bash
 git status              # Check what changed
 git add <files>         # Stage code changes
-bd sync                 # Commit beads changes
-git commit -m "..."     # Commit code
-bd sync                 # Commit any new beads changes
+br sync --flush-only    # Export beads JSONL
+git add .beads/
+git commit -m "..."     # Commit code + beads changes
 git push                # Push to remote
 ```
 
 ### Best Practices
 
-- Check `bd ready` at session start to find available work
+- Check `br ready` at session start to find available work
 - Update status as you work (in_progress → closed)
-- Create new issues with `bd create` when you discover tasks
+- Create new issues with `br create` when you discover tasks
 - Use descriptive titles and set appropriate priority/type
-- Always `bd sync` before ending session
+- Always `br sync --flush-only` + git add/commit before ending session
 
-<!-- end-bv-agent-instructions -->
+<!-- end-br-agent-instructions -->

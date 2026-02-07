@@ -156,3 +156,33 @@ type SkillRemoveResult struct {
 	Name  string `json:"name"`
 	Scope string `json:"scope"`
 }
+
+// ValidationIssueResult is the JSON representation of a single validation issue.
+type ValidationIssueResult struct {
+	Field    string `json:"field"`
+	Severity string `json:"severity"`
+	Message  string `json:"message"`
+}
+
+// SkillValidateResult is the JSON envelope for skill validate output.
+type SkillValidateResult struct {
+	Name   string                  `json:"name"`
+	Valid  bool                    `json:"valid"`
+	Issues []ValidationIssueResult `json:"issues"`
+	Errors int                     `json:"errors"`
+	Warns  int                     `json:"warnings"`
+}
+
+// OverlapResult represents a single overlap match during skill creation.
+type OverlapResult struct {
+	Name  string  `json:"name"`
+	Score float64 `json:"score"`
+	Scope string  `json:"scope"`
+}
+
+// OverlapCheckResult is the JSON envelope for overlap detection output.
+type OverlapCheckResult struct {
+	Blocked  bool            `json:"blocked"`
+	Matches  []OverlapResult `json:"matches"`
+	MaxScore float64         `json:"max_score"`
+}
