@@ -39,7 +39,7 @@ func newSkillRemoveCmd() *cobra.Command {
 					}
 				}
 				if resolvedScope == "" {
-					return fmt.Errorf("skill %q not found", name)
+					return fmt.Errorf("skill %q not found (run 'scribe skill list' to see available skills)", name)
 				}
 			}
 
