@@ -15,6 +15,18 @@ Scribe provides a standardized lifecycle â€” create, validate, install, remove â
 
 ## Installation
 
+### Quick install (Linux / macOS)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/scribe/main/scripts/install.sh | bash
+```
+
+To install a specific version:
+
+```sh
+SCRIBE_VERSION=v0.0.1 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/scribe/main/scripts/install.sh | bash
+```
+
 ### Homebrew
 
 ```sh

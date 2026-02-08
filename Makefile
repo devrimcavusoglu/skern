@@ -8,13 +8,16 @@ LDFLAGS   := -s -w \
 	-X '$(MODULE)/internal/cli.Commit=$(COMMIT)' \
 	-X '$(MODULE)/internal/cli.Date=$(DATE)'
 
-.PHONY: build test lint fmt clean
+.PHONY: build test test-v test-cover test-install lint fmt clean
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/scribe
 
 test:
 	go test ./...
+
+test-install:
+	bash scripts/install_test.sh
 
 test-v:
 	go test -v ./...
