@@ -14,8 +14,8 @@ const (
 // Score computes an overall similarity score between a candidate skill and an existing skill.
 // Returns a value in [0, 1] where 1 means identical.
 func Score(candidateName, candidateDesc, existingName, existingDesc string, existingTools []string) float64 {
-	nameSim := nameSimilarity(candidateName, existingName)
-	descSim := descriptionSimilarity(candidateDesc, existingDesc)
+	nameSim := NameSimilarity(candidateName, existingName)
+	descSim := DescriptionSimilarity(candidateDesc, existingDesc)
 	toolSim := toolsOverlap(nil, existingTools) // candidate has no tools at creation time
 
 	return nameSim*nameWeight + descSim*descriptionWeight + toolSim*toolsWeight
@@ -24,16 +24,16 @@ func Score(candidateName, candidateDesc, existingName, existingDesc string, exis
 // ScoreWithTools computes similarity including the candidate's allowed-tools.
 func ScoreWithTools(candidateName, candidateDesc string, candidateTools []string,
 	existingName, existingDesc string, existingTools []string) float64 {
-	nameSim := nameSimilarity(candidateName, existingName)
-	descSim := descriptionSimilarity(candidateDesc, existingDesc)
+	nameSim := NameSimilarity(candidateName, existingName)
+	descSim := DescriptionSimilarity(candidateDesc, existingDesc)
 	toolSim := toolsOverlap(candidateTools, existingTools)
 
 	return nameSim*nameWeight + descSim*descriptionWeight + toolSim*toolsWeight
 }
 
-// descriptionSimilarity computes keyword overlap between two descriptions.
+// DescriptionSimilarity computes keyword overlap between two descriptions.
 // Returns a value in [0, 1].
-func descriptionSimilarity(a, b string) float64 {
+func DescriptionSimilarity(a, b string) float64 {
 	wordsA := extractKeywords(a)
 	wordsB := extractKeywords(b)
 

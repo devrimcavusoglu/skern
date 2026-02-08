@@ -95,9 +95,9 @@ func levenshtein(a, b string) int {
 	return prev[len(b)]
 }
 
-// nameSimilarity computes similarity between two skill names using
+// NameSimilarity computes similarity between two skill names using
 // Levenshtein distance normalized to [0, 1], with bonuses for prefix/suffix overlap.
-func nameSimilarity(a, b string) float64 {
+func NameSimilarity(a, b string) float64 {
 	a = strings.ToLower(a)
 	b = strings.ToLower(b)
 

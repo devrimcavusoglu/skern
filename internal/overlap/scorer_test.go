@@ -23,7 +23,7 @@ func TestDescriptionSimilarity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sim := descriptionSimilarity(tt.a, tt.b)
+			sim := DescriptionSimilarity(tt.a, tt.b)
 			assert.GreaterOrEqual(t, sim, tt.minSim, "similarity %f below min %f", sim, tt.minSim)
 			assert.LessOrEqual(t, sim, tt.maxSim, "similarity %f above max %f", sim, tt.maxSim)
 		})
