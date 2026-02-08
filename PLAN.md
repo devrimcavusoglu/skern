@@ -49,7 +49,8 @@ scribe/
 │   │   ├── skill_uninstall.go     # scribe skill uninstall <name> --platform <p>
 │   │   ├── platform.go            # platform subcommand group
 │   │   ├── platform_list.go       # scribe platform list
-│   │   └── platform_status.go     # scribe platform status
+│   │   ├── platform_status.go     # scribe platform status
+│   │   └── e2e_test.go            # End-to-end lifecycle integration tests
 │   ├── skill/                     # Skill domain logic
 │   │   ├── skill.go               # Skill struct, Author, ModifiedByEntry types
 │   │   ├── manifest.go            # SKILL.md frontmatter parsing/serialization
@@ -260,11 +261,11 @@ Global flags: `--json`, `--quiet`, `--scope user|project` (default: project if i
 
 **Exit criteria**: scribe can be installed via `brew install` or binary download. Agent-friendly in non-interactive mode. Deduplication hints visible on list.
 
-### M5 — Release v1.0.0 [P1, Week 6]
+### M5 — Release v1.0.0 [P1, Week 6] ✅
 
-- [ ] End-to-end test: create skill -> validate -> install to all 3 platforms -> verify -> uninstall
+- [x] End-to-end test: create skill -> validate -> install to all 3 platforms -> verify -> uninstall
 - [ ] Manual testing with actual Claude Code, Codex CLI, OpenCode installations
-- [ ] CLAUDE.md / AGENTS.md for the scribe project itself (dogfooding)
+- [x] CLAUDE.md / AGENTS.md for the scribe project itself (dogfooding)
 - [ ] Tag v1.0.0
 - [ ] GitHub Release with GoReleaser artifacts
 
@@ -304,15 +305,15 @@ br sync --flush-only           # Flush local changes to JSONL
 
 ### Conventions
 
-- Milestones map to `br` epics (M1: `bd-oaj`, M2: `bd-1vg`)
+- Milestones map to `br` epics (M1: `bd-oaj`, M2: `bd-1vg`, M4: `bd-171`, M5: `bd-1ma`)
 - Individual tasks within milestones are tracked as `br` issues
 - Issue IDs use the `bd-<epic>.<n>` format (e.g., `bd-oaj.1`, `bd-1vg.5`)
 - Agents can query `br list --json` to discover open tasks programmatically
 
 ### Current Status
 
-- **30 total issues**, all closed
-- **3 epics tracked**: M1 (bd-oaj, 9 issues), M2 (bd-1vg, 10 issues), M4 (bd-171, 8 issues)
+- **35 total issues** (31 closed, 4 open)
+- **4 epics tracked**: M1 (bd-oaj, 9 issues), M2 (bd-1vg, 10 issues), M4 (bd-171, 8 issues), M5 (bd-1ma, 4 issues)
 - M0 and M3 were completed without `br` issue tracking
 
 ---
