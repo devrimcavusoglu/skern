@@ -121,6 +121,34 @@ func TestSkillRecommend_TextOutput_WithMatch(t *testing.T) {
 	assert.Contains(t, out, "REUSE")
 }
 
+func TestSkillRecommend_NameOverride(t *testing.T) {
+	setupTestRegistry(t)
+
+	out, err := runCmd(t, "skill", "recommend", "format go source code", "--name", "gofmt-runner", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillRecommendResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, output.RecommendCreate, result.Action)
+	assert.Equal(t, "gofmt-runner", result.SuggestedName, "agent-provided name should override auto-generated")
+}
+
+func TestSkillRecommend_NameOverride_TextOutput(t *testing.T) {
+	setupTestRegistry(t)
+
+	out, err := runCmd(t, "skill", "recommend", "format go source code", "--name", "gofmt-runner")
+	require.NoError(t, err)
+	assert.Contains(t, out, "gofmt-runner")
+	assert.Contains(t, out, "scribe skill create")
+}
+
+func TestSkillRecommend_NameOverride_InvalidName(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "recommend", "test query", "--name", "INVALID_NAME")
+	assert.Error(t, err)
+}
+
 func TestSkillRecommend_InvalidScope(t *testing.T) {
 	setupTestRegistry(t)
 

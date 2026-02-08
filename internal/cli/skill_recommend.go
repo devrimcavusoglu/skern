@@ -21,6 +21,7 @@ func newSkillRecommendCmd() *cobra.Command {
 	var (
 		threshold float64
 		scope     string
+		name      string
 	)
 
 	cmd := &cobra.Command{
@@ -29,10 +30,20 @@ func newSkillRecommendCmd() *cobra.Command {
 		Long: `Analyze existing skills and recommend whether to reuse, extend, or create a new skill.
 
 The query should be a natural language description of what the agent needs,
-e.g., "format Go source code", "run database migrations", "lint markdown files".`,
+e.g., "format Go source code", "run database migrations", "lint markdown files".
+
+Use --name to provide an agent-suggested skill name. When the recommendation is
+CREATE, this overrides the auto-generated name suggestion.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query := args[0]
+
+			// Validate --name if provided
+			if name != "" {
+				if err := skill.ValidateName(name); err != nil {
+					return &ValidationError{Message: err.Error()}
+				}
+			}
 
 			reg, err := newRegistryFunc()
 			if err != nil {
@@ -54,7 +65,7 @@ e.g., "format Go source code", "run database migrations", "lint markdown files".
 				return err
 			}
 
-			result := buildRecommendation(query, scored, threshold)
+			result := buildRecommendation(query, scored, name)
 			text := formatRecommendation(result)
 			printer.PrintResult(result, text)
 			return nil
@@ -63,6 +74,7 @@ e.g., "format Go source code", "run database migrations", "lint markdown files".
 
 	cmd.Flags().Float64Var(&threshold, "threshold", recommendDefaultMinScore, "minimum relevance score")
 	cmd.Flags().StringVar(&scope, "scope", "all", "scope to search: user, project, all")
+	cmd.Flags().StringVar(&name, "name", "", "agent-suggested skill name (overrides auto-generated suggestion)")
 
 	return cmd
 }
@@ -83,7 +95,15 @@ func fuzzySearchScoped(reg *registry.Registry, query string, threshold float64, 
 	return filtered, nil
 }
 
-func buildRecommendation(query string, scored []registry.ScoredSkill, threshold float64) output.SkillRecommendResult {
+// suggestedName returns the agent-provided name if set, otherwise falls back to auto-generation.
+func suggestedName(nameOverride, query string) string {
+	if nameOverride != "" {
+		return nameOverride
+	}
+	return skill.SuggestName(query)
+}
+
+func buildRecommendation(query string, scored []registry.ScoredSkill, nameOverride string) output.SkillRecommendResult {
 	var matches []output.ScoredSkillResult
 	for _, s := range scored {
 		matches = append(matches, output.ScoredSkillResult{
@@ -101,7 +121,7 @@ func buildRecommendation(query string, scored []registry.ScoredSkill, threshold 
 	if len(scored) == 0 {
 		result.Action = output.RecommendCreate
 		result.Reason = "No existing skills match your needs."
-		result.SuggestedName = skill.SuggestName(query)
+		result.SuggestedName = suggestedName(nameOverride, query)
 		return result
 	}
 
@@ -117,7 +137,7 @@ func buildRecommendation(query string, scored []registry.ScoredSkill, threshold 
 	default:
 		result.Action = output.RecommendCreate
 		result.Reason = "Found loosely related skills but none closely match."
-		result.SuggestedName = skill.SuggestName(query)
+		result.SuggestedName = suggestedName(nameOverride, query)
 	}
 
 	return result
