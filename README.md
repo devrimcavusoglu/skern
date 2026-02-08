@@ -49,6 +49,16 @@ cd scribe
 make build
 ```
 
+## Agent Setup
+
+After installing scribe, add a line to your project's `AGENTS.md` (or `CLAUDE.md`) so that agents know to use it for skill management:
+
+```sh
+echo 'Use scribe to manage skills. Run `scribe --help` for usage, `scribe skill search <query>` to find existing skills before creating new ones.' >> AGENTS.md
+```
+
+This enables the [tool-forming loop](#features) — agents will search for existing skills before creating new ones, keeping your skill set deduplicated and organized.
+
 ## Quick Start
 
 ```sh
