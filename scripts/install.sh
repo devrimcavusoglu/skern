@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 # Scribe installer — OS-agnostic install script
-# Usage: curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/scribe/main/scripts/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/scribe/main/scripts/install.sh | bash
 #
 # Environment variables:
 #   SCRIBE_INSTALL_DIR  — override install directory (default: ~/.local/bin)
@@ -203,4 +203,7 @@ main() {
     fi
 }
 
-main
+# Guard: only run main when executed directly (not sourced for testing)
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main
+fi
