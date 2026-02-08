@@ -4,7 +4,7 @@
 
 Scribe is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
 
-The project is written in **Go 1.23+** and has reached **v1.0.0**.
+The project is written in **Go 1.23+** and is preparing for its first release (**v0.0.1**).
 
 ## Repository Layout
 
@@ -22,6 +22,8 @@ Makefile
 .goreleaser.yaml
 .golangci.yml
 .github/workflows/ci.yml
+.github/workflows/release.yml
+scripts/install.sh
 PLAN.md                       # Full project plan with milestones and architecture
 ```
 
@@ -211,13 +213,13 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ## Current Status
 
-The project has completed **M0–M5** (v1.0.0 release). All core functionality is implemented:
+The project has completed **M0–M4** with **M5** (v0.0.1 release) in progress. All core functionality is implemented:
 - M0: Project bootstrap (CLI skeleton, CI, output package)
 - M1: Skill manifest & registry (CRUD, search, SKILL.md parsing)
 - M2: Validation & overlap detection (fuzzy matching, thresholds)
 - M3: Platform adapters (Claude Code, Codex CLI, OpenCode)
 - M4: Agent experience polish (init, completions, templates, dedup hints, provenance)
-- M5: Release v1.0.0 (E2E tests, CLAUDE.md/AGENTS.md dogfooding)
+- M5: Release v0.0.1 (E2E tests, install script, release workflow, CLAUDE.md/AGENTS.md dogfooding)
 
 See `PLAN.md` for the full roadmap including M6 post-v1 items.
 

@@ -261,15 +261,17 @@ Global flags: `--json`, `--quiet`, `--scope user|project` (default: project if i
 
 **Exit criteria**: scribe can be installed via `brew install` or binary download. Agent-friendly in non-interactive mode. Deduplication hints visible on list.
 
-### M5 — Release v1.0.0 [P1, Week 6] ✅
+### M5 — Release v0.0.1 [P1, Week 6]
 
 - [x] End-to-end test: create skill -> validate -> install to all 3 platforms -> verify -> uninstall
 - [ ] Manual testing with actual Claude Code, Codex CLI, OpenCode installations
 - [x] CLAUDE.md / AGENTS.md for the scribe project itself (dogfooding)
-- [ ] Tag v1.0.0
+- [x] OS-agnostic install script (`scripts/install.sh`)
+- [x] GitHub Actions release workflow (`.github/workflows/release.yml`)
+- [ ] Tag v0.0.1
 - [ ] GitHub Release with GoReleaser artifacts
 
-**Exit criteria**: v1.0.0 released, usable by all three target platforms.
+**Exit criteria**: v0.0.1 released, usable by all three target platforms.
 
 ### M6 — Post-v1 Roadmap [P2, Future]
 
