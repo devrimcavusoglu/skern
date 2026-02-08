@@ -48,6 +48,16 @@ func parseScope(scopeStr string) (skill.Scope, error) {
 
 // toSkillResult converts a skill.Skill into an output.SkillResult.
 func toSkillResult(s *skill.Skill, scope string, path string) output.SkillResult {
+	var modifiedBy []output.ModifiedByResult
+	for _, m := range s.Metadata.ModifiedBy {
+		modifiedBy = append(modifiedBy, output.ModifiedByResult{
+			Name:     m.Name,
+			Type:     m.Type,
+			Platform: m.Platform,
+			Date:     m.Date,
+		})
+	}
+
 	return output.SkillResult{
 		Name:        s.Name,
 		Description: strings.TrimSpace(s.Description),
@@ -60,6 +70,7 @@ func toSkillResult(s *skill.Skill, scope string, path string) output.SkillResult
 		Scope:        scope,
 		Path:         path,
 		AllowedTools: s.AllowedTools,
+		ModifiedBy:   modifiedBy,
 	}
 }
 
@@ -106,6 +117,29 @@ func formatSkillShow(s output.SkillResult) string {
 	if len(s.AllowedTools) > 0 {
 		b.WriteString(fmt.Sprintf("Tools:       %s\n", strings.Join(s.AllowedTools, ", ")))
 	}
+	if len(s.ModifiedBy) > 0 {
+		b.WriteString("Modified-by:\n")
+		for _, m := range s.ModifiedBy {
+			entry := fmt.Sprintf("  - %s (%s)", m.Name, m.Type)
+			if m.Platform != "" {
+				entry += fmt.Sprintf(" [%s]", m.Platform)
+			}
+			if m.Date != "" {
+				entry += fmt.Sprintf(" on %s", m.Date)
+			}
+			b.WriteString(entry + "\n")
+		}
+	}
+	return b.String()
+}
+
+// formatDedupHints formats duplicate hints for text output.
+func formatDedupHints(hints []output.DuplicateHint) string {
+	var b strings.Builder
+	b.WriteString("\nPotential duplicates:\n")
+	for _, h := range hints {
+		b.WriteString(fmt.Sprintf("  - %s <-> %s (score: %.2f)\n", h.SkillA, h.SkillB, h.Score))
+	}
 	return b.String()
 }
 
@@ -143,5 +177,5 @@ func resolveSkill(reg *registry.Registry, name, scopeStr string) (*skill.Skill, 
 		}
 	}
 
-	return nil, "", "", fmt.Errorf("skill %q not found", name)
+	return nil, "", "", fmt.Errorf("skill %q not found (run 'scribe skill list' to see available skills)", name)
 }

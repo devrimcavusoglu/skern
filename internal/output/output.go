@@ -106,6 +106,12 @@ type ErrorResult struct {
 	Error string `json:"error"`
 }
 
+// InitResult is the JSON envelope for init output.
+type InitResult struct {
+	Path    string `json:"path"`
+	Created bool   `json:"created"`
+}
+
 // VersionResult is the JSON envelope for version output.
 type VersionResult struct {
 	Version string `json:"version"`
@@ -120,15 +126,24 @@ type AuthorResult struct {
 	Platform string `json:"platform,omitempty"`
 }
 
+// ModifiedByResult is the JSON representation of a modified-by entry.
+type ModifiedByResult struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Platform string `json:"platform,omitempty"`
+	Date     string `json:"date"`
+}
+
 // SkillResult is the JSON representation of a skill.
 type SkillResult struct {
-	Name         string       `json:"name"`
-	Description  string       `json:"description"`
-	Version      string       `json:"version"`
-	Author       AuthorResult `json:"author"`
-	Scope        string       `json:"scope,omitempty"`
-	Path         string       `json:"path,omitempty"`
-	AllowedTools []string     `json:"allowed_tools,omitempty"`
+	Name         string             `json:"name"`
+	Description  string             `json:"description"`
+	Version      string             `json:"version"`
+	Author       AuthorResult       `json:"author"`
+	Scope        string             `json:"scope,omitempty"`
+	Path         string             `json:"path,omitempty"`
+	AllowedTools []string           `json:"allowed_tools,omitempty"`
+	ModifiedBy   []ModifiedByResult `json:"modified_by,omitempty"`
 }
 
 // SkillCreateResult is the JSON envelope for skill create output.
@@ -138,10 +153,18 @@ type SkillCreateResult struct {
 	Path  string `json:"path"`
 }
 
+// DuplicateHint represents a pair of skills flagged as potential duplicates.
+type DuplicateHint struct {
+	SkillA string  `json:"skill_a"`
+	SkillB string  `json:"skill_b"`
+	Score  float64 `json:"score"`
+}
+
 // SkillListResult is the JSON envelope for skill list output.
 type SkillListResult struct {
-	Skills []SkillResult `json:"skills"`
-	Count  int           `json:"count"`
+	Skills     []SkillResult `json:"skills"`
+	Count      int           `json:"count"`
+	Duplicates []DuplicateHint `json:"duplicates,omitempty"`
 }
 
 // SkillSearchResult is the JSON envelope for skill search output.

@@ -37,11 +37,12 @@ scribe/
 │   │   ├── root.go                # Root command, global flags (--json, --quiet)
 │   │   ├── version.go             # Version command
 │   │   ├── init.go                # scribe init
+│   │   ├── completion.go          # scribe completion (bash, zsh, fish)
 │   │   ├── skill.go               # skill subcommand group
 │   │   ├── skill_create.go        # scribe skill create <name>
 │   │   ├── skill_search.go        # scribe skill search <query>
-│   │   ├── skill_list.go          # scribe skill list
-│   │   ├── skill_show.go          # scribe skill show <name>
+│   │   ├── skill_list.go          # scribe skill list (with dedup hints)
+│   │   ├── skill_show.go          # scribe skill show <name> (with modified-by)
 │   │   ├── skill_validate.go      # scribe skill validate <name>
 │   │   ├── skill_remove.go        # scribe skill remove <name>
 │   │   ├── skill_install.go       # scribe skill install <name> --platform <p>
@@ -158,6 +159,7 @@ scribe skill install <name> --platform <p>     # Copy/link skill to platform dir
 scribe skill uninstall <name> --platform <p>   # Remove skill from platform directory
 scribe platform list                           # List detected platforms and their paths
 scribe platform status                         # Show installation status per skill per platform
+scribe completion [bash|zsh|fish]              # Generate shell completion scripts
 scribe version                                 # Print version info
 ```
 
@@ -175,86 +177,86 @@ Global flags: `--json`, `--quiet`, `--scope user|project` (default: project if i
 
 ## Milestones
 
-### M0 — Project Bootstrap [P0, Week 1]
+### M0 — Project Bootstrap [P0, Week 1] ✅
 
 - [x] Brainstorming and PRD (done)
-- [ ] `br init` — initialize beads-rust issue tracker
-- [ ] Create `br` epics for M0–M6, seed initial issues
-- [ ] `go mod init github.com/<user>/scribe`
-- [ ] Cobra skeleton with root, version commands
-- [ ] Makefile (build, test, lint)
-- [ ] `.goreleaser.yaml` config
-- [ ] GitHub Actions CI (lint + test + build)
-- [ ] `.golangci.yml` linter config
-- [ ] `output` package — JSON/text formatter with `--json` flag support
-- [ ] Basic project README
+- [x] `br init` — initialize beads-rust issue tracker
+- [x] Create `br` epics for M1–M2, seed initial issues
+- [x] `go mod init github.com/devrimcavusoglu/scribe`
+- [x] Cobra skeleton with root, version commands
+- [x] Makefile (build, test, lint)
+- [x] `.goreleaser.yaml` config
+- [x] GitHub Actions CI (lint + test + build)
+- [x] `.golangci.yml` linter config
+- [x] `output` package — JSON/text formatter with `--json` flag support
+- [x] Basic project README
 
 **Exit criteria**: `scribe version` works, CI is green, `br` tracker initialized with epics
 
-### M1 — Skill Manifest & Registry [P0, Week 2]
+### M1 — Skill Manifest & Registry [P0, Week 2] ✅
 
-- [ ] `skill.Skill` struct matching Agent Skills spec frontmatter fields
-- [ ] `skill.Author` and `skill.ModifiedByEntry` types for structured author metadata
-- [ ] `manifest.Parse(path)` — extract YAML frontmatter from SKILL.md, including structured `author` object
-- [ ] `manifest.Write(skill, path)` — serialize skill to SKILL.md
-- [ ] `registry.Registry` — filesystem CRUD for `~/.scribe/skills/` and `.scribe/skills/`
-- [ ] `registry.Discovery` — walk and discover skills across scopes
-- [ ] `scribe skill create <name>` — scaffold `<name>/SKILL.md` with template
-- [ ] `--author`, `--author-type`, `--author-platform` flags on `scribe skill create`
-- [ ] `scribe skill search <query>` — basic name matching across project+user scopes
-- [ ] `scribe skill list` — list all skills with name, description, scope
-- [ ] `scribe skill show <name>` — display full skill contents
-- [ ] `scribe skill remove <name>` — delete skill directory
-- [ ] Unit tests for manifest parsing (including structured author) and registry operations
+- [x] `skill.Skill` struct matching Agent Skills spec frontmatter fields
+- [x] `skill.Author` and `skill.ModifiedByEntry` types for structured author metadata
+- [x] `manifest.Parse(path)` — extract YAML frontmatter from SKILL.md, including structured `author` object
+- [x] `manifest.Write(skill, path)` — serialize skill to SKILL.md
+- [x] `registry.Registry` — filesystem CRUD for `~/.scribe/skills/` and `.scribe/skills/`
+- [x] `registry.Discovery` — walk and discover skills across scopes
+- [x] `scribe skill create <name>` — scaffold `<name>/SKILL.md` with template
+- [x] `--author`, `--author-type`, `--author-platform` flags on `scribe skill create`
+- [x] `scribe skill search <query>` — basic name matching across project+user scopes
+- [x] `scribe skill list` — list all skills with name, description, scope
+- [x] `scribe skill show <name>` — display full skill contents
+- [x] `scribe skill remove <name>` — delete skill directory
+- [x] Unit tests for manifest parsing (including structured author) and registry operations
 
 **Exit criteria**: Full CRUD cycle works — create, list, show, remove. Skill search returns basic name matches. JSON output for all commands.
 
-### M2 — Skill Validation & Overlap Detection [P0, Week 3]
+### M2 — Skill Validation & Overlap Detection [P0, Week 3] ✅
 
-- [ ] `validator.Validate(skill)` — check required fields (name, description)
-- [ ] Name format validation (`^[a-z0-9]+(-[a-z0-9]+)*$`, 1-64 chars)
-- [ ] Description length validation (1-1024 chars)
-- [ ] Optional field type checking (allowed-tools, metadata, license)
-- [ ] Validate SKILL.md body is non-empty
-- [ ] `scribe skill validate <name>` — run all checks, report issues
-- [ ] Validate on create (warn on issues)
-- [ ] Structured validation error output (JSON array of issues)
-- [ ] `overlap.Detector` — fuzzy name matching (Levenshtein distance, prefix/suffix)
-- [ ] `overlap.Scorer` — description similarity scoring (keyword overlap)
-- [ ] Overlap check integrated into `scribe skill create` (warn/block flow based on thresholds)
-- [ ] `--force` flag to bypass overlap block (score >= 0.9)
-- [ ] Skill count threshold warnings (project > 20, user > 50)
+- [x] `validator.Validate(skill)` — check required fields (name, description)
+- [x] Name format validation (`^[a-z0-9]+(-[a-z0-9]+)*$`, 1-64 chars)
+- [x] Description length validation (1-1024 chars)
+- [x] Optional field type checking (allowed-tools, metadata, license)
+- [x] Validate SKILL.md body is non-empty
+- [x] `scribe skill validate <name>` — run all checks, report issues
+- [x] Validate on create (warn on issues)
+- [x] Structured validation error output (JSON array of issues)
+- [x] `overlap.Detector` — fuzzy name matching (Levenshtein distance, prefix/suffix)
+- [x] `overlap.Scorer` — description similarity scoring (keyword overlap)
+- [x] Overlap check integrated into `scribe skill create` (warn/block flow based on thresholds)
+- [x] `--force` flag to bypass overlap block (score >= 0.9)
+- [x] Skill count threshold warnings (project > 20, user > 50)
 
 **Exit criteria**: `scribe skill validate` catches malformed skills and reports clear, actionable errors. Overlap detection warns or blocks on similar skills during create.
 
-### M3 — Platform Adapters [P0, Week 4]
+### M3 — Platform Adapters [P0, Week 4] ✅
 
-- [ ] `platform.Platform` interface: `Name()`, `Detect()`, `UserSkillsDir()`, `ProjectSkillsDir()`, `Install(skill)`, `Uninstall(skill)`, `InstalledSkills()`
-- [ ] `platform.ClaudeCode` adapter — `.claude/skills/` conventions
-- [ ] `platform.CodexCLI` adapter — `.agents/skills/` conventions
-- [ ] `platform.OpenCode` adapter — `.opencode/skills/` conventions
-- [ ] `platform.Detector` — auto-detect installed platforms
-- [ ] `scribe skill install <name> --platform <p>` — copy skill directory to platform path
-- [ ] `scribe skill install <name> --platform all` — install to all detected platforms
-- [ ] `scribe skill uninstall <name> --platform <p>`
-- [ ] `scribe platform list` — show detected platforms with paths
-- [ ] `scribe platform status` — matrix view: skill x platform installation status
-- [ ] Integration tests with temp directories simulating platform layouts
+- [x] `platform.Platform` interface: `Name()`, `Detect()`, `UserSkillsDir()`, `ProjectSkillsDir()`, `Install(skill)`, `Uninstall(skill)`, `InstalledSkills()`
+- [x] `platform.ClaudeCode` adapter — `.claude/skills/` conventions
+- [x] `platform.CodexCLI` adapter — `.agents/skills/` conventions
+- [x] `platform.OpenCode` adapter — `.opencode/skills/` conventions
+- [x] `platform.Detector` — auto-detect installed platforms
+- [x] `scribe skill install <name> --platform <p>` — copy skill directory to platform path
+- [x] `scribe skill install <name> --platform all` — install to all detected platforms
+- [x] `scribe skill uninstall <name> --platform <p>`
+- [x] `scribe platform list` — show detected platforms with paths
+- [x] `scribe platform status` — matrix view: skill x platform installation status
+- [x] Integration tests with temp directories simulating platform layouts
 
 **Exit criteria**: A skill created by scribe can be installed to all three platforms and is immediately discoverable by each tool.
 
-### M4 — Agent Experience & Polish [P1, Week 5]
+### M4 — Agent Experience & Polish [P1, Week 5] ✅
 
-- [ ] `scribe init` — create `.scribe/` directory in project, generate starter config
-- [ ] Shell completions (bash, zsh, fish) via Cobra
-- [ ] Semantic exit codes consistently applied
-- [ ] `--quiet` flag suppresses non-essential output
-- [ ] Error messages include actionable suggestions
-- [ ] `scribe skill create` supports `--description` and `--from-template` flags
-- [ ] Deduplication hints in `scribe skill list` — flag potential duplicates with similarity scores
-- [ ] Author provenance display in `scribe skill show` — show structured author info and `modified-by` history
-- [ ] GoReleaser cross-compilation verified (darwin/amd64, darwin/arm64, linux/amd64, linux/arm64)
-- [ ] Homebrew formula generation
+- [x] `scribe init` — create `.scribe/` directory in project, idempotent initialization
+- [x] Shell completions (bash, zsh, fish) via Cobra (`scribe completion`)
+- [x] Semantic exit codes consistently applied (audit of all RunE paths)
+- [x] `--quiet` flag suppresses non-essential output (already done in M0)
+- [x] Error messages include actionable suggestions (e.g., "run 'scribe skill list'", "valid platforms: ...")
+- [x] `scribe skill create` supports `--description` and `--from-template` flags
+- [x] Deduplication hints in `scribe skill list` — pairwise overlap detection flags potential duplicates (score >= 0.6)
+- [x] Author provenance display in `scribe skill show` — shows `modified-by` history with name, type, platform, date
+- [x] GoReleaser cross-compilation verified (darwin/amd64, darwin/arm64, linux/amd64, linux/arm64)
+- [x] Homebrew formula generation (`brews` section in `.goreleaser.yaml`)
 
 **Exit criteria**: scribe can be installed via `brew install` or binary download. Agent-friendly in non-interactive mode. Deduplication hints visible on list.
 
@@ -289,19 +291,29 @@ Development of scribe is tracked using **beads-rust (`br`)**, an agent-first iss
 
 ```
 br init                        # Initialize tracker in project root
-br epic create "M0 — Bootstrap" # Create epic per milestone
-br issue create "Set up CI"    # Create individual issue
-br issue list --epic M0        # List issues for a milestone
-br issue update <id> --status done
-br sync --flush-only           # Flush local changes
+br create "Set up CI" --epic <epic-id>  # Create issue under epic
+br list                        # List open issues
+br list --all                  # List all issues (including closed)
+br show <id>                   # Show issue details
+br update <id> --status done   # Update issue status
+br close <id>                  # Close an issue
+br epic status                 # Show epic progress
+br stats                       # Show project statistics
+br sync --flush-only           # Flush local changes to JSONL
 ```
 
 ### Conventions
 
-- Each milestone (M0–M6) maps to a `br` epic
+- Milestones map to `br` epics (M1: `bd-oaj`, M2: `bd-1vg`)
 - Individual tasks within milestones are tracked as `br` issues
-- Issue IDs are referenced in commit messages as `br#<id>`
-- Agents can query `br issue list --json` to discover open tasks programmatically
+- Issue IDs use the `bd-<epic>.<n>` format (e.g., `bd-oaj.1`, `bd-1vg.5`)
+- Agents can query `br list --json` to discover open tasks programmatically
+
+### Current Status
+
+- **30 total issues**, all closed
+- **3 epics tracked**: M1 (bd-oaj, 9 issues), M2 (bd-1vg, 10 issues), M4 (bd-171, 8 issues)
+- M0 and M3 were completed without `br` issue tracking
 
 ---
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/devrimcavusoglu/scribe/internal/output"
@@ -18,6 +19,7 @@ func newSkillCreateCmd() *cobra.Command {
 		description    string
 		scope          string
 		force          bool
+		fromTemplate   string
 	)
 
 	cmd := &cobra.Command{
@@ -87,7 +89,17 @@ func newSkillCreateCmd() *cobra.Command {
 			// Skill count threshold warnings
 			checkSkillCountWarnings(reg, scopeVal)
 
-			s := skill.NewSkill(name, description, author, authorType, authorPlatform)
+			// Read template body if --from-template is specified
+			var body string
+			if fromTemplate != "" {
+				data, err := os.ReadFile(fromTemplate)
+				if err != nil {
+					return fmt.Errorf("reading template %q: %w", fromTemplate, err)
+				}
+				body = string(data)
+			}
+
+			s := skill.NewSkillWithBody(name, description, author, authorType, authorPlatform, body)
 
 			// Validate on create (warnings only, don't block)
 			issues := skill.Validate(s)
@@ -118,6 +130,7 @@ func newSkillCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&description, "description", "", "skill description")
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
 	cmd.Flags().BoolVar(&force, "force", false, "bypass overlap detection block")
+	cmd.Flags().StringVar(&fromTemplate, "from-template", "", "path to a template file for the skill body")
 
 	return cmd
 }

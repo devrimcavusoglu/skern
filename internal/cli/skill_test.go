@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -356,4 +357,213 @@ func TestValidationError_ExitCode(t *testing.T) {
 	// We test via the error type directly
 	ve := &ValidationError{Message: "test"}
 	assert.Equal(t, "test", ve.Error())
+}
+
+// --- completion ---
+
+func TestCompletion_Bash(t *testing.T) {
+	out, err := runCmd(t, "completion", "bash")
+	require.NoError(t, err)
+	assert.NotEmpty(t, out)
+	assert.Contains(t, out, "bash")
+}
+
+func TestCompletion_Zsh(t *testing.T) {
+	out, err := runCmd(t, "completion", "zsh")
+	require.NoError(t, err)
+	assert.NotEmpty(t, out)
+}
+
+func TestCompletion_Fish(t *testing.T) {
+	out, err := runCmd(t, "completion", "fish")
+	require.NoError(t, err)
+	assert.NotEmpty(t, out)
+}
+
+func TestCompletion_Invalid(t *testing.T) {
+	_, err := runCmd(t, "completion", "powershell")
+	assert.Error(t, err)
+}
+
+// --- from-template ---
+
+func TestSkillCreate_FromTemplate(t *testing.T) {
+	setupTestRegistry(t)
+
+	// Write a template file
+	tmplDir := t.TempDir()
+	tmplPath := filepath.Join(tmplDir, "template.md")
+	require.NoError(t, os.WriteFile(tmplPath, []byte("## Custom Instructions\n\nDo something custom.\n"), 0o644))
+
+	out, err := runCmd(t, "skill", "create", "tmpl-skill", "--from-template", tmplPath, "--json")
+	require.NoError(t, err)
+
+	var result output.SkillCreateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "tmpl-skill", result.Name)
+
+	// Verify the body was used by reading the created SKILL.md
+	skillMd, err := os.ReadFile(filepath.Join(result.Path, "SKILL.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(skillMd), "Custom Instructions")
+	assert.Contains(t, string(skillMd), "Do something custom")
+}
+
+func TestSkillCreate_FromTemplate_NotFound(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "create", "tmpl-fail", "--from-template", "/nonexistent/template.md")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "reading template")
+}
+
+// --- dedup hints in list ---
+
+func TestSkillList_DedupHints(t *testing.T) {
+	setupTestRegistry(t)
+
+	// Create two similar skills
+	_, err := runCmd(t, "skill", "create", "code-review", "--description", "Reviews code")
+	require.NoError(t, err)
+	_, err = runCmd(t, "skill", "create", "code-reviewer", "--description", "Reviews code changes", "--force")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, "skill", "list", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, 2, result.Count)
+	assert.NotEmpty(t, result.Duplicates, "should have duplicate hints for similar skills")
+	assert.Equal(t, "code-review", result.Duplicates[0].SkillA)
+	assert.Equal(t, "code-reviewer", result.Duplicates[0].SkillB)
+}
+
+func TestSkillList_DedupHints_Text(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "create", "code-review", "--description", "Reviews code")
+	require.NoError(t, err)
+	_, err = runCmd(t, "skill", "create", "code-reviewer", "--description", "Reviews code changes", "--force")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, "skill", "list")
+	require.NoError(t, err)
+	assert.Contains(t, out, "Potential duplicates")
+	assert.Contains(t, out, "code-review")
+	assert.Contains(t, out, "code-reviewer")
+}
+
+func TestSkillList_NoDedupHints(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "create", "alpha-skill", "--description", "Does alpha things")
+	require.NoError(t, err)
+	_, err = runCmd(t, "skill", "create", "zeta-deploy", "--description", "Deploys to production")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, "skill", "list", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, 2, result.Count)
+	assert.Empty(t, result.Duplicates, "should have no duplicate hints for dissimilar skills")
+}
+
+// --- author provenance (modified-by) ---
+
+func TestSkillShow_ModifiedBy(t *testing.T) {
+	setupTestRegistry(t)
+
+	// Create a skill and manually add modified-by entries
+	_, err := runCmd(t, "skill", "create", "prov-skill", "--description", "Provenance test", "--author", "alice")
+	require.NoError(t, err)
+
+	// Read the created SKILL.md and add modified-by to the frontmatter
+	showOut, err := runCmd(t, "skill", "show", "prov-skill", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(showOut), &result))
+
+	// Write modified SKILL.md with modified-by
+	skillMdPath := filepath.Join(result.Path, "SKILL.md")
+	modifiedContent := `---
+name: prov-skill
+description: Provenance test
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+  modified-by:
+    - name: bob
+      type: agent
+      platform: claude-code
+      date: "2025-01-15"
+    - name: carol
+      type: human
+      date: "2025-02-01"
+---
+## Instructions
+
+TODO: Add step-by-step instructions for the agent.
+`
+	require.NoError(t, os.WriteFile(skillMdPath, []byte(modifiedContent), 0o644))
+
+	// Show the skill — JSON should include modified_by
+	out, err := runCmd(t, "skill", "show", "prov-skill", "--json")
+	require.NoError(t, err)
+
+	var updated output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(out), &updated))
+	require.Len(t, updated.ModifiedBy, 2)
+	assert.Equal(t, "bob", updated.ModifiedBy[0].Name)
+	assert.Equal(t, "agent", updated.ModifiedBy[0].Type)
+	assert.Equal(t, "claude-code", updated.ModifiedBy[0].Platform)
+	assert.Equal(t, "2025-01-15", updated.ModifiedBy[0].Date)
+	assert.Equal(t, "carol", updated.ModifiedBy[1].Name)
+}
+
+func TestSkillShow_ModifiedBy_Text(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "create", "prov-text", "--description", "Provenance text test", "--author", "alice")
+	require.NoError(t, err)
+
+	showOut, err := runCmd(t, "skill", "show", "prov-text", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(showOut), &result))
+
+	skillMdPath := filepath.Join(result.Path, "SKILL.md")
+	modifiedContent := `---
+name: prov-text
+description: Provenance text test
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+  modified-by:
+    - name: bob
+      type: agent
+      platform: claude-code
+      date: "2025-01-15"
+---
+## Instructions
+
+TODO: Add step-by-step instructions for the agent.
+`
+	require.NoError(t, os.WriteFile(skillMdPath, []byte(modifiedContent), 0o644))
+
+	out, err := runCmd(t, "skill", "show", "prov-text")
+	require.NoError(t, err)
+	assert.Contains(t, out, "Modified-by")
+	assert.Contains(t, out, "bob")
+	assert.Contains(t, out, "agent")
+	assert.Contains(t, out, "claude-code")
+	assert.Contains(t, out, "2025-01-15")
 }

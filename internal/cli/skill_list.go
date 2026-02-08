@@ -2,6 +2,7 @@ package cli
 
 import (
 	"github.com/devrimcavusoglu/scribe/internal/output"
+	"github.com/devrimcavusoglu/scribe/internal/overlap"
 	"github.com/devrimcavusoglu/scribe/internal/skill"
 	"github.com/spf13/cobra"
 )
@@ -49,11 +50,35 @@ func newSkillListCmd() *cobra.Command {
 				}
 			}
 
+			// Pairwise dedup detection
+			var dupHints []output.DuplicateHint
+			for i := 0; i < len(skillResults); i++ {
+				for j := i + 1; j < len(skillResults); j++ {
+					a := skillResults[i]
+					b := skillResults[j]
+					score := overlap.ScoreWithTools(
+						a.Name, a.Description, a.AllowedTools,
+						b.Name, b.Description, b.AllowedTools,
+					)
+					if score >= overlap.WarnThreshold {
+						dupHints = append(dupHints, output.DuplicateHint{
+							SkillA: a.Name,
+							SkillB: b.Name,
+							Score:  score,
+						})
+					}
+				}
+			}
+
 			result := output.SkillListResult{
-				Skills: skillResults,
-				Count:  len(skillResults),
+				Skills:     skillResults,
+				Count:      len(skillResults),
+				Duplicates: dupHints,
 			}
 			text := formatSkillTable(skillResults)
+			if len(dupHints) > 0 {
+				text += formatDedupHints(dupHints)
+			}
 			printer.PrintResult(result, text)
 			return nil
 		},

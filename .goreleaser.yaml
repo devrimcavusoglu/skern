@@ -37,6 +37,18 @@ changelog:
       - "^test:"
       - "^ci:"
 
+brews:
+  - repository:
+      owner: devrimcavusoglu
+      name: homebrew-tap
+    homepage: "https://github.com/devrimcavusoglu/scribe"
+    description: "Agent-first CLI for managing Agent Skills across agentic platforms"
+    license: "Apache-2.0"
+    install: |
+      bin.install "scribe"
+    test: |
+      system "#{bin}/scribe", "version"
+
 release:
   github:
     owner: devrimcavusoglu

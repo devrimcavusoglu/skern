@@ -15,6 +15,12 @@ Scribe provides a standardized lifecycle — create, validate, install, remove �
 
 ## Installation
 
+### Homebrew
+
+```sh
+brew install devrimcavusoglu/tap/scribe
+```
+
 ### From source
 
 Requires Go 1.23+.
@@ -69,6 +75,12 @@ scribe platform status
 
 # Search for existing skills
 scribe skill search "code review"
+
+# Create a skill from a template file
+scribe skill create my-skill --from-template ./templates/review.md
+
+# Generate shell completions
+scribe completion bash   # also: zsh, fish
 ```
 
 ## CLI Reference
@@ -85,12 +97,13 @@ scribe skill install <name> --platform <p>     # Install skill to platform
 scribe skill uninstall <name> --platform <p>   # Remove skill from platform
 scribe platform list                           # List detected platforms
 scribe platform status                         # Skill x platform installation matrix
+scribe completion [bash|zsh|fish]              # Generate shell completions
 scribe version                                 # Print version info
 ```
 
 **Global flags:** `--json`, `--quiet`, `--scope user|project`
 
-**`skill create` flags:** `--author`, `--author-type human|agent`, `--author-platform`, `--description`, `--force` (bypass overlap block)
+**`skill create` flags:** `--author`, `--author-type human|agent`, `--author-platform`, `--description`, `--force` (bypass overlap block), `--from-template <path>` (use file as skill body)
 
 **`skill install/uninstall` flags:** `--platform claude-code|codex-cli|opencode|all` (required), `--scope user|project`
 
@@ -123,6 +136,12 @@ When creating a skill, scribe checks existing skills for similarity using:
 | >= 0.9 | Block — require `--force` to override |
 
 Skill count warnings trigger at > 20 skills (project scope) or > 50 skills (user scope).
+
+`scribe skill list` also runs pairwise overlap detection across all listed skills and appends a "Potential duplicates" section when matches are found (score >= 0.6). In `--json` mode, these appear in the `duplicates` array.
+
+### Author Provenance
+
+Skills track author metadata and an optional `modified-by` history. `scribe skill show` displays the full provenance chain when present, including editor name, type (human/agent), platform, and date.
 
 ## Supported Platforms
 

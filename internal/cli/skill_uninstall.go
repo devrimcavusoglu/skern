@@ -47,12 +47,12 @@ func newSkillUninstallCmd() *cobra.Command {
 			if platformType == platform.Type("all") {
 				targets = det.DetectAll()
 				if len(targets) == 0 {
-					return fmt.Errorf("no platforms detected; install a supported platform first")
+					return fmt.Errorf("no platforms detected; install a supported platform first (run 'scribe platform list' to see options)")
 				}
 			} else {
 				p := det.Get(platformType)
 				if p == nil {
-					return fmt.Errorf("platform %q not registered", platformFlag)
+					return &ValidationError{Message: fmt.Sprintf("platform %q not recognized; valid platforms: claude-code, codex-cli, opencode", platformFlag)}
 				}
 				targets = []platform.Platform{p}
 			}

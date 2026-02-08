@@ -45,7 +45,7 @@ func newSkillInstallCmd() *cobra.Command {
 			// Resolve skill from registry
 			s, skillDir, err := reg.Get(name, scopeVal)
 			if err != nil {
-				return fmt.Errorf("skill %q not found in %s scope: %w", name, scope, err)
+				return fmt.Errorf("skill %q not found in %s scope (run 'scribe skill list' to see available skills)", name, scope)
 			}
 			_ = s // skill metadata not needed for install
 
@@ -59,12 +59,12 @@ func newSkillInstallCmd() *cobra.Command {
 			if platformType == platform.Type("all") {
 				targets = det.DetectAll()
 				if len(targets) == 0 {
-					return fmt.Errorf("no platforms detected; install a supported platform first")
+					return fmt.Errorf("no platforms detected; install a supported platform first (run 'scribe platform list' to see options)")
 				}
 			} else {
 				p := det.Get(platformType)
 				if p == nil {
-					return fmt.Errorf("platform %q not registered", platformFlag)
+					return &ValidationError{Message: fmt.Sprintf("platform %q not recognized; valid platforms: claude-code, codex-cli, opencode", platformFlag)}
 				}
 				targets = []platform.Platform{p}
 			}
