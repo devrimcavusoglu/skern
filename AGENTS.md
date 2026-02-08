@@ -4,14 +4,14 @@
 
 Scribe is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
 
-The project is written in **Go 1.23+** and is currently in its bootstrap phase.
+The project is written in **Go 1.23+** and has reached **v1.0.0**.
 
 ## Repository Layout
 
 ```
 cmd/scribe/main.go           # Entry point
 internal/
-  cli/                        # Cobra command definitions (root, version, skill_*, platform_*)
+  cli/                        # Cobra command definitions (root, version, init, completion, skill_*, platform_*)
   skill/                      # Domain logic: Skill struct, manifest parsing, validation, scaffolding
   overlap/                    # Fuzzy name matching and description similarity scoring
   registry/                   # Filesystem CRUD over ~/.scribe/skills/ and .scribe/skills/
@@ -206,12 +206,20 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 |------------|---------|
 | `github.com/spf13/cobra` | CLI framework |
 | `gopkg.in/yaml.v3` | YAML frontmatter parsing |
-| `santhosh-tekuri/jsonschema/v6` | Agent Skills spec validation |
+| `santhosh-tekuri/jsonschema/v6` | Agent Skills spec validation (planned) |
 | `github.com/stretchr/testify` | Test assertions |
 
 ## Current Status
 
-The project has completed **M3 — Platform Adapters** (Claude Code, Codex CLI, OpenCode). See `PLAN.md` for the full roadmap with milestones M0 through M6.
+The project has completed **M0–M5** (v1.0.0 release). All core functionality is implemented:
+- M0: Project bootstrap (CLI skeleton, CI, output package)
+- M1: Skill manifest & registry (CRUD, search, SKILL.md parsing)
+- M2: Validation & overlap detection (fuzzy matching, thresholds)
+- M3: Platform adapters (Claude Code, Codex CLI, OpenCode)
+- M4: Agent experience polish (init, completions, templates, dedup hints, provenance)
+- M5: Release v1.0.0 (E2E tests, CLAUDE.md/AGENTS.md dogfooding)
+
+See `PLAN.md` for the full roadmap including M6 post-v1 items.
 
 <!-- br-agent-instructions-v1 -->
 

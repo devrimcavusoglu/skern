@@ -162,8 +162,8 @@ type DuplicateHint struct {
 
 // SkillListResult is the JSON envelope for skill list output.
 type SkillListResult struct {
-	Skills     []SkillResult `json:"skills"`
-	Count      int           `json:"count"`
+	Skills     []SkillResult   `json:"skills"`
+	Count      int             `json:"count"`
 	Duplicates []DuplicateHint `json:"duplicates,omitempty"`
 }
 
