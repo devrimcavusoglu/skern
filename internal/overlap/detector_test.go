@@ -48,7 +48,7 @@ func TestNameSimilarity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sim := nameSimilarity(tt.a, tt.b)
+			sim := NameSimilarity(tt.a, tt.b)
 			assert.GreaterOrEqual(t, sim, tt.minSim, "similarity %f below minimum %f", sim, tt.minSim)
 			assert.LessOrEqual(t, sim, tt.maxSim, "similarity %f above maximum %f", sim, tt.maxSim)
 		})
@@ -56,7 +56,7 @@ func TestNameSimilarity(t *testing.T) {
 }
 
 func TestNameSimilarity_CaseInsensitive(t *testing.T) {
-	sim := nameSimilarity("Code-Review", "code-review")
+	sim := NameSimilarity("Code-Review", "code-review")
 	assert.Equal(t, 1.0, sim)
 }
 

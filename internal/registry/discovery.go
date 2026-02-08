@@ -2,8 +2,10 @@ package registry
 
 import (
 	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/devrimcavusoglu/scribe/internal/overlap"
 	"github.com/devrimcavusoglu/scribe/internal/skill"
 )
 
@@ -34,6 +36,48 @@ func (r *Registry) ListAll() ([]DiscoveredSkill, error) {
 	}
 
 	return result, nil
+}
+
+// ScoredSkill pairs a discovered skill with a relevance score.
+type ScoredSkill struct {
+	DiscoveredSkill
+	Score float64
+}
+
+// FuzzySearch finds skills matching the query using fuzzy name and description similarity.
+// Results are filtered by the given threshold and sorted by score descending.
+func (r *Registry) FuzzySearch(query string, threshold float64) ([]ScoredSkill, error) {
+	all, err := r.ListAll()
+	if err != nil {
+		return nil, err
+	}
+
+	const (
+		nameWeight = 0.4
+		descWeight = 0.4
+		bodyWeight = 0.2
+	)
+
+	var results []ScoredSkill
+	for _, d := range all {
+		nameSim := overlap.NameSimilarity(query, d.Skill.Name)
+		descSim := overlap.DescriptionSimilarity(query, d.Skill.Description)
+		bodySim := overlap.DescriptionSimilarity(query, d.Skill.Body)
+
+		score := nameSim*nameWeight + descSim*descWeight + bodySim*bodyWeight
+		if score >= threshold {
+			results = append(results, ScoredSkill{
+				DiscoveredSkill: d,
+				Score:           score,
+			})
+		}
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
+
+	return results, nil
 }
 
 // Search finds skills whose names contain the query (case-insensitive).
