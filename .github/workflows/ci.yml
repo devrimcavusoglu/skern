@@ -20,10 +20,13 @@ jobs:
           go-version: "1.25"
 
       - name: Build
-        run: go build ./cmd/scribe
+        run: make build
 
       - name: Test
         run: go test ./...
+
+      - name: Smoke tests
+        run: bash scripts/smoke_test.sh ./scribe
 
   lint:
     runs-on: ubuntu-latest
