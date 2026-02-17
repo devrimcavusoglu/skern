@@ -8,7 +8,7 @@ LDFLAGS   := -s -w \
 	-X '$(MODULE)/internal/cli.Commit=$(COMMIT)' \
 	-X '$(MODULE)/internal/cli.Date=$(DATE)'
 
-.PHONY: build test test-v test-cover test-install test-smoke lint fmt clean
+.PHONY: build test test-v test-cover test-install test-smoke test-manual-setup test-manual-report test-manual-teardown lint fmt clean
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/scribe
@@ -21,6 +21,15 @@ test-install:
 
 test-smoke: build
 	bash scripts/smoke_test.sh ./scribe
+
+test-manual-setup: build
+	bash tests/manual/setup.sh
+
+test-manual-report:
+	bash tests/manual/report.sh
+
+test-manual-teardown:
+	bash tests/manual/teardown.sh
 
 test-v:
 	go test -v ./...
