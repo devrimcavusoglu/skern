@@ -100,9 +100,9 @@ func formatUninstallResult(name string, entries []output.PlatformUninstallEntry)
 	var b strings.Builder
 	for _, e := range entries {
 		if e.Success {
-			b.WriteString(fmt.Sprintf("Uninstalled %q from %s\n", name, e.Platform))
+			fmt.Fprintf(&b, "Uninstalled %q from %s\n", name, e.Platform)
 		} else {
-			b.WriteString(fmt.Sprintf("Failed to uninstall %q from %s: %s\n", name, e.Platform, e.Error))
+			fmt.Fprintf(&b, "Failed to uninstall %q from %s: %s\n", name, e.Platform, e.Error)
 		}
 	}
 	return b.String()

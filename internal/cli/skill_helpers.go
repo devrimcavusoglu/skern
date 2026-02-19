@@ -86,13 +86,13 @@ func formatSkillTable(skills []output.SkillResult) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("%-30s %-10s %-40s\n", "NAME", "SCOPE", "DESCRIPTION"))
+	fmt.Fprintf(&b, "%-30s %-10s %-40s\n", "NAME", "SCOPE", "DESCRIPTION")
 	for _, s := range skills {
 		desc := s.Description
 		if len(desc) > 40 {
 			desc = desc[:37] + "..."
 		}
-		b.WriteString(fmt.Sprintf("%-30s %-10s %-40s\n", s.Name, s.Scope, desc))
+		fmt.Fprintf(&b, "%-30s %-10s %-40s\n", s.Name, s.Scope, desc)
 	}
 	return b.String()
 }
@@ -100,22 +100,22 @@ func formatSkillTable(skills []output.SkillResult) string {
 // formatSkillShow formats a single skill for detailed display.
 func formatSkillShow(s output.SkillResult) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Name:        %s\n", s.Name))
-	b.WriteString(fmt.Sprintf("Description: %s\n", s.Description))
-	b.WriteString(fmt.Sprintf("Version:     %s\n", s.Version))
-	b.WriteString(fmt.Sprintf("Author:      %s (%s)", s.Author.Name, s.Author.Type))
+	fmt.Fprintf(&b, "Name:        %s\n", s.Name)
+	fmt.Fprintf(&b, "Description: %s\n", s.Description)
+	fmt.Fprintf(&b, "Version:     %s\n", s.Version)
+	fmt.Fprintf(&b, "Author:      %s (%s)", s.Author.Name, s.Author.Type)
 	if s.Author.Platform != "" {
-		b.WriteString(fmt.Sprintf(" [%s]", s.Author.Platform))
+		fmt.Fprintf(&b, " [%s]", s.Author.Platform)
 	}
 	b.WriteString("\n")
 	if s.Scope != "" {
-		b.WriteString(fmt.Sprintf("Scope:       %s\n", s.Scope))
+		fmt.Fprintf(&b, "Scope:       %s\n", s.Scope)
 	}
 	if s.Path != "" {
-		b.WriteString(fmt.Sprintf("Path:        %s\n", s.Path))
+		fmt.Fprintf(&b, "Path:        %s\n", s.Path)
 	}
 	if len(s.AllowedTools) > 0 {
-		b.WriteString(fmt.Sprintf("Tools:       %s\n", strings.Join(s.AllowedTools, ", ")))
+		fmt.Fprintf(&b, "Tools:       %s\n", strings.Join(s.AllowedTools, ", "))
 	}
 	if len(s.ModifiedBy) > 0 {
 		b.WriteString("Modified-by:\n")
@@ -138,7 +138,7 @@ func formatDedupHints(hints []output.DuplicateHint) string {
 	var b strings.Builder
 	b.WriteString("\nPotential duplicates:\n")
 	for _, h := range hints {
-		b.WriteString(fmt.Sprintf("  - %s <-> %s (score: %.2f)\n", h.SkillA, h.SkillB, h.Score))
+		fmt.Fprintf(&b, "  - %s <-> %s (score: %.2f)\n", h.SkillA, h.SkillB, h.Score)
 	}
 	return b.String()
 }
@@ -150,7 +150,7 @@ func formatSearchResults(query string, results []output.SkillResult) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Found %d skill(s) matching %q:\n\n", len(results), query))
+	fmt.Fprintf(&b, "Found %d skill(s) matching %q:\n\n", len(results), query)
 	b.WriteString(formatSkillTable(results))
 	return b.String()
 }

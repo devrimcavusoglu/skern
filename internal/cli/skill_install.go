@@ -112,9 +112,9 @@ func formatInstallResult(name string, entries []output.PlatformInstallEntry) str
 	var b strings.Builder
 	for _, e := range entries {
 		if e.Success {
-			b.WriteString(fmt.Sprintf("Installed %q to %s\n", name, e.Platform))
+			fmt.Fprintf(&b, "Installed %q to %s\n", name, e.Platform)
 		} else {
-			b.WriteString(fmt.Sprintf("Failed to install %q to %s: %s\n", name, e.Platform, e.Error))
+			fmt.Fprintf(&b, "Failed to install %q to %s: %s\n", name, e.Platform, e.Error)
 		}
 	}
 	return b.String()

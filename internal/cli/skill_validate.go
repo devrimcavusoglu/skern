@@ -77,14 +77,14 @@ func formatValidateResult(r output.SkillValidateResult) string {
 	var b strings.Builder
 
 	if r.Valid && len(r.Issues) == 0 {
-		b.WriteString(fmt.Sprintf("Skill %q is valid.\n", r.Name))
+		fmt.Fprintf(&b, "Skill %q is valid.\n", r.Name)
 		return b.String()
 	}
 
 	if r.Valid {
-		b.WriteString(fmt.Sprintf("Skill %q is valid with %d warning(s):\n", r.Name, r.Warns))
+		fmt.Fprintf(&b, "Skill %q is valid with %d warning(s):\n", r.Name, r.Warns)
 	} else {
-		b.WriteString(fmt.Sprintf("Skill %q has %d error(s) and %d warning(s):\n", r.Name, r.Errors, r.Warns))
+		fmt.Fprintf(&b, "Skill %q has %d error(s) and %d warning(s):\n", r.Name, r.Errors, r.Warns)
 	}
 
 	for _, issue := range r.Issues {
@@ -92,7 +92,7 @@ func formatValidateResult(r output.SkillValidateResult) string {
 		if issue.Severity == "warning" {
 			prefix = "  !"
 		}
-		b.WriteString(fmt.Sprintf("%s %s: %s\n", prefix, issue.Field, issue.Message))
+		fmt.Fprintf(&b, "%s %s: %s\n", prefix, issue.Field, issue.Message)
 	}
 
 	return b.String()

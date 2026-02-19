@@ -162,9 +162,9 @@ func checkSkillCountWarnings(reg interface {
 
 func formatOverlapBlock(name string, matches []overlap.Match) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Skill %q blocked — near-duplicate detected:\n", name))
+	fmt.Fprintf(&b, "Skill %q blocked — near-duplicate detected:\n", name)
 	for _, m := range matches {
-		b.WriteString(fmt.Sprintf("  - %s (score: %.2f, scope: %s)\n", m.Name, m.Score, m.Scope))
+		fmt.Fprintf(&b, "  - %s (score: %.2f, scope: %s)\n", m.Name, m.Score, m.Scope)
 	}
 	b.WriteString("Use --force to override.\n")
 	return b.String()
@@ -172,9 +172,9 @@ func formatOverlapBlock(name string, matches []overlap.Match) string {
 
 func formatOverlapWarn(name string, matches []overlap.Match) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Warning: skill %q has similar existing skills:\n", name))
+	fmt.Fprintf(&b, "Warning: skill %q has similar existing skills:\n", name)
 	for _, m := range matches {
-		b.WriteString(fmt.Sprintf("  - %s (score: %.2f, scope: %s)\n", m.Name, m.Score, m.Scope))
+		fmt.Fprintf(&b, "  - %s (score: %.2f, scope: %s)\n", m.Name, m.Score, m.Scope)
 	}
 	b.WriteString("Proceeding with creation...\n")
 	return b.String()
@@ -187,7 +187,7 @@ func formatCreateValidationWarnings(issues []skill.ValidationIssue) string {
 		if issue.Severity == skill.SeverityError {
 			prefix = "  ✗"
 		}
-		b.WriteString(fmt.Sprintf("%s %s: %s\n", prefix, issue.Field, issue.Message))
+		fmt.Fprintf(&b, "%s %s: %s\n", prefix, issue.Field, issue.Message)
 	}
 	return b.String()
 }
