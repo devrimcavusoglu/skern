@@ -110,21 +110,21 @@ func formatPlatformStatus(scope string, entries []output.PlatformStatusEntry) st
 
 	var b strings.Builder
 	// Header
-	b.WriteString(fmt.Sprintf("%-30s", "SKILL"))
+	fmt.Fprintf(&b, "%-30s", "SKILL")
 	for _, name := range platformNames {
-		b.WriteString(fmt.Sprintf(" %-15s", name))
+		fmt.Fprintf(&b, " %-15s", name)
 	}
 	b.WriteString("\n")
 
 	// Rows
 	for _, entry := range entries {
-		b.WriteString(fmt.Sprintf("%-30s", entry.Skill))
+		fmt.Fprintf(&b, "%-30s", entry.Skill)
 		for _, p := range entry.Platforms {
 			status := "-"
 			if p.Installed {
 				status = "installed"
 			}
-			b.WriteString(fmt.Sprintf(" %-15s", status))
+			fmt.Fprintf(&b, " %-15s", status)
 		}
 		b.WriteString("\n")
 	}
