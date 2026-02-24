@@ -146,26 +146,26 @@ func buildRecommendation(query string, scored []registry.ScoredSkill, nameOverri
 func formatRecommendation(r output.SkillRecommendResult) string {
 	var b strings.Builder
 
-	b.WriteString(fmt.Sprintf("Recommendation: %s\n\n", strings.ToUpper(string(r.Action))))
-	b.WriteString(fmt.Sprintf("  Query:  %q\n", r.Query))
-	b.WriteString(fmt.Sprintf("  Action: %s — %s\n", r.Action, r.Reason))
+	fmt.Fprintf(&b, "Recommendation: %s\n\n", strings.ToUpper(string(r.Action)))
+	fmt.Fprintf(&b, "  Query:  %q\n", r.Query)
+	fmt.Fprintf(&b, "  Action: %s — %s\n", r.Action, r.Reason)
 
 	if r.SuggestedName != "" {
-		b.WriteString(fmt.Sprintf("  Suggested name: %s\n", r.SuggestedName))
+		fmt.Fprintf(&b, "  Suggested name: %s\n", r.SuggestedName)
 	}
 
 	if len(r.Matches) > 0 {
 		b.WriteString("\n  Matching skills:\n")
 		for _, m := range r.Matches {
-			b.WriteString(fmt.Sprintf("    %s  (score: %.2f, scope: %s)\n", m.Name, m.Score, m.Scope))
+			fmt.Fprintf(&b, "    %s  (score: %.2f, scope: %s)\n", m.Name, m.Score, m.Scope)
 			if m.Description != "" {
-				b.WriteString(fmt.Sprintf("      %s\n", m.Description))
+				fmt.Fprintf(&b, "      %s\n", m.Description)
 			}
 		}
 	}
 
 	if r.Action == output.RecommendCreate && r.SuggestedName != "" {
-		b.WriteString(fmt.Sprintf("\n  Run: scribe skill create %q --description %q\n", r.SuggestedName, r.Query))
+		fmt.Fprintf(&b, "\n  Run: scribe skill create %q --description %q\n", r.SuggestedName, r.Query)
 	}
 
 	return b.String()

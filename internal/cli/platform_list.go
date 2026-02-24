@@ -50,13 +50,13 @@ func formatPlatformList(platforms []output.PlatformResult) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("%-15s %-10s %-40s %s\n", "PLATFORM", "DETECTED", "USER PATH", "PROJECT PATH"))
+	fmt.Fprintf(&b, "%-15s %-10s %-40s %s\n", "PLATFORM", "DETECTED", "USER PATH", "PROJECT PATH")
 	for _, p := range platforms {
 		detected := "no"
 		if p.Detected {
 			detected = "yes"
 		}
-		b.WriteString(fmt.Sprintf("%-15s %-10s %-40s %s\n", p.Name, detected, p.UserPath, p.ProjectPath))
+		fmt.Fprintf(&b, "%-15s %-10s %-40s %s\n", p.Name, detected, p.UserPath, p.ProjectPath)
 	}
 	return b.String()
 }

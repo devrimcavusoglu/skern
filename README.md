@@ -27,13 +27,7 @@ To install a specific version:
 SCRIBE_VERSION=v0.0.1 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/scribe/main/scripts/install.sh | bash
 ```
 
-### Homebrew
-
-```sh
-brew install devrimcavusoglu/tap/scribe
-```
-
-### From source
+### Go install
 
 Requires Go 1.23+.
 
@@ -98,6 +92,9 @@ scribe platform status
 # Search for existing skills
 scribe skill search "code review"
 
+# Get a recommendation: reuse, extend, or create?
+scribe skill recommend "format Go source code"
+
 # Create a skill from a template file
 scribe skill create my-skill --from-template ./templates/review.md
 
@@ -111,6 +108,7 @@ scribe completion bash   # also: zsh, fish
 scribe init                                    # Initialize .scribe/ in current project
 scribe skill create <name>                     # Scaffold a new skill
 scribe skill search <query>                    # Search skills by name/description
+scribe skill recommend <query>                 # Recommend: reuse, extend, or create
 scribe skill list [--scope user|project|all]   # List skills in registry
 scribe skill show <name>                       # Display skill details
 scribe skill validate <name>                   # Validate against Agent Skills spec
@@ -126,6 +124,8 @@ scribe version                                 # Print version info
 **Global flags:** `--json`, `--quiet`, `--scope user|project`
 
 **`skill create` flags:** `--author`, `--author-type human|agent`, `--author-platform`, `--description`, `--force` (bypass overlap block), `--from-template <path>` (use file as skill body)
+
+**`skill recommend` flags:** `--name` (agent-suggested skill name), `--threshold` (minimum relevance, default 0.3), `--scope user|project|all`
 
 **`skill install/uninstall` flags:** `--platform claude-code|codex-cli|opencode|all` (required), `--scope user|project`
 
@@ -178,24 +178,39 @@ Scribe auto-detects which platforms are installed. Use `--platform all` to insta
 ## Development
 
 ```sh
-# Run tests
-make test
-
-# Run tests with coverage
-make test-cover
-
-# Lint
-make lint
-
-# Format
-make fmt
-
-# Build
-make build
-
-# Clean build artifacts
-make clean
+make build        # Build binary
+make test         # Unit tests
+make test-v       # Verbose test output
+make test-cover   # Coverage report
+make test-smoke   # Smoke & E2E tests against built binary
+make lint         # golangci-lint
+make fmt          # gofmt
+make clean        # Remove build artifacts
 ```
+
+### Manual Agent Test Harness
+
+The `tests/manual/` directory contains 10 scenarios that test how AI agents interact with scribe — discovery, command chaining, JSON parsing, error handling, and dedup reasoning. Run these before releases.
+
+```sh
+# 1. Set up isolated test environments in /tmp
+make test-manual-setup
+
+# 2. Test each scenario with your AI agent
+cd /tmp/scribe-manual-tests/01-fresh-project
+cat PROMPT.md      # Read what to ask the agent
+cat EXPECTED.md    # Read the pass criteria
+# Open your AI agent and run the prompt
+# Repeat for each scenario (01 through 10)
+
+# 3. Generate a markdown report (interactive pass/fail checklist)
+make test-manual-report
+
+# 4. Clean up temp dirs and platform markers
+make test-manual-teardown
+```
+
+Each scenario directory contains `AGENTS.md` (agent instructions), `PROMPT.md` (what to ask), and `EXPECTED.md` (pass/fail checklist). See [`tests/manual/README.md`](tests/manual/README.md) for full details.
 
 ## License
 

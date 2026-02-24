@@ -19,5 +19,8 @@ coverage.html
 .DS_Store
 Thumbs.db
 
+# Manual test reports (per-run artifacts)
+tests/manual/reports/
+
 # bv (beads viewer) local config and caches
 .bv/
