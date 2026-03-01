@@ -204,6 +204,156 @@ mkdir -p "$DIR/.claude" "$DIR/.agents" "$DIR/.opencode"
 (cd "$DIR" && scribe skill install db-migrate --platform claude-code --scope project --quiet 2>/dev/null || true)
 init_git "$DIR"
 
+# Scenario 11: Autonomous Skill Creation — Go project with inconsistencies, no mention of skills
+echo "Setting up 11-autonomous-skill-creation..."
+DIR="$(setup_scenario 11 autonomous-skill-creation)"
+(cd "$DIR" && scribe init --quiet 2>/dev/null)
+mkdir -p "$DIR/.claude"
+
+# pkg/auth/auth.go — Clean formatting, no doc comments
+mkdir -p "$DIR/pkg/auth"
+cat > "$DIR/pkg/auth/auth.go" <<'GOEOF'
+package auth
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"time"
+)
+
+var ErrTokenExpired = errors.New("token expired")
+
+type Token struct {
+	Value     string
+	ExpiresAt time.Time
+}
+
+func GenerateToken(ttl time.Duration) (*Token, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return nil, err
+	}
+	return &Token{
+		Value:     hex.EncodeToString(b),
+		ExpiresAt: time.Now().Add(ttl),
+	}, nil
+}
+
+func ValidateToken(t *Token) error {
+	if time.Now().After(t.ExpiresAt) {
+		return ErrTokenExpired
+	}
+	return nil
+}
+
+func RevokeToken(t *Token) {
+	t.ExpiresAt = time.Time{}
+}
+GOEOF
+
+# pkg/handler/handler.go — Bad formatting: ungrouped imports, missing spaces, inconsistent indentation
+mkdir -p "$DIR/pkg/handler"
+cat > "$DIR/pkg/handler/handler.go" <<'GOEOF'
+package handler
+
+import "net/http"
+import "encoding/json"
+import "fmt"
+import "log"
+
+type Response struct {
+    Code int `json:"code"`
+    Message string `json:"message"`
+    Data interface{} `json:"data,omitempty"`
+}
+
+func WriteJSON(w http.ResponseWriter,code int,data interface{}){
+w.Header().Set("Content-Type","application/json")
+w.WriteHeader(code)
+resp:=Response{Code:code,Message:http.StatusText(code),Data:data}
+if err:=json.NewEncoder(w).Encode(resp);err!=nil{
+log.Printf("encode error: %v",err)
+}
+}
+
+func HandleHealth(w http.ResponseWriter,r *http.Request){
+    WriteJSON(w,http.StatusOK,map[string]string{"status":"ok"})
+}
+
+func HandleNotFound(w http.ResponseWriter,r *http.Request){
+WriteJSON(w,http.StatusNotFound,nil)
+}
+
+func HandleError(w http.ResponseWriter,r *http.Request,err error){
+    msg:=fmt.Sprintf("internal error: %v",err)
+log.Println(msg)
+    WriteJSON(w,http.StatusInternalServerError,map[string]string{"error":msg})
+}
+GOEOF
+
+# pkg/store/store.go — Well-formatted, partial doc comments
+mkdir -p "$DIR/pkg/store"
+cat > "$DIR/pkg/store/store.go" <<'GOEOF'
+package store
+
+import (
+	"errors"
+	"sync"
+)
+
+// ErrNotFound is returned when a key does not exist in the store.
+var ErrNotFound = errors.New("key not found")
+
+// Store is a simple thread-safe in-memory key-value store.
+type Store struct {
+	mu   sync.RWMutex
+	data map[string]string
+}
+
+// New creates a new empty Store.
+func New() *Store {
+	return &Store{
+		data: make(map[string]string),
+	}
+}
+
+func (s *Store) Get(key string) (string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	v, ok := s.data[key]
+	if !ok {
+		return "", ErrNotFound
+	}
+	return v, nil
+}
+
+// Set stores a key-value pair, overwriting any existing value.
+func (s *Store) Set(key, value string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data[key] = value
+}
+
+func (s *Store) Delete(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.data, key)
+}
+
+func (s *Store) Keys() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	keys := make([]string, 0, len(s.data))
+	for k := range s.data {
+		keys = append(keys, k)
+	}
+	return keys
+}
+GOEOF
+
+init_git "$DIR"
+
 # --- Summary ---
 
 echo ""
