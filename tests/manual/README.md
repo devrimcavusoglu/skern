@@ -10,7 +10,7 @@ Tests how AI agents interact with scribe — discovery, command chaining, JSON p
 ## Workflow
 
 ```sh
-# 1. Set up all 10 scenarios in /tmp
+# 1. Set up all 11 scenarios in /tmp
 make test-manual-setup
 
 # 2. Test each scenario with your agent
@@ -40,6 +40,7 @@ make test-manual-teardown
 | 08 | deduplication-advisory | Agent audits and advises on duplicate skills |
 | 09 | template-skills | Skill creation with `--from-template` |
 | 10 | platform-status-matrix | Fill gaps in skill-platform matrix |
+| 11 | autonomous-skill-creation | Agent autonomously discovers scribe and creates skills from a project need |
 
 ## Directory layout
 
