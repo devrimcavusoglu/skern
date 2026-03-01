@@ -14,11 +14,11 @@
 
 ## What to observe
 
-1. Does the agent run `scribe skill list --scope project --json`?
+1. Does the agent run `skern skill list --scope project --json`?
 2. Does it inspect the `duplicates` array in the response?
 3. Does it identify the overlapping pairs:
    - `test-runner` <-> `test-runner-v2` (score ~0.71)
    - `code-review` <-> `code-reviewer` (score ~0.61)
 4. Does it notice that `run-tests` and `test-runner` are similar but below the threshold?
 5. Does it provide actionable advice (which to keep, which to remove)?
-6. Does it offer to run `scribe skill remove` for the duplicates?
+6. Does it offer to run `skern skill remove` for the duplicates?

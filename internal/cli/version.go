@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ func newVersionCmd() *cobra.Command {
 				Commit:  Commit,
 				Date:    Date,
 			}
-			text := fmt.Sprintf("scribe %s (commit: %s, built: %s)\n", Version, Commit, Date)
+			text := fmt.Sprintf("skern %s (commit: %s, built: %s)\n", Version, Commit, Date)
 			printer.PrintResult(result, text)
 		},
 	}

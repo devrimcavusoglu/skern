@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
-	"github.com/devrimcavusoglu/scribe/internal/registry"
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/registry"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -165,7 +165,7 @@ func formatRecommendation(r output.SkillRecommendResult) string {
 	}
 
 	if r.Action == output.RecommendCreate && r.SuggestedName != "" {
-		fmt.Fprintf(&b, "\n  Run: scribe skill create %q --description %q\n", r.SuggestedName, r.Query)
+		fmt.Fprintf(&b, "\n  Run: skern skill create %q --description %q\n", r.SuggestedName, r.Query)
 	}
 
 	return b.String()

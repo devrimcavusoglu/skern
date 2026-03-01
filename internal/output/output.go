@@ -1,4 +1,4 @@
-// Package output provides structured output formatting for the scribe CLI.
+// Package output provides structured output formatting for the skern CLI.
 // All commands route their output through this package to support --json and --quiet flags consistently.
 package output
 

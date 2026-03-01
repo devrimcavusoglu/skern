@@ -1,25 +1,25 @@
 #!/bin/bash
-# Scribe installer — OS-agnostic install script
-# Usage: curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/scribe/main/scripts/install.sh | bash
+# Skern installer — OS-agnostic install script
+# Usage: curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.sh | bash
 #
 # Environment variables:
-#   SCRIBE_INSTALL_DIR  — override install directory (default: ~/.local/bin)
-#   SCRIBE_VERSION      — install a specific version (default: latest)
+#   SKERN_INSTALL_DIR  — override install directory (default: ~/.local/bin)
+#   SKERN_VERSION      — install a specific version (default: latest)
 
 set -e
 
-REPO="devrimcavusoglu/scribe"
-BINARY="scribe"
+REPO="devrimcavusoglu/skern"
+BINARY="skern"
 DEFAULT_INSTALL_DIR="$HOME/.local/bin"
 
 # --- helpers ---
 
 info() {
-    printf '[scribe] %s\n' "$1"
+    printf '[skern] %s\n' "$1"
 }
 
 error() {
-    printf '[scribe] ERROR: %s\n' "$1" >&2
+    printf '[skern] ERROR: %s\n' "$1" >&2
     exit 1
 }
 
@@ -32,13 +32,13 @@ detect_platform() {
     case "$OS" in
         Linux)  OS="linux" ;;
         Darwin) OS="darwin" ;;
-        *)      error "Unsupported OS: $OS. Scribe supports Linux and macOS." ;;
+        *)      error "Unsupported OS: $OS. Skern supports Linux and macOS." ;;
     esac
 
     case "$ARCH" in
         x86_64|amd64)   ARCH="amd64" ;;
         aarch64|arm64)  ARCH="arm64" ;;
-        *)              error "Unsupported architecture: $ARCH. Scribe supports amd64 and arm64." ;;
+        *)              error "Unsupported architecture: $ARCH. Skern supports amd64 and arm64." ;;
     esac
 
     PLATFORM="${OS}_${ARCH}"
@@ -48,8 +48,8 @@ detect_platform() {
 # --- version resolution ---
 
 resolve_version() {
-    if [ -n "$SCRIBE_VERSION" ]; then
-        VERSION="$SCRIBE_VERSION"
+    if [ -n "$SKERN_VERSION" ]; then
+        VERSION="$SKERN_VERSION"
         info "Using specified version: $VERSION"
         return
     fi
@@ -64,7 +64,7 @@ resolve_version() {
     fi
 
     if [ -z "$VERSION" ]; then
-        error "Could not determine latest version. Set SCRIBE_VERSION manually or use 'go install'."
+        error "Could not determine latest version. Set SKERN_VERSION manually or use 'go install'."
     fi
 
     info "Latest version: $VERSION"
@@ -73,13 +73,13 @@ resolve_version() {
 # --- download and verify ---
 
 download() {
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/scribe_${VERSION#v}_${PLATFORM}.tar.gz"
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/skern_${VERSION#v}_${PLATFORM}.tar.gz"
     CHECKSUMS_URL="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
 
     TMPDIR="$(mktemp -d)"
     trap 'rm -rf "$TMPDIR"' EXIT
 
-    TARBALL="$TMPDIR/scribe.tar.gz"
+    TARBALL="$TMPDIR/skern.tar.gz"
     CHECKSUMS_FILE="$TMPDIR/checksums.txt"
 
     info "Downloading $DOWNLOAD_URL ..."
@@ -93,7 +93,7 @@ download() {
 
     # verify checksum
     if [ -n "$CHECKSUMS_FILE" ] && [ -f "$CHECKSUMS_FILE" ]; then
-        EXPECTED_NAME="scribe_${VERSION#v}_${PLATFORM}.tar.gz"
+        EXPECTED_NAME="skern_${VERSION#v}_${PLATFORM}.tar.gz"
         EXPECTED_SUM="$(grep "$EXPECTED_NAME" "$CHECKSUMS_FILE" | awk '{print $1}')"
 
         if [ -n "$EXPECTED_SUM" ]; then
@@ -131,7 +131,7 @@ download() {
 # --- install ---
 
 install_binary() {
-    INSTALL_DIR="${SCRIBE_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
+    INSTALL_DIR="${SKERN_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
     mkdir -p "$INSTALL_DIR"
 
     mv "$TMPDIR/$BINARY" "$INSTALL_DIR/$BINARY"
@@ -168,10 +168,10 @@ go_install() {
         error "Go 1.23+ is required (found $GO_VERSION). Please upgrade Go."
     fi
 
-    if [ -n "$SCRIBE_VERSION" ]; then
-        go install "github.com/${REPO}/cmd/scribe@${SCRIBE_VERSION}"
+    if [ -n "$SKERN_VERSION" ]; then
+        go install "github.com/${REPO}/cmd/skern@${SKERN_VERSION}"
     else
-        go install "github.com/${REPO}/cmd/scribe@latest"
+        go install "github.com/${REPO}/cmd/skern@latest"
     fi
 
     info "Installed via 'go install'. Binary is in your GOBIN or GOPATH/bin."
@@ -180,7 +180,7 @@ go_install() {
 # --- main ---
 
 main() {
-    info "Scribe installer"
+    info "Skern installer"
     info ""
 
     detect_platform

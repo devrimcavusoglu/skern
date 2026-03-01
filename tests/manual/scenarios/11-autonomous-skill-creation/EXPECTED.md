@@ -3,7 +3,7 @@
 ## Pass criteria
 
 - [ ] Agent reads Go source files and identifies formatting/doc-comment inconsistencies
-- [ ] Agent discovers scribe by reading AGENTS.md
+- [ ] Agent discovers skern by reading AGENTS.md
 - [ ] Agent **autonomously decides** to create a skill (not told to)
 - [ ] Agent searches or recommends before creating (no duplicates)
 - [ ] Agent creates at least one skill with valid name, description, and meaningful body
@@ -25,11 +25,11 @@ The agent was never told to "create a skill." The prompt asks about code consist
 
 ```sh
 # Skills were created:
-scribe skill list --json
+skern skill list --json
 
 # Skills are valid:
-scribe skill validate <name> --json
+skern skill validate <name> --json
 
 # Skill body is non-trivial (more than just frontmatter):
-cat .scribe/skills/<name>/SKILL.md
+cat .skern/skills/<name>/SKILL.md
 ```

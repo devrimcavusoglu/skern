@@ -1,4 +1,4 @@
-module github.com/devrimcavusoglu/scribe
+module github.com/devrimcavusoglu/skern
 
 go 1.25.7
 

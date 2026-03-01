@@ -1,5 +1,5 @@
-BINARY    := scribe
-MODULE    := github.com/devrimcavusoglu/scribe
+BINARY    := skern
+MODULE    := github.com/devrimcavusoglu/skern
 VERSION   ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE      ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -11,7 +11,7 @@ LDFLAGS   := -s -w \
 .PHONY: build test test-v test-cover test-install test-smoke test-manual-setup test-manual-report test-manual-teardown lint fmt clean
 
 build:
-	go build -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/scribe
+	go build -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/skern
 
 test:
 	go test ./...
@@ -20,7 +20,7 @@ test-install:
 	bash scripts/install_test.sh
 
 test-smoke: build
-	bash scripts/smoke_test.sh ./scribe
+	bash scripts/smoke_test.sh ./skern
 
 test-manual-setup: build
 	bash tests/manual/setup.sh

@@ -1,1 +1,1 @@
-Use `scribe` to manage skills. Run `scribe --help` for usage, `scribe skill recommend <query>` to check for existing skills before creating new ones, and `scribe skill search <query>` to find skills by name. Always use `--json` when parsing output programmatically.
+Use `skern` to manage skills. Run `skern --help` for usage, `skern skill recommend <query>` to check for existing skills before creating new ones, and `skern skill search <query>` to find skills by name. Always use `--json` when parsing output programmatically.

@@ -2,7 +2,7 @@
 package platform
 
 import (
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 )
 
 // Type identifies a supported platform.

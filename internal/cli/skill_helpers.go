@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
-	"github.com/devrimcavusoglu/scribe/internal/platform"
-	"github.com/devrimcavusoglu/scribe/internal/registry"
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/platform"
+	"github.com/devrimcavusoglu/skern/internal/registry"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 )
 
 // newRegistryFunc creates a Registry. Overridable in tests.
@@ -24,8 +24,8 @@ func defaultNewRegistry() (*registry.Registry, error) {
 		return nil, fmt.Errorf("determining home directory: %w", err)
 	}
 
-	userDir := filepath.Join(home, ".scribe", "skills")
-	projectDir := filepath.Join(".", ".scribe", "skills")
+	userDir := filepath.Join(home, ".skern", "skills")
+	projectDir := filepath.Join(".", ".skern", "skills")
 
 	return registry.New(userDir, projectDir), nil
 }
@@ -177,5 +177,5 @@ func resolveSkill(reg *registry.Registry, name, scopeStr string) (*skill.Skill, 
 		}
 	}
 
-	return nil, "", "", fmt.Errorf("skill %q not found (run 'scribe skill list' to see available skills)", name)
+	return nil, "", "", fmt.Errorf("skill %q not found (run 'skern skill list' to see available skills)", name)
 }

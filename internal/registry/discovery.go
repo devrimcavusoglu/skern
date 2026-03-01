@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/devrimcavusoglu/scribe/internal/overlap"
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/overlap"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 )
 
 // DiscoveredSkill pairs a skill with its scope and filesystem path.

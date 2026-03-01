@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ func TestInit(t *testing.T) {
 	assert.Contains(t, out, "Initialized")
 
 	// Verify directories exist
-	info, err := os.Stat(filepath.Join(dir, ".scribe", "skills"))
+	info, err := os.Stat(filepath.Join(dir, ".skern", "skills"))
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
 }

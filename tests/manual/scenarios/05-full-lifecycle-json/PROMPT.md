@@ -2,7 +2,7 @@
 
 ## Pre-populated
 
-- Empty scribe registry, `.claude/` dir present for platform detection
+- Empty skern registry, `.claude/` dir present for platform detection
 
 ## Prompt to give the agent
 
@@ -10,12 +10,12 @@
 
 ## What to observe
 
-1. Does the agent use `--json` on every scribe command?
+1. Does the agent use `--json` on every skern command?
 2. Does it chain commands logically based on previous JSON output?
 3. Full expected sequence:
-   - `scribe skill search "migrate" --json` or `scribe skill recommend "..." --json` -> no match
-   - `scribe skill create db-migrate --description "..." --scope project --json`
-   - `scribe skill validate db-migrate --json` -> valid: true
-   - `scribe skill install db-migrate --platform claude-code --scope project --json`
-   - `scribe platform status --scope project --json` -> shows db-migrate on claude-code
+   - `skern skill search "migrate" --json` or `skern skill recommend "..." --json` -> no match
+   - `skern skill create db-migrate --description "..." --scope project --json`
+   - `skern skill validate db-migrate --json` -> valid: true
+   - `skern skill install db-migrate --platform claude-code --scope project --json`
+   - `skern platform status --scope project --json` -> shows db-migrate on claude-code
 4. Does the agent parse JSON correctly at each step (not just dump it)?

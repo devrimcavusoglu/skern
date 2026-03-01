@@ -1,20 +1,20 @@
-# AGENTS.md — Scribe Development Guide
+# AGENTS.md — Skern Development Guide
 
 ## Project Overview
 
-Scribe is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
+Skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
 
 The project is written in **Go 1.23+** and is preparing for its first release (**v0.0.1**).
 
 ## Repository Layout
 
 ```
-cmd/scribe/main.go           # Entry point
+cmd/skern/main.go           # Entry point
 internal/
   cli/                        # Cobra command definitions (root, version, init, completion, skill_*, platform_*)
   skill/                      # Domain logic: Skill struct, manifest parsing, validation, scaffolding
   overlap/                    # Fuzzy name matching and description similarity scoring
-  registry/                   # Filesystem CRUD over ~/.scribe/skills/ and .scribe/skills/
+  registry/                   # Filesystem CRUD over ~/.skern/skills/ and .skern/skills/
   platform/                   # Platform adapters (Claude Code, Codex CLI, OpenCode)
   output/                     # JSON/text structured output formatting
 go.mod, go.sum
@@ -32,10 +32,10 @@ scripts/install.sh
 # Build
 make build
 # or directly:
-go build -o scribe ./cmd/scribe
+go build -o skern ./cmd/skern
 
 # Run
-./scribe version
+./skern version
 ```
 
 ## Testing
@@ -150,30 +150,30 @@ Each milestone gets its own feature branch. All commits for that milestone go on
 
 ### Design Decisions
 
-1. **SKILL.md as the canonical format** — Scribe does NOT invent its own `skill.yaml`. It reads and writes `SKILL.md` files directly, matching the Agent Skills spec. A skill is a directory containing a `SKILL.md` and optional supporting files.
+1. **SKILL.md as the canonical format** — Skern does NOT invent its own `skill.yaml`. It reads and writes `SKILL.md` files directly, matching the Agent Skills spec. A skill is a directory containing a `SKILL.md` and optional supporting files.
 
-2. **Scribe registry = filesystem directory** — `~/.scribe/skills/` stores user-level skills. `.scribe/skills/` stores project-level skills. No database, no daemon, no lock files.
+2. **Skern registry = filesystem directory** — `~/.skern/skills/` stores user-level skills. `.skern/skills/` stores project-level skills. No database, no daemon, no lock files.
 
 3. **Platform adapters are copiers** — Installing a skill to a platform means copying the skill directory to the platform's expected location. Each adapter knows its platform's directory convention.
 
-4. **Platform auto-detection** — Scribe detects which platforms are installed by checking for their config directories/binaries (`~/.claude/`, `~/.codex/` or `~/.agents/`, `~/.config/opencode/`). `--platform all` installs to every detected platform.
+4. **Platform auto-detection** — Skern detects which platforms are installed by checking for their config directories/binaries (`~/.claude/`, `~/.codex/` or `~/.agents/`, `~/.config/opencode/`). `--platform all` installs to every detected platform.
 
 5. **JSON output as first-class** — Every command supports `--json` for machine-readable output. Default is human-friendly text. Exit codes are semantic: 0=success, 1=error, 2=validation failure.
 
 ### Tool-Forming Loop
 
-The core differentiator of scribe is enabling a **tool-forming loop** — agents don't just *use* skills, they *create* them when a recurring need arises:
+The core differentiator of skern is enabling a **tool-forming loop** — agents don't just *use* skills, they *create* them when a recurring need arises:
 
 ```
 Agent identifies a recurring need
-  --> scribe skill search <query>
+  --> skern skill search <query>
   --> no results (or low similarity)
-  --> scribe skill create <name>
+  --> skern skill create <name>
   --> Agent implements the skill
   --> Skill becomes reusable
 ```
 
-On subsequent encounters, the agent finds the existing skill via `scribe skill search` and reuses it.
+On subsequent encounters, the agent finds the existing skill via `skern skill search` and reuses it.
 
 **Guardrails:**
 
@@ -181,9 +181,9 @@ On subsequent encounters, the agent finds the existing skill via `scribe skill s
 |---|---|---|
 | Overlap warning threshold | Similarity score 0.0–1.0 | Warn at >= 0.6 |
 | Overlap block threshold | Similarity score | Block at >= 0.9, require `--force` |
-| Skill count warning (project) | Count in `.scribe/skills/` | Warn at > 20 |
-| Skill count warning (user) | Count in `~/.scribe/skills/` | Warn at > 50 |
-| Deduplication hints | On `scribe skill list` | Flag potential duplicates |
+| Skill count warning (project) | Count in `.skern/skills/` | Warn at > 20 |
+| Skill count warning (user) | Count in `~/.skern/skills/` | Warn at > 50 |
+| Deduplication hints | On `skern skill list` | Flag potential duplicates |
 
 ### SKILL.md Format (Agent Skills Spec)
 
@@ -221,8 +221,8 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 | Scope   | Path                    |
 |---------|-------------------------|
-| User    | `~/.scribe/skills/`     |
-| Project | `.scribe/skills/`       |
+| User    | `~/.skern/skills/`     |
+| Project | `.skern/skills/`       |
 
 ### Platform Paths
 
@@ -255,12 +255,12 @@ All milestones (M0–M5) are complete. The project is preparing for its first pu
 
 These items are tracked as GitHub issues:
 
-- MCP server mode (`scribe serve`) — expose skills as MCP tools
+- MCP server mode (`skern serve`) — expose skills as MCP tools
 - Skill import from URL / git repo
 - Skill versioning (semver in frontmatter, upgrade detection)
 - Community skill catalog integration
-- Remote catalog search in `scribe skill search`
-- `scribe skill update` with `--author` flag appending to `modified-by` list
+- Remote catalog search in `skern skill search`
+- `skern skill update` with `--author` flag appending to `modified-by` list
 - Skill dependency resolution
 - WASI/Docker execution backends
 

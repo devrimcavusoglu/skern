@@ -6,8 +6,8 @@ before:
     - go test ./...
 
 builds:
-  - main: ./cmd/scribe
-    binary: scribe
+  - main: ./cmd/skern
+    binary: skern
     env:
       - CGO_ENABLED=0
     goos:
@@ -18,9 +18,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/devrimcavusoglu/scribe/internal/cli.Version={{.Version}}
-      - -X github.com/devrimcavusoglu/scribe/internal/cli.Commit={{.Commit}}
-      - -X github.com/devrimcavusoglu/scribe/internal/cli.Date={{.Date}}
+      - -X github.com/devrimcavusoglu/skern/internal/cli.Version={{.Version}}
+      - -X github.com/devrimcavusoglu/skern/internal/cli.Commit={{.Commit}}
+      - -X github.com/devrimcavusoglu/skern/internal/cli.Date={{.Date}}
 
 archives:
   - format: tar.gz
@@ -41,15 +41,15 @@ brews:
   - repository:
       owner: devrimcavusoglu
       name: homebrew-tap
-    homepage: "https://github.com/devrimcavusoglu/scribe"
+    homepage: "https://github.com/devrimcavusoglu/skern"
     description: "Agent-first CLI for managing Agent Skills across agentic platforms"
     license: "Apache-2.0"
     install: |
-      bin.install "scribe"
+      bin.install "skern"
     test: |
-      system "#{bin}/scribe", "version"
+      system "#{bin}/skern", "version"
 
 release:
   github:
     owner: devrimcavusoglu
-    name: scribe
+    name: skern

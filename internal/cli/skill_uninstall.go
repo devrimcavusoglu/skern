@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
-	"github.com/devrimcavusoglu/scribe/internal/platform"
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/platform"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +47,7 @@ func newSkillUninstallCmd() *cobra.Command {
 			if platformType == platform.Type("all") {
 				targets = det.DetectAll()
 				if len(targets) == 0 {
-					return fmt.Errorf("no platforms detected; install a supported platform first (run 'scribe platform list' to see options)")
+					return fmt.Errorf("no platforms detected; install a supported platform first (run 'skern platform list' to see options)")
 				}
 			} else {
 				p := det.Get(platformType)

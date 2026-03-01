@@ -13,15 +13,15 @@
 ## Error outputs to expect
 
 ```sh
-scribe skill install nonexistent-skill --platform claude-code --json
+skern skill install nonexistent-skill --platform claude-code --json
 # {"error": "skill \"nonexistent-skill\" not found..."}
 
-scribe skill create INVALID_NAME --json
+skern skill create INVALID_NAME --json
 # {"error": "..."} with exit code 2
 
-scribe skill install test-runner --platform claude-code --json  # first: ok
-scribe skill install test-runner --platform claude-code --json  # second: already installed
+skern skill install test-runner --platform claude-code --json  # first: ok
+skern skill install test-runner --platform claude-code --json  # second: already installed
 
-scribe skill remove test-runner --json   # ok
-scribe skill show test-runner --json     # not found
+skern skill remove test-runner --json   # ok
+skern skill show test-runner --json     # not found
 ```

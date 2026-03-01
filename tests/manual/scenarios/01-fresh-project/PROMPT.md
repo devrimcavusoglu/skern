@@ -6,9 +6,9 @@
 
 ## What to observe
 
-1. Does the agent read AGENTS.md and discover scribe?
+1. Does the agent read AGENTS.md and discover skern?
 2. Does it search/recommend first before creating?
-3. Does it run `scribe skill search "go"` or `scribe skill recommend "format Go source files"`?
+3. Does it run `skern skill search "go"` or `skern skill recommend "format Go source files"`?
 4. Since the registry is empty, does it proceed to create?
-5. Does it use `scribe skill create` with a reasonable name, description, and `--scope project`?
+5. Does it use `skern skill create` with a reasonable name, description, and `--scope project`?
 6. Does it inspect the created SKILL.md and optionally write meaningful body content?
