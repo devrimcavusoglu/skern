@@ -203,7 +203,9 @@ main() {
     fi
 }
 
-# Guard: only run main when executed directly (not sourced for testing)
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+# Guard: only run main when executed directly or piped (not sourced for testing).
+# When piped (curl | bash), BASH_SOURCE[0] is empty and $0 is "bash".
+# When sourced, BASH_SOURCE[0] is set but differs from $0.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
     main
 fi
