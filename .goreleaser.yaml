@@ -37,18 +37,6 @@ changelog:
       - "^test:"
       - "^ci:"
 
-brews:
-  - repository:
-      owner: devrimcavusoglu
-      name: homebrew-tap
-    homepage: "https://github.com/devrimcavusoglu/skern"
-    description: "Agent-first CLI for managing Agent Skills across agentic platforms"
-    license: "Apache-2.0"
-    install: |
-      bin.install "skern"
-    test: |
-      system "#{bin}/skern", "version"
-
 release:
   github:
     owner: devrimcavusoglu
