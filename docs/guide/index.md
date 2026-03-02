@@ -29,6 +29,14 @@ Skern provides:
 
 Skills should not live inside models. They should live in code. Versioned. Composable. Auditable. Portable.
 
+## Roadmap
+
+- [ ] Skill dependency resolution
+- [ ] Versioned skill packages
+- [ ] Remote skill registry
+- [ ] Signed skill manifests
+- [ ] Additional agent runtime adapters
+
 ## Next Steps
 
 - [Installation](/guide/installation) — install skern on your machine
