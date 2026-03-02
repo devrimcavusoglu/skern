@@ -12,6 +12,7 @@
   <a href="https://github.com/devrimcavusoglu/skern/blob/main/LICENSE"><img src="https://img.shields.io/github/license/devrimcavusoglu/skern" alt="License"></a>
   <img src="https://img.shields.io/badge/type-CLI-black" alt="CLI">
   <a href="https://agentskills.io"><img src="https://img.shields.io/badge/spec-Agent%20Skills-blue" alt="Agent Skills"></a>
+  <a href="https://skern.dev"><img src="https://img.shields.io/badge/docs-skern.dev-blue" alt="Docs"></a>
 </p>
 
 ---
