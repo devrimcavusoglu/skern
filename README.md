@@ -1,8 +1,56 @@
-# skern
+<p align="center">
+  <img src="logo.png" alt="skern" width="360" />
+</p>
 
-A minimal, agent-first CLI for managing [Agent Skills](https://agentskills.io) across agentic development platforms.
+<p align="center">
+  <strong>System-wide skill registry for AI agents.</strong><br/>
+  Forge, manage, and compose agent capabilities from the terminal.
+</p>
 
-Skern provides a standardized lifecycle — create, validate, install, remove — for skills that work natively with **Claude Code**, **Codex CLI**, and **OpenCode**. Skills follow the Agent Skills open standard (`SKILL.md` with YAML frontmatter) and are immediately usable by any compatible platform without adapters or format conversion.
+<p align="center">
+  <a href="https://github.com/devrimcavusoglu/skern/releases"><img src="https://img.shields.io/github/v/release/devrimcavusoglu/skern" alt="Release"></a>
+  <a href="https://github.com/devrimcavusoglu/skern/blob/main/LICENSE"><img src="https://img.shields.io/github/license/devrimcavusoglu/skern" alt="License"></a>
+  <img src="https://img.shields.io/badge/type-CLI-black" alt="CLI">
+  <a href="https://agentskills.io"><img src="https://img.shields.io/badge/spec-Agent%20Skills-blue" alt="Agent Skills"></a>
+</p>
+
+---
+
+Skern is a minimal, agent-first CLI for managing [Agent Skills](https://agentskills.io) across agentic development platforms. It provides a standardized lifecycle — create, validate, install, remove — for skills that work natively with **Claude Code**, **Codex CLI**, and **OpenCode**. Skills follow the Agent Skills open standard (`SKILL.md` with YAML frontmatter) and are immediately usable by any compatible platform without adapters or format conversion.
+
+## Why skern?
+
+Modern AI coding tools (Claude Code, Codex CLI, OpenCode) lack a standardized skill management layer. Each defines skills in its own directory structure, with no shared tooling for creation, validation, deduplication, or cross-platform installation.
+
+skern provides:
+
+- **Reusable skill definitions** — one `SKILL.md` per skill, portable across platforms
+- **Project-scoped or system-scoped registration** — local skills for a repo, global skills for your machine
+- **Overlap detection** — fuzzy matching prevents skill duplication before it happens
+- **Cross-platform installation** — install to any supported platform with a single command
+- **Agent-operable interface** — every command supports `--json`, enabling agents to manage their own skills
+
+## Quick Example
+
+```bash
+# Initialize skill registry in your project
+skern init
+
+# Create a new skill
+skern skill create code-review --description "Review PRs for style and correctness"
+
+# Install to Claude Code
+skern skill install code-review --platform claude-code
+
+# Install to all detected platforms at once
+skern skill install code-review --platform all
+
+# List installed skills
+skern skill list
+
+# Search before creating — avoid duplicates
+skern skill search "review"
+```
 
 ## Features
 
@@ -52,55 +100,6 @@ echo 'Use skern to manage skills. Run `skern --help` for usage, `skern skill sea
 ```
 
 This enables the [tool-forming loop](#features) — agents will search for existing skills before creating new ones, keeping your skill set deduplicated and organized.
-
-## Quick Start
-
-```sh
-# Check installation
-skern version
-
-# Initialize skern in your project
-skern init
-
-# Create a new skill (overlap detection warns on similar existing skills)
-skern skill create my-skill --description "Automates X for Y"
-
-# Create with author provenance
-skern skill create my-skill --author "alice" --author-type human --description "Automates X"
-
-# List skills
-skern skill list
-
-# Validate a skill against the Agent Skills spec
-skern skill validate my-skill
-
-# Install a skill to a platform
-skern skill install my-skill --platform claude-code
-
-# Install to all detected platforms at once
-skern skill install my-skill --platform all
-
-# Uninstall a skill from a platform
-skern skill uninstall my-skill --platform claude-code
-
-# List detected platforms
-skern platform list
-
-# Show skill installation status across platforms
-skern platform status
-
-# Search for existing skills
-skern skill search "code review"
-
-# Get a recommendation: reuse, extend, or create?
-skern skill recommend "format Go source code"
-
-# Create a skill from a template file
-skern skill create my-skill --from-template ./templates/review.md
-
-# Generate shell completions
-skern completion bash   # also: zsh, fish
-```
 
 ## CLI Reference
 
@@ -165,6 +164,24 @@ Skill count warnings trigger at > 20 skills (project scope) or > 50 skills (user
 
 Skills track author metadata and an optional `modified-by` history. `skern skill show` displays the full provenance chain when present, including editor name, type (human/agent), platform, and date.
 
+## Architecture
+
+```
+Skill Author --> skern --> Registry --> Agent Runtime
+                  |
+          +-------+-------+
+          |       |       |
+        Claude  Codex   OpenCode
+         Code    CLI
+```
+
+skern separates concerns into four layers:
+
+- **Skill Definition** — metadata + behavior in a single `SKILL.md` file
+- **Skill Registry** — project-scoped (`.skern/skills/`) or user-scoped (`~/.skern/skills/`)
+- **Validation** — spec compliance checks, overlap detection, provenance tracking
+- **Platform Adapters** — install/uninstall to any supported agent runtime
+
 ## Supported Platforms
 
 | Platform | User-level skills | Project-level skills |
@@ -174,6 +191,41 @@ Skills track author metadata and an optional `modified-by` history. `skern skill
 | OpenCode | `~/.config/opencode/skills/<name>/` | `.opencode/skills/<name>/` |
 
 Skern auto-detects which platforms are installed. Use `--platform all` to install a skill to every detected platform at once.
+
+## Comparison
+
+| Feature | skern | Manual Folder Skills | AI Tool Built-in |
+|---------|-------|----------------------|------------------|
+| System-wide registry | Yes | No | No |
+| Cross-platform install | Yes | No | No |
+| Overlap detection | Yes | No | No |
+| CLI-first | Yes | Partial | No |
+| Agent-agnostic | Yes | Partial | No |
+| Validation | Yes | No | No |
+| Versioning | Planned | No | No |
+
+## Design Principles
+
+- **CLI-first** — terminal is the primary interface
+- **File-system native** — skills are files, registries are directories
+- **Agent-agnostic** — works with any platform that reads `SKILL.md`
+- **Deterministic outputs** — same input, same result
+- **Minimal dependencies** — small binary, fast startup
+- **No cloud lock-in** — everything is local, everything is yours
+
+## Philosophy
+
+Skills should not live inside models.
+They should live in code.
+Versioned. Composable. Auditable. Portable.
+
+## Roadmap
+
+- [ ] Skill dependency resolution
+- [ ] Versioned skill packages
+- [ ] Remote skill registry
+- [ ] Signed skill manifests
+- [ ] Additional agent runtime adapters
 
 ## Development
 
