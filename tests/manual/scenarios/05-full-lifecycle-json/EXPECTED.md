@@ -2,7 +2,7 @@
 
 ## Pass criteria
 
-- [ ] All scribe commands use `--json` flag
+- [ ] All skern commands use `--json` flag
 - [ ] Agent correctly parses JSON at each step
 - [ ] Search/recommend returns no matches (empty registry)
 - [ ] Skill is created with a valid name and description in project scope
@@ -14,6 +14,6 @@
 ## Verification commands
 
 ```sh
-scribe skill list --scope project --json    # should show 1 skill
-scribe platform status --scope project --json  # should show skill on claude-code
+skern skill list --scope project --json    # should show 1 skill
+skern platform status --scope project --json  # should show skill on claude-code
 ```

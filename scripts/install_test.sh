@@ -137,28 +137,28 @@ test_detect_platform_values() {
 }
 
 test_resolve_version_explicit() {
-    run_test "resolve_version uses SCRIBE_VERSION when set"
+    run_test "resolve_version uses SKERN_VERSION when set"
 
     VERSION=""
-    SCRIBE_VERSION="v0.0.1"
+    SKERN_VERSION="v0.0.1"
     resolve_version >/dev/null 2>&1
 
     assert_eq "VERSION from env" "v0.0.1" "$VERSION"
 
     # Cleanup
-    unset SCRIBE_VERSION
+    unset SKERN_VERSION
 }
 
 test_resolve_version_custom() {
     run_test "resolve_version accepts arbitrary version strings"
 
     VERSION=""
-    SCRIBE_VERSION="v1.2.3-rc1"
+    SKERN_VERSION="v1.2.3-rc1"
     resolve_version >/dev/null 2>&1
 
     assert_eq "VERSION custom string" "v1.2.3-rc1" "$VERSION"
 
-    unset SCRIBE_VERSION
+    unset SKERN_VERSION
 }
 
 test_download_url_construction() {
@@ -169,11 +169,11 @@ test_download_url_construction() {
 
     # download() sets DOWNLOAD_URL and CHECKSUMS_URL before attempting fetch
     # We can verify the URL pattern by inspecting what it would construct
-    expected_download="https://github.com/devrimcavusoglu/scribe/releases/download/v0.0.1/scribe_0.0.1_darwin_arm64.tar.gz"
-    expected_checksums="https://github.com/devrimcavusoglu/scribe/releases/download/v0.0.1/checksums.txt"
+    expected_download="https://github.com/devrimcavusoglu/skern/releases/download/v0.0.1/skern_0.0.1_darwin_arm64.tar.gz"
+    expected_checksums="https://github.com/devrimcavusoglu/skern/releases/download/v0.0.1/checksums.txt"
 
     # Construct the URLs the same way download() does
-    actual_download="https://github.com/${REPO}/releases/download/${VERSION}/scribe_${VERSION#v}_${PLATFORM}.tar.gz"
+    actual_download="https://github.com/${REPO}/releases/download/${VERSION}/skern_${VERSION#v}_${PLATFORM}.tar.gz"
     actual_checksums="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
 
     assert_eq "download URL" "$expected_download" "$actual_download"
@@ -186,8 +186,8 @@ test_download_url_version_strip() {
     VERSION="v2.1.0"
     PLATFORM="linux_amd64"
 
-    actual="https://github.com/${REPO}/releases/download/${VERSION}/scribe_${VERSION#v}_${PLATFORM}.tar.gz"
-    assert_contains "archive name has no v prefix" "$actual" "scribe_2.1.0_linux_amd64"
+    actual="https://github.com/${REPO}/releases/download/${VERSION}/skern_${VERSION#v}_${PLATFORM}.tar.gz"
+    assert_contains "archive name has no v prefix" "$actual" "skern_2.1.0_linux_amd64"
     assert_contains "download path keeps v prefix" "$actual" "/download/v2.1.0/"
 }
 
@@ -199,14 +199,14 @@ test_checksum_verification() {
 
     # Create a fake tarball with known content
     echo "fake-binary-content" > "$tmpdir/fakefile"
-    tar -czf "$tmpdir/scribe.tar.gz" -C "$tmpdir" fakefile
+    tar -czf "$tmpdir/skern.tar.gz" -C "$tmpdir" fakefile
 
     # Compute its real checksum
     local real_sum
     if command -v sha256sum >/dev/null 2>&1; then
-        real_sum="$(sha256sum "$tmpdir/scribe.tar.gz" | awk '{print $1}')"
+        real_sum="$(sha256sum "$tmpdir/skern.tar.gz" | awk '{print $1}')"
     elif command -v shasum >/dev/null 2>&1; then
-        real_sum="$(shasum -a 256 "$tmpdir/scribe.tar.gz" | awk '{print $1}')"
+        real_sum="$(shasum -a 256 "$tmpdir/skern.tar.gz" | awk '{print $1}')"
     else
         printf '  SKIP: no sha256sum or shasum available\n'
         rm -rf "$tmpdir"
@@ -214,14 +214,14 @@ test_checksum_verification() {
     fi
 
     # Create a checksums file with the correct entry
-    echo "$real_sum  scribe_0.0.1_darwin_arm64.tar.gz" > "$tmpdir/checksums.txt"
+    echo "$real_sum  skern_0.0.1_darwin_arm64.tar.gz" > "$tmpdir/checksums.txt"
 
     # Simulate what download() does for verification
     VERSION="v0.0.1"
     PLATFORM="darwin_arm64"
-    TARBALL="$tmpdir/scribe.tar.gz"
+    TARBALL="$tmpdir/skern.tar.gz"
     CHECKSUMS_FILE="$tmpdir/checksums.txt"
-    EXPECTED_NAME="scribe_${VERSION#v}_${PLATFORM}.tar.gz"
+    EXPECTED_NAME="skern_${VERSION#v}_${PLATFORM}.tar.gz"
     EXPECTED_SUM="$(grep "$EXPECTED_NAME" "$CHECKSUMS_FILE" | awk '{print $1}')"
 
     local actual_sum
@@ -243,16 +243,16 @@ test_checksum_mismatch_detected() {
     tmpdir="$(mktemp -d)"
 
     echo "real-content" > "$tmpdir/fakefile"
-    tar -czf "$tmpdir/scribe.tar.gz" -C "$tmpdir" fakefile
+    tar -czf "$tmpdir/skern.tar.gz" -C "$tmpdir" fakefile
 
     # Write a wrong checksum
-    echo "0000000000000000000000000000000000000000000000000000000000000000  scribe_0.0.1_darwin_arm64.tar.gz" > "$tmpdir/checksums.txt"
+    echo "0000000000000000000000000000000000000000000000000000000000000000  skern_0.0.1_darwin_arm64.tar.gz" > "$tmpdir/checksums.txt"
 
     local actual_sum
     if command -v sha256sum >/dev/null 2>&1; then
-        actual_sum="$(sha256sum "$tmpdir/scribe.tar.gz" | awk '{print $1}')"
+        actual_sum="$(sha256sum "$tmpdir/skern.tar.gz" | awk '{print $1}')"
     elif command -v shasum >/dev/null 2>&1; then
-        actual_sum="$(shasum -a 256 "$tmpdir/scribe.tar.gz" | awk '{print $1}')"
+        actual_sum="$(shasum -a 256 "$tmpdir/skern.tar.gz" | awk '{print $1}')"
     else
         printf '  SKIP: no sha256sum or shasum available\n'
         rm -rf "$tmpdir"
@@ -271,7 +271,7 @@ test_checksum_mismatch_detected() {
 }
 
 test_install_binary_to_custom_dir() {
-    run_test "install_binary places binary in SCRIBE_INSTALL_DIR"
+    run_test "install_binary places binary in SKERN_INSTALL_DIR"
 
     local tmpdir install_dir
     tmpdir="$(mktemp -d)"
@@ -279,22 +279,22 @@ test_install_binary_to_custom_dir() {
 
     # Set up state as if download() succeeded
     TMPDIR="$tmpdir"
-    BINARY="scribe"
-    echo '#!/bin/bash' > "$tmpdir/scribe"
-    echo 'echo "scribe test"' >> "$tmpdir/scribe"
+    BINARY="skern"
+    echo '#!/bin/bash' > "$tmpdir/skern"
+    echo 'echo "skern test"' >> "$tmpdir/skern"
 
-    SCRIBE_INSTALL_DIR="$install_dir"
+    SKERN_INSTALL_DIR="$install_dir"
     install_binary >/dev/null 2>&1
 
-    assert_file_exists "binary installed" "$install_dir/scribe"
-    assert_file_executable "binary is executable" "$install_dir/scribe"
+    assert_file_exists "binary installed" "$install_dir/skern"
+    assert_file_executable "binary is executable" "$install_dir/skern"
 
-    unset SCRIBE_INSTALL_DIR
+    unset SKERN_INSTALL_DIR
     rm -rf "$tmpdir"
 }
 
 test_install_binary_default_dir() {
-    run_test "install_binary uses DEFAULT_INSTALL_DIR when SCRIBE_INSTALL_DIR is unset"
+    run_test "install_binary uses DEFAULT_INSTALL_DIR when SKERN_INSTALL_DIR is unset"
 
     local tmpdir fake_home
     tmpdir="$(mktemp -d)"
@@ -302,18 +302,18 @@ test_install_binary_default_dir() {
     mkdir -p "$fake_home"
 
     TMPDIR="$tmpdir"
-    BINARY="scribe"
-    echo '#!/bin/bash' > "$tmpdir/scribe"
+    BINARY="skern"
+    echo '#!/bin/bash' > "$tmpdir/skern"
 
     # Override DEFAULT_INSTALL_DIR to avoid touching real ~/.local/bin
-    unset SCRIBE_INSTALL_DIR
+    unset SKERN_INSTALL_DIR
     local saved_default="$DEFAULT_INSTALL_DIR"
     DEFAULT_INSTALL_DIR="$fake_home/.local/bin"
 
     install_binary >/dev/null 2>&1
 
-    assert_file_exists "binary in default dir" "$fake_home/.local/bin/scribe"
-    assert_file_executable "binary is executable" "$fake_home/.local/bin/scribe"
+    assert_file_exists "binary in default dir" "$fake_home/.local/bin/skern"
+    assert_file_executable "binary is executable" "$fake_home/.local/bin/skern"
 
     DEFAULT_INSTALL_DIR="$saved_default"
     rm -rf "$tmpdir"
@@ -327,16 +327,16 @@ test_path_warning() {
     install_dir="$tmpdir/not-in-path"
 
     TMPDIR="$tmpdir"
-    BINARY="scribe"
-    echo '#!/bin/bash' > "$tmpdir/scribe"
+    BINARY="skern"
+    echo '#!/bin/bash' > "$tmpdir/skern"
 
-    SCRIBE_INSTALL_DIR="$install_dir"
+    SKERN_INSTALL_DIR="$install_dir"
     local output
     output="$(install_binary 2>&1)"
 
     assert_contains "PATH warning shown" "$output" "not in your PATH"
 
-    unset SCRIBE_INSTALL_DIR
+    unset SKERN_INSTALL_DIR
     rm -rf "$tmpdir"
 }
 
@@ -348,10 +348,10 @@ test_path_no_warning_when_in_path() {
     install_dir="$tmpdir/in-path"
 
     TMPDIR="$tmpdir"
-    BINARY="scribe"
-    echo '#!/bin/bash' > "$tmpdir/scribe"
+    BINARY="skern"
+    echo '#!/bin/bash' > "$tmpdir/skern"
 
-    SCRIBE_INSTALL_DIR="$install_dir"
+    SKERN_INSTALL_DIR="$install_dir"
     local saved_path="$PATH"
     export PATH="$install_dir:$PATH"
 
@@ -367,7 +367,7 @@ test_path_no_warning_when_in_path() {
     fi
 
     export PATH="$saved_path"
-    unset SCRIBE_INSTALL_DIR
+    unset SKERN_INSTALL_DIR
     rm -rf "$tmpdir"
 }
 
@@ -378,19 +378,19 @@ test_full_download_and_install_flow() {
     tmpdir="$(mktemp -d)"
     install_dir="$tmpdir/bin"
 
-    # Build a fake scribe binary and tarball
+    # Build a fake skern binary and tarball
     local staging="$tmpdir/staging"
     mkdir -p "$staging"
-    printf '#!/bin/bash\necho "scribe v0.0.1-test"' > "$staging/scribe"
-    chmod +x "$staging/scribe"
-    tar -czf "$tmpdir/scribe.tar.gz" -C "$staging" scribe
+    printf '#!/bin/bash\necho "skern v0.0.1-test"' > "$staging/skern"
+    chmod +x "$staging/skern"
+    tar -czf "$tmpdir/skern.tar.gz" -C "$staging" skern
 
     # Compute checksum
     local checksum
     if command -v sha256sum >/dev/null 2>&1; then
-        checksum="$(sha256sum "$tmpdir/scribe.tar.gz" | awk '{print $1}')"
+        checksum="$(sha256sum "$tmpdir/skern.tar.gz" | awk '{print $1}')"
     elif command -v shasum >/dev/null 2>&1; then
-        checksum="$(shasum -a 256 "$tmpdir/scribe.tar.gz" | awk '{print $1}')"
+        checksum="$(shasum -a 256 "$tmpdir/skern.tar.gz" | awk '{print $1}')"
     else
         printf '  SKIP: no sha256sum or shasum available\n'
         rm -rf "$tmpdir"
@@ -401,12 +401,12 @@ test_full_download_and_install_flow() {
     detect_platform >/dev/null 2>&1
     VERSION="v0.0.1"
 
-    echo "$checksum  scribe_${VERSION#v}_${PLATFORM}.tar.gz" > "$tmpdir/checksums.txt"
+    echo "$checksum  skern_${VERSION#v}_${PLATFORM}.tar.gz" > "$tmpdir/checksums.txt"
 
     # Simulate what download() does after a successful fetch
-    TARBALL="$tmpdir/scribe.tar.gz"
+    TARBALL="$tmpdir/skern.tar.gz"
     CHECKSUMS_FILE="$tmpdir/checksums.txt"
-    EXPECTED_NAME="scribe_${VERSION#v}_${PLATFORM}.tar.gz"
+    EXPECTED_NAME="skern_${VERSION#v}_${PLATFORM}.tar.gz"
     EXPECTED_SUM="$(grep "$EXPECTED_NAME" "$CHECKSUMS_FILE" | awk '{print $1}')"
 
     local actual_sum
@@ -420,35 +420,35 @@ test_full_download_and_install_flow() {
 
     # Extract and install
     tar -xzf "$TARBALL" -C "$tmpdir"
-    assert_file_exists "extracted binary" "$tmpdir/scribe"
+    assert_file_exists "extracted binary" "$tmpdir/skern"
 
     TMPDIR="$tmpdir"
-    BINARY="scribe"
-    SCRIBE_INSTALL_DIR="$install_dir"
+    BINARY="skern"
+    SKERN_INSTALL_DIR="$install_dir"
     install_binary >/dev/null 2>&1
 
-    assert_file_exists "installed binary" "$install_dir/scribe"
-    assert_file_executable "installed binary executable" "$install_dir/scribe"
+    assert_file_exists "installed binary" "$install_dir/skern"
+    assert_file_executable "installed binary executable" "$install_dir/skern"
 
     # Verify the installed binary works
     local bin_output
-    bin_output="$("$install_dir/scribe" 2>&1)"
-    assert_eq "binary output" "scribe v0.0.1-test" "$bin_output"
+    bin_output="$("$install_dir/skern" 2>&1)"
+    assert_eq "binary output" "skern v0.0.1-test" "$bin_output"
 
-    unset SCRIBE_INSTALL_DIR
+    unset SKERN_INSTALL_DIR
     rm -rf "$tmpdir"
 }
 
 test_info_output_format() {
-    run_test "info() outputs with [scribe] prefix"
+    run_test "info() outputs with [skern] prefix"
 
     local output
     output="$(info "hello world")"
-    assert_eq "info format" "[scribe] hello world" "$output"
+    assert_eq "info format" "[skern] hello world" "$output"
 }
 
 test_error_output_format() {
-    run_test "error() outputs with [scribe] ERROR prefix and exits non-zero"
+    run_test "error() outputs with [skern] ERROR prefix and exits non-zero"
 
     local output
     set +e
@@ -456,7 +456,7 @@ test_error_output_format() {
     local code=$?
     set -e
 
-    assert_contains "error format" "$output" "[scribe] ERROR: something broke"
+    assert_contains "error format" "$output" "[skern] ERROR: something broke"
     assert_eq "error exits non-zero" "1" "$code"
 }
 

@@ -3,7 +3,7 @@ package registry
 import (
 	"testing"
 
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

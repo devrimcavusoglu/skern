@@ -1,6 +1,6 @@
-# CLAUDE.md — Scribe
+# CLAUDE.md — Skern
 
-Scribe is a minimal, agent-first CLI for managing Agent Skills across Claude Code, Codex CLI, and OpenCode. It follows the Agent Skills open standard (`SKILL.md` with YAML frontmatter).
+Skern is a minimal, agent-first CLI for managing Agent Skills across Claude Code, Codex CLI, and OpenCode. It follows the Agent Skills open standard (`SKILL.md` with YAML frontmatter).
 
 ## Build & Test
 
@@ -18,12 +18,12 @@ Requires Go 1.23+. Dependencies: `cobra`, `yaml.v3`, `testify`.
 ## Project Structure
 
 ```
-cmd/scribe/main.go            # Entry point
+cmd/skern/main.go            # Entry point
 internal/
   cli/                         # Cobra commands (root, version, init, completion, skill_*, platform_*)
   skill/                       # Domain: Skill struct, manifest parse/write, validation, scaffolding
   overlap/                     # Fuzzy name matching (Levenshtein) + description similarity scoring
-  registry/                    # Filesystem CRUD over ~/.scribe/skills/ and .scribe/skills/
+  registry/                    # Filesystem CRUD over ~/.skern/skills/ and .skern/skills/
   platform/                    # Adapters: Claude Code, Codex CLI, OpenCode
   output/                      # JSON/text output formatting (--json, --quiet)
 ```
@@ -31,18 +31,18 @@ internal/
 ## Key Commands
 
 ```
-scribe init                                    # Initialize .scribe/ in project
-scribe skill create <name> [flags]             # Scaffold SKILL.md
-scribe skill list [--scope user|project|all]   # List skills (with dedup hints)
-scribe skill show <name>                       # Show skill details
-scribe skill search <query>                    # Search by name
-scribe skill validate <name>                   # Validate against spec
-scribe skill remove <name>                     # Remove from registry
-scribe skill install <name> --platform <p>     # Install to platform
-scribe skill uninstall <name> --platform <p>   # Uninstall from platform
-scribe platform list                           # Show detected platforms
-scribe platform status                         # Skill x platform matrix
-scribe completion [bash|zsh|fish]              # Shell completions
+skern init                                    # Initialize .skern/ in project
+skern skill create <name> [flags]             # Scaffold SKILL.md
+skern skill list [--scope user|project|all]   # List skills (with dedup hints)
+skern skill show <name>                       # Show skill details
+skern skill search <query>                    # Search by name
+skern skill validate <name>                   # Validate against spec
+skern skill remove <name>                     # Remove from registry
+skern skill install <name> --platform <p>     # Install to platform
+skern skill uninstall <name> --platform <p>   # Uninstall from platform
+skern platform list                           # Show detected platforms
+skern platform status                         # Skill x platform matrix
+skern completion [bash|zsh|fish]              # Shell completions
 ```
 
 ## Conventions

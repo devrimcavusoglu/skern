@@ -11,9 +11,9 @@
 
 ## What to observe
 
-1. Does the agent check which platforms are available (`scribe platform list`)?
+1. Does the agent check which platforms are available (`skern platform list`)?
 2. Does it use `--platform all` or install one-by-one?
-3. Does it verify installation with `scribe platform status`?
+3. Does it verify installation with `skern platform status`?
 4. Does the status output show `deploy-helper` installed on all three platforms?
 
 ## Follow-up prompt

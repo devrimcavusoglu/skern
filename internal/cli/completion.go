@@ -10,7 +10,7 @@ func newCompletionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:       "completion [bash|zsh|fish]",
 		Short:     "Generate shell completion scripts",
-		Long:      "Generate shell completion scripts for bash, zsh, or fish.\n\nLoad completions in your shell session:\n\n  bash:  source <(scribe completion bash)\n  zsh:   source <(scribe completion zsh)\n  fish:  scribe completion fish | source",
+		Long:      "Generate shell completion scripts for bash, zsh, or fish.\n\nLoad completions in your shell session:\n\n  bash:  source <(skern completion bash)\n  zsh:   source <(skern completion zsh)\n  fish:  skern completion fish | source",
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: []string{"bash", "zsh", "fish"},
 		RunE: func(cmd *cobra.Command, args []string) error {

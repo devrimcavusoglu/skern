@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ func newSkillRemoveCmd() *cobra.Command {
 					}
 				}
 				if resolvedScope == "" {
-					return fmt.Errorf("skill %q not found (run 'scribe skill list' to see available skills)", name)
+					return fmt.Errorf("skill %q not found (run 'skern skill list' to see available skills)", name)
 				}
 			}
 

@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestEndToEnd_FullLifecycle exercises the complete scribe workflow:
+// TestEndToEnd_FullLifecycle exercises the complete skern workflow:
 // create -> validate -> install (all 3 platforms) -> platform status -> uninstall one ->
 // verify remaining -> uninstall all -> remove from registry.
 func TestEndToEnd_FullLifecycle(t *testing.T) {

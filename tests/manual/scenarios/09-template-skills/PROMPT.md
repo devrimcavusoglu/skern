@@ -18,4 +18,4 @@
 2. Does it use the correct path to the template files?
 3. Are the skills created with the template content as their body?
 4. Do both skills pass validation?
-5. Does the agent use `scribe skill show` to verify the body content was applied?
+5. Does the agent use `skern skill show` to verify the body content was applied?

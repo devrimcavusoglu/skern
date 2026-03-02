@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Scribe Manual Test Scenarios — Interactive Report Generator
+# Skern Manual Test Scenarios — Interactive Report Generator
 # Reads EXPECTED.md checklists from each scenario, prompts the developer
 # for pass/fail/skip, and produces a timestamped markdown report.
 
-TEST_ROOT="/tmp/scribe-manual-tests"
+TEST_ROOT="/tmp/skern-manual-tests"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPORTS_DIR="$SCRIPT_DIR/reports"
 
-echo "=== Scribe Manual Test Report ==="
+echo "=== Skern Manual Test Report ==="
 echo ""
 
 # --- Preflight ---
@@ -21,7 +21,7 @@ if [ ! -d "$TEST_ROOT" ]; then
 fi
 
 # Get metadata
-SCRIBE_VERSION="$(scribe version 2>/dev/null | head -1 || echo "unknown")"
+SKERN_VERSION="$(skern version 2>/dev/null | head -1 || echo "unknown")"
 REPORT_DATE="$(date -u +%Y-%m-%d)"
 REPORT_TIME="$(date -u +%H%M%S)"
 REPORT_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -134,13 +134,13 @@ mkdir -p "$REPORTS_DIR"
 REPORT_FILE="$REPORTS_DIR/${REPORT_DATE}-${REPORT_TIME}.md"
 
 cat > "$REPORT_FILE" <<EOF
-# Scribe Manual Test Report
+# Skern Manual Test Report
 
 | Field | Value |
 |-------|-------|
 | Date | ${REPORT_TIMESTAMP} |
 | Tester | ${TESTER_NAME} |
-| Scribe Version | ${SCRIBE_VERSION} |
+| Skern Version | ${SKERN_VERSION} |
 | OS | ${OS_INFO} |
 
 ## Summary

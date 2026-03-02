@@ -1,8 +1,8 @@
-# scribe
+# skern
 
 A minimal, agent-first CLI for managing [Agent Skills](https://agentskills.io) across agentic development platforms.
 
-Scribe provides a standardized lifecycle — create, validate, install, remove — for skills that work natively with **Claude Code**, **Codex CLI**, and **OpenCode**. Skills follow the Agent Skills open standard (`SKILL.md` with YAML frontmatter) and are immediately usable by any compatible platform without adapters or format conversion.
+Skern provides a standardized lifecycle — create, validate, install, remove — for skills that work natively with **Claude Code**, **Codex CLI**, and **OpenCode**. Skills follow the Agent Skills open standard (`SKILL.md` with YAML frontmatter) and are immediately usable by any compatible platform without adapters or format conversion.
 
 ## Features
 
@@ -11,20 +11,20 @@ Scribe provides a standardized lifecycle — create, validate, install, remove �
 - **Platform adapters** — install skills to Claude Code, Codex CLI, or OpenCode with a single command
 - **Tool-forming loop** — agents can search for existing skills and scaffold new ones, turning recurring needs into reusable capabilities
 - **Overlap detection** — fuzzy name matching and description similarity prevent skill duplication
-- **JSON output** — every command supports `--json` for machine-readable output, making scribe fully agent-operable
+- **JSON output** — every command supports `--json` for machine-readable output, making skern fully agent-operable
 
 ## Installation
 
 ### Quick install (Linux / macOS)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/scribe/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.sh | bash
 ```
 
 To install a specific version:
 
 ```sh
-SCRIBE_VERSION=v0.0.1 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/scribe/main/scripts/install.sh | bash
+SKERN_VERSION=v0.0.1 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.sh | bash
 ```
 
 ### Go install
@@ -32,23 +32,23 @@ SCRIBE_VERSION=v0.0.1 curl -fsSL https://raw.githubusercontent.com/devrimcavusog
 Requires Go 1.23+.
 
 ```sh
-go install github.com/devrimcavusoglu/scribe/cmd/scribe@latest
+go install github.com/devrimcavusoglu/skern/cmd/skern@latest
 ```
 
 ### Build from repository
 
 ```sh
-git clone https://github.com/devrimcavusoglu/scribe.git
-cd scribe
+git clone https://github.com/devrimcavusoglu/skern.git
+cd skern
 make build
 ```
 
 ## Agent Setup
 
-After installing scribe, add a line to your project's `AGENTS.md` (or `CLAUDE.md`) so that agents know to use it for skill management:
+After installing skern, add a line to your project's `AGENTS.md` (or `CLAUDE.md`) so that agents know to use it for skill management:
 
 ```sh
-echo 'Use scribe to manage skills. Run `scribe --help` for usage, `scribe skill search <query>` to find existing skills before creating new ones.' >> AGENTS.md
+echo 'Use skern to manage skills. Run `skern --help` for usage, `skern skill search <query>` to find existing skills before creating new ones.' >> AGENTS.md
 ```
 
 This enables the [tool-forming loop](#features) — agents will search for existing skills before creating new ones, keeping your skill set deduplicated and organized.
@@ -57,68 +57,68 @@ This enables the [tool-forming loop](#features) — agents will search for exist
 
 ```sh
 # Check installation
-scribe version
+skern version
 
-# Initialize scribe in your project
-scribe init
+# Initialize skern in your project
+skern init
 
 # Create a new skill (overlap detection warns on similar existing skills)
-scribe skill create my-skill --description "Automates X for Y"
+skern skill create my-skill --description "Automates X for Y"
 
 # Create with author provenance
-scribe skill create my-skill --author "alice" --author-type human --description "Automates X"
+skern skill create my-skill --author "alice" --author-type human --description "Automates X"
 
 # List skills
-scribe skill list
+skern skill list
 
 # Validate a skill against the Agent Skills spec
-scribe skill validate my-skill
+skern skill validate my-skill
 
 # Install a skill to a platform
-scribe skill install my-skill --platform claude-code
+skern skill install my-skill --platform claude-code
 
 # Install to all detected platforms at once
-scribe skill install my-skill --platform all
+skern skill install my-skill --platform all
 
 # Uninstall a skill from a platform
-scribe skill uninstall my-skill --platform claude-code
+skern skill uninstall my-skill --platform claude-code
 
 # List detected platforms
-scribe platform list
+skern platform list
 
 # Show skill installation status across platforms
-scribe platform status
+skern platform status
 
 # Search for existing skills
-scribe skill search "code review"
+skern skill search "code review"
 
 # Get a recommendation: reuse, extend, or create?
-scribe skill recommend "format Go source code"
+skern skill recommend "format Go source code"
 
 # Create a skill from a template file
-scribe skill create my-skill --from-template ./templates/review.md
+skern skill create my-skill --from-template ./templates/review.md
 
 # Generate shell completions
-scribe completion bash   # also: zsh, fish
+skern completion bash   # also: zsh, fish
 ```
 
 ## CLI Reference
 
 ```
-scribe init                                    # Initialize .scribe/ in current project
-scribe skill create <name>                     # Scaffold a new skill
-scribe skill search <query>                    # Search skills by name/description
-scribe skill recommend <query>                 # Recommend: reuse, extend, or create
-scribe skill list [--scope user|project|all]   # List skills in registry
-scribe skill show <name>                       # Display skill details
-scribe skill validate <name>                   # Validate against Agent Skills spec
-scribe skill remove <name>                     # Remove skill from registry
-scribe skill install <name> --platform <p>     # Install skill to platform
-scribe skill uninstall <name> --platform <p>   # Remove skill from platform
-scribe platform list                           # List detected platforms
-scribe platform status                         # Skill x platform installation matrix
-scribe completion [bash|zsh|fish]              # Generate shell completions
-scribe version                                 # Print version info
+skern init                                    # Initialize .skern/ in current project
+skern skill create <name>                     # Scaffold a new skill
+skern skill search <query>                    # Search skills by name/description
+skern skill recommend <query>                 # Recommend: reuse, extend, or create
+skern skill list [--scope user|project|all]   # List skills in registry
+skern skill show <name>                       # Display skill details
+skern skill validate <name>                   # Validate against Agent Skills spec
+skern skill remove <name>                     # Remove skill from registry
+skern skill install <name> --platform <p>     # Install skill to platform
+skern skill uninstall <name> --platform <p>   # Remove skill from platform
+skern platform list                           # List detected platforms
+skern platform status                         # Skill x platform installation matrix
+skern completion [bash|zsh|fish]              # Generate shell completions
+skern version                                 # Print version info
 ```
 
 **Global flags:** `--json`, `--quiet`, `--scope user|project`
@@ -133,7 +133,7 @@ scribe version                                 # Print version info
 
 ### Validation
 
-`scribe skill validate <name>` checks skills against the Agent Skills spec:
+`skern skill validate <name>` checks skills against the Agent Skills spec:
 
 - **Name format** — must match `[a-z0-9]+(-[a-z0-9]+)*`, 1-64 characters
 - **Description** — required, max 1024 characters
@@ -141,11 +141,11 @@ scribe version                                 # Print version info
 - **Allowed-tools** — no empty entries
 - **Metadata** — author type must be `human` or `agent`, version should follow semver
 
-Validation also runs automatically during `scribe skill create`, issuing warnings for any issues.
+Validation also runs automatically during `skern skill create`, issuing warnings for any issues.
 
 ### Overlap Detection
 
-When creating a skill, scribe checks existing skills for similarity using:
+When creating a skill, skern checks existing skills for similarity using:
 
 - **Fuzzy name matching** — Levenshtein distance with prefix/suffix bonuses
 - **Description similarity** — keyword overlap scoring (Jaccard similarity)
@@ -159,11 +159,11 @@ When creating a skill, scribe checks existing skills for similarity using:
 
 Skill count warnings trigger at > 20 skills (project scope) or > 50 skills (user scope).
 
-`scribe skill list` also runs pairwise overlap detection across all listed skills and appends a "Potential duplicates" section when matches are found (score >= 0.6). In `--json` mode, these appear in the `duplicates` array.
+`skern skill list` also runs pairwise overlap detection across all listed skills and appends a "Potential duplicates" section when matches are found (score >= 0.6). In `--json` mode, these appear in the `duplicates` array.
 
 ### Author Provenance
 
-Skills track author metadata and an optional `modified-by` history. `scribe skill show` displays the full provenance chain when present, including editor name, type (human/agent), platform, and date.
+Skills track author metadata and an optional `modified-by` history. `skern skill show` displays the full provenance chain when present, including editor name, type (human/agent), platform, and date.
 
 ## Supported Platforms
 
@@ -173,7 +173,7 @@ Skills track author metadata and an optional `modified-by` history. `scribe skil
 | Codex CLI | `~/.agents/skills/<name>/` | `.agents/skills/<name>/` |
 | OpenCode | `~/.config/opencode/skills/<name>/` | `.opencode/skills/<name>/` |
 
-Scribe auto-detects which platforms are installed. Use `--platform all` to install a skill to every detected platform at once.
+Skern auto-detects which platforms are installed. Use `--platform all` to install a skill to every detected platform at once.
 
 ## Development
 
@@ -190,14 +190,14 @@ make clean        # Remove build artifacts
 
 ### Manual Agent Test Harness
 
-The `tests/manual/` directory contains 10 scenarios that test how AI agents interact with scribe — discovery, command chaining, JSON parsing, error handling, and dedup reasoning. Run these before releases.
+The `tests/manual/` directory contains 10 scenarios that test how AI agents interact with skern — discovery, command chaining, JSON parsing, error handling, and dedup reasoning. Run these before releases.
 
 ```sh
 # 1. Set up isolated test environments in /tmp
 make test-manual-setup
 
 # 2. Test each scenario with your AI agent
-cd /tmp/scribe-manual-tests/01-fresh-project
+cd /tmp/skern-manual-tests/01-fresh-project
 cat PROMPT.md      # Read what to ask the agent
 cat EXPECTED.md    # Read the pass criteria
 # Open your AI agent and run the prompt

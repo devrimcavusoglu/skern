@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
-	"github.com/devrimcavusoglu/scribe/internal/platform"
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/platform"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +45,7 @@ func newSkillInstallCmd() *cobra.Command {
 			// Resolve skill from registry
 			s, skillDir, err := reg.Get(name, scopeVal)
 			if err != nil {
-				return fmt.Errorf("skill %q not found in %s scope (run 'scribe skill list' to see available skills)", name, scope)
+				return fmt.Errorf("skill %q not found in %s scope (run 'skern skill list' to see available skills)", name, scope)
 			}
 			_ = s // skill metadata not needed for install
 
@@ -59,7 +59,7 @@ func newSkillInstallCmd() *cobra.Command {
 			if platformType == platform.Type("all") {
 				targets = det.DetectAll()
 				if len(targets) == 0 {
-					return fmt.Errorf("no platforms detected; install a supported platform first (run 'scribe platform list' to see options)")
+					return fmt.Errorf("no platforms detected; install a supported platform first (run 'skern platform list' to see options)")
 				}
 			} else {
 				p := det.Get(platformType)

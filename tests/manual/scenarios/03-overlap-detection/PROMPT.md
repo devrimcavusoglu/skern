@@ -11,8 +11,8 @@
 
 ## What to observe
 
-1. Does the agent attempt `scribe skill create code-reviewer --description "..." --scope project`?
-2. Does scribe warn about overlap with the existing `code-review` skill (score >= 0.6)?
+1. Does the agent attempt `skern skill create code-reviewer --description "..." --scope project`?
+2. Does skern warn about overlap with the existing `code-review` skill (score >= 0.6)?
 3. Does the agent understand the warning and communicate it to the user?
 4. Does the agent make an informed decision: reuse `code-review`, or proceed with creation?
 

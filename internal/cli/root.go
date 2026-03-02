@@ -1,10 +1,10 @@
-// Package cli defines the Cobra command hierarchy for scribe.
+// Package cli defines the Cobra command hierarchy for skern.
 package cli
 
 import (
 	"errors"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -14,12 +14,12 @@ var (
 	printer   *output.Printer
 )
 
-// NewRootCmd creates the root scribe command.
+// NewRootCmd creates the root skern command.
 func NewRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "scribe",
+		Use:   "skern",
 		Short: "Agent-first CLI for managing Agent Skills",
-		Long:  "scribe is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms.",
+		Long:  "skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			printer = output.NewPrinter(jsonFlag, quietFlag)
 			printer.SetOut(cmd.OutOrStdout())

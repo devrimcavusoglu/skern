@@ -21,9 +21,9 @@
 
 ```sh
 # Before:
-scribe platform status --json
+skern platform status --json
 
 # After all installs:
-scribe platform status --json
+skern platform status --json
 # All skills should show installed=true on all platforms
 ```

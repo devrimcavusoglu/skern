@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
-	"github.com/devrimcavusoglu/scribe/internal/registry"
+	"github.com/devrimcavusoglu/skern/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

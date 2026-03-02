@@ -4,7 +4,7 @@ package overlap
 import (
 	"strings"
 
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 )
 
 const (

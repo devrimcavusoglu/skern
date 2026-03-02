@@ -15,11 +15,11 @@
 
 ## What to observe
 
-1. Does the agent run `scribe platform status --json` to get the matrix?
+1. Does the agent run `skern platform status --json` to get the matrix?
 2. Does it correctly identify the gaps:
    - `go-formatter` missing from opencode
    - `db-migrate` missing from codex-cli and opencode
    - `api-docs` missing from all platforms
 3. Does it install the missing combinations?
-4. Does it verify the final state with `scribe platform status` again?
+4. Does it verify the final state with `skern platform status` again?
 5. Does the final matrix show all 3 skills on all 3 platforms?

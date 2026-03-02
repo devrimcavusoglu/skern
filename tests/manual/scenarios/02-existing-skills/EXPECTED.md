@@ -11,12 +11,12 @@
 ## Verification commands
 
 ```sh
-scribe skill search "formatter" --json
+skern skill search "formatter" --json
 # Expected: results include go-formatter
 
-scribe skill show go-formatter --scope project --json
+skern skill show go-formatter --scope project --json
 # Expected: full skill details
 
-scribe skill list --scope project --json
+skern skill list --scope project --json
 # Should still show exactly 3 skills (no new ones created)
 ```

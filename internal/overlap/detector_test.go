@@ -3,7 +3,7 @@ package overlap
 import (
 	"testing"
 
-	"github.com/devrimcavusoglu/scribe/internal/skill"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/stretchr/testify/assert"
 )
 

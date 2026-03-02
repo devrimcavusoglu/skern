@@ -26,7 +26,7 @@ jobs:
         run: go test ./...
 
       - name: Smoke tests
-        run: bash scripts/smoke_test.sh ./scribe
+        run: bash scripts/smoke_test.sh ./skern
 
   lint:
     runs-on: ubuntu-latest

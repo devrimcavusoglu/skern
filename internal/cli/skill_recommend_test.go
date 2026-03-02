@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/devrimcavusoglu/scribe/internal/output"
+	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -139,7 +139,7 @@ func TestSkillRecommend_NameOverride_TextOutput(t *testing.T) {
 	out, err := runCmd(t, "skill", "recommend", "format go source code", "--name", "gofmt-runner")
 	require.NoError(t, err)
 	assert.Contains(t, out, "gofmt-runner")
-	assert.Contains(t, out, "scribe skill create")
+	assert.Contains(t, out, "skern skill create")
 }
 
 func TestSkillRecommend_NameOverride_InvalidName(t *testing.T) {

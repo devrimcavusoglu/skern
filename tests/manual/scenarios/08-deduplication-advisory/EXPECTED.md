@@ -7,12 +7,12 @@
 - [ ] Agent identifies `code-review` / `code-reviewer` as overlapping
 - [ ] Agent suggests which to keep (e.g., keep `test-runner-v2` as most capable)
 - [ ] Agent offers to remove the others (with user confirmation)
-- [ ] Agent uses the `duplicates` array from `scribe skill list --json` output
+- [ ] Agent uses the `duplicates` array from `skern skill list --json` output
 
 ## Verification commands
 
 ```sh
-scribe skill list --json
+skern skill list --json
 # Expected: duplicates array with pairs like:
 # {"skill_a": "test-runner", "skill_b": "run-tests", "score": ...}
 # {"skill_a": "code-review", "skill_b": "code-reviewer", "score": ...}

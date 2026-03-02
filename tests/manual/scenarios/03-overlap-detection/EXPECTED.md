@@ -3,7 +3,7 @@
 ## Pass criteria
 
 - [ ] Agent attempts to create `code-reviewer` in project scope
-- [ ] Scribe shows overlap warning with `code-review` (score >= 0.6)
+- [ ] Skern shows overlap warning with `code-review` (score >= 0.6)
 - [ ] Agent recognizes the overlap warning from command output
 - [ ] Agent makes an informed decision (reuse existing or proceed)
 - [ ] Agent communicates the overlap to the user
@@ -19,8 +19,8 @@ skill. The prompt wording guides the agent toward similar keywords.
 
 ```sh
 # This should show overlap warning:
-scribe skill create code-reviewer --description "Review code changes and provide code improvement suggestions" --scope project
+skern skill create code-reviewer --description "Review code changes and provide code improvement suggestions" --scope project
 
 # Check overlap interactively:
-scribe skill recommend "review code changes" --scope project --json
+skern skill recommend "review code changes" --scope project --json
 ```

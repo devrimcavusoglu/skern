@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Scribe Manual Test Scenarios — Teardown Script
+# Skern Manual Test Scenarios — Teardown Script
 # Removes home directory markers created by setup.sh and cleans up test scenarios.
 
-TEST_ROOT="/tmp/scribe-manual-tests"
+TEST_ROOT="/tmp/skern-manual-tests"
 CREATED_DIRS_FILE="$TEST_ROOT/.created_dirs"
 
-echo "=== Scribe Manual Test Teardown ==="
+echo "=== Skern Manual Test Teardown ==="
 
 # Remove home directory markers that were created by setup
 if [ -f "$CREATED_DIRS_FILE" ]; then
