@@ -1,0 +1,6 @@
+# Default owner for all files
+* @devrimcavusoglu
+
+# Docs and CI ownership
+/docs/ @devrimcavusoglu
+/.github/workflows/ @devrimcavusoglu
