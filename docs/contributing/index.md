@@ -27,6 +27,7 @@ cd skern
 
 - [Development](/contributing/development) — build, test, and lint commands
 - [Manual Testing](/contributing/manual-testing) — agent test harness for pre-release testing
+- [PR Manual Testing](/contributing/pr-manual-testing) — manual test verification for pull requests
 
 ## Issue Tracking
 
