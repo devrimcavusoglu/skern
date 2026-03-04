@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +26,9 @@ func newSkillShowCmd() *cobra.Command {
 			}
 
 			result := toSkillResult(s, string(foundScope), path)
+			if files, err := skill.ListFiles(path); err == nil && len(files) > 0 {
+				result.Files = files
+			}
 			text := formatSkillShow(result)
 			printer.PrintResult(result, text)
 			return nil

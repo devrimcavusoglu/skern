@@ -24,12 +24,13 @@ func newSkillValidateCmd() *cobra.Command {
 				return err
 			}
 
-			s, _, _, err := resolveSkill(reg, name, scope)
+			s, skillDir, _, err := resolveSkill(reg, name, scope)
 			if err != nil {
 				return err
 			}
 
 			issues := skill.Validate(s)
+			issues = append(issues, skill.ValidateFolder(s, skillDir)...)
 			result := toValidateResult(name, issues)
 			text := formatValidateResult(result)
 			printer.PrintResult(result, text)

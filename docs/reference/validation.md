@@ -30,6 +30,10 @@ If `allowed-tools` is specified in the frontmatter, no entries may be empty stri
 - **Author type** — must be `human` or `agent`
 - **Version** — should follow [semantic versioning](https://semver.org) (e.g., `1.0.0`)
 
+### Folder Integrity
+
+When a skill body references files (via backtick-enclosed paths like `` `scripts/run.py` `` or markdown links like `[script](scripts/run.py)`), validation checks that those files exist in the skill directory. Missing references produce **warnings**, not errors — the skill remains valid since references may be aspirational or provided at runtime.
+
 ## Exit Codes
 
 | Code | Meaning |

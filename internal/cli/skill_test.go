@@ -473,6 +473,91 @@ func TestSkillList_NoDedupHints(t *testing.T) {
 
 // --- author provenance (modified-by) ---
 
+// --- skill show with files ---
+
+func TestSkillShow_WithFiles(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "create", "file-skill", "--description", "A skill with files")
+	require.NoError(t, err)
+
+	// Get the skill path
+	showOut, err := runCmd(t, "skill", "show", "file-skill", "--json")
+	require.NoError(t, err)
+
+	var initial output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(showOut), &initial))
+
+	// Add extra files to the skill directory
+	scriptsDir := filepath.Join(initial.Path, "scripts")
+	require.NoError(t, os.MkdirAll(scriptsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(scriptsDir, "convert.py"), []byte("# python"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(initial.Path, "config.json"), []byte("{}"), 0o644))
+
+	// Show again — should include files
+	out, err := runCmd(t, "skill", "show", "file-skill", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Len(t, result.Files, 2)
+	assert.Contains(t, result.Files, "config.json")
+	assert.Contains(t, result.Files, filepath.Join("scripts", "convert.py"))
+}
+
+// --- skill validate folder warning ---
+
+func TestSkillValidate_FolderWarning(t *testing.T) {
+	setupTestRegistry(t)
+
+	_, err := runCmd(t, "skill", "create", "ref-skill", "--description", "A skill with refs", "--author", "alice")
+	require.NoError(t, err)
+
+	// Get the skill path
+	showOut, err := runCmd(t, "skill", "show", "ref-skill", "--json")
+	require.NoError(t, err)
+
+	var initial output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(showOut), &initial))
+
+	// Overwrite SKILL.md with a body referencing a missing file
+	skillMdPath := filepath.Join(initial.Path, "SKILL.md")
+	content := `---
+name: ref-skill
+description: A skill with refs
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+---
+## Instructions
+
+Run ` + "`scripts/run.py`" + ` to process data.
+`
+	require.NoError(t, os.WriteFile(skillMdPath, []byte(content), 0o644))
+
+	// Validate — should warn about missing file
+	out, err := runCmd(t, "skill", "validate", "ref-skill", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillValidateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.True(t, result.Valid, "should still be valid (warnings only)")
+	assert.Equal(t, 1, result.Warns)
+
+	// Find the folder warning
+	found := false
+	for _, issue := range result.Issues {
+		if issue.Field == "folder" {
+			found = true
+			assert.Equal(t, "warning", issue.Severity)
+			assert.Contains(t, issue.Message, "scripts/run.py")
+		}
+	}
+	assert.True(t, found, "should have a folder warning")
+}
+
 func TestSkillShow_ModifiedBy(t *testing.T) {
 	setupTestRegistry(t)
 

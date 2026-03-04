@@ -2,6 +2,8 @@ package skill
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -105,6 +107,26 @@ func validateAllowedTools(tools []string) []ValidationIssue {
 			})
 		}
 	}
+	return issues
+}
+
+// ValidateFolder checks that file references in the skill body exist on disk.
+// Missing references produce warnings, not errors.
+func ValidateFolder(s *Skill, skillDir string) []ValidationIssue {
+	refs := ExtractFileReferences(s.Body)
+	var issues []ValidationIssue
+
+	for _, ref := range refs {
+		path := filepath.Join(skillDir, ref)
+		if _, err := os.Stat(path); err != nil {
+			issues = append(issues, ValidationIssue{
+				Field:    "folder",
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("referenced file %q not found in skill directory", ref),
+			})
+		}
+	}
+
 	return issues
 }
 

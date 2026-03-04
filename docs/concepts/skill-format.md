@@ -47,6 +47,24 @@ The markdown body contains the skill's instructions. This is what the agent read
 
 Skills track author metadata and an optional `modified-by` history. `skern skill show` displays the full provenance chain when present, including editor name, type (human/agent), platform, and date.
 
+## Folder Structure
+
+Skills can include additional files alongside `SKILL.md` — helper scripts, templates, configuration files, and other assets. When a skill is installed to a platform, the entire directory is copied.
+
+```
+my-skill/
+├── SKILL.md
+├── scripts/
+│   ├── convert.py
+│   └── setup.sh
+└── assets/
+    └── template.json
+```
+
+The `scripts/` directory is language-agnostic — skills can include Python, shell, JavaScript, or any other scripts. The agent decides which language is appropriate for the skill.
+
+Use `skern skill show <name>` to see which files are bundled with a skill, and `skern skill validate <name>` to check that files referenced in the skill body actually exist.
+
 ## Creating Skills
 
 Use `skern skill create` to scaffold a new skill:

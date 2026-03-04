@@ -3,6 +3,7 @@ package cli
 import (
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/overlap"
+	"github.com/devrimcavusoglu/skern/internal/registry"
 	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
@@ -22,32 +23,35 @@ func newSkillListCmd() *cobra.Command {
 
 			var skillResults []output.SkillResult
 
+			var discovered []registry.DiscoveredSkill
+
 			if scope == "all" {
-				discovered, err := reg.ListAll()
+				discovered, err = reg.ListAll()
 				if err != nil {
 					return err
-				}
-				for _, d := range discovered {
-					skillResults = append(skillResults, toDiscoveredSkillResult(d))
 				}
 			} else {
 				scopeVal, err := parseScope(scope)
 				if err != nil {
 					return err
 				}
-				skills, err := reg.List(scopeVal)
+				all, err := reg.ListAll()
 				if err != nil {
 					return err
 				}
-				dir := ""
-				if scopeVal == skill.ScopeUser {
-					dir = "user"
-				} else {
-					dir = "project"
+				for _, d := range all {
+					if d.Scope == scopeVal {
+						discovered = append(discovered, d)
+					}
 				}
-				for _, s := range skills {
-					skillResults = append(skillResults, toSkillResult(&s, dir, ""))
+			}
+
+			for _, d := range discovered {
+				r := toDiscoveredSkillResult(d)
+				if files, err := skill.ListFiles(d.Path); err == nil && len(files) > 0 {
+					r.Files = files
 				}
+				skillResults = append(skillResults, r)
 			}
 
 			// Pairwise dedup detection
