@@ -143,6 +143,7 @@ type SkillResult struct {
 	Scope        string             `json:"scope,omitempty"`
 	Path         string             `json:"path,omitempty"`
 	AllowedTools []string           `json:"allowed_tools,omitempty"`
+	Files        []string           `json:"files,omitempty"`
 	ModifiedBy   []ModifiedByResult `json:"modified_by,omitempty"`
 }
 

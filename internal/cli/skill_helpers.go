@@ -86,13 +86,17 @@ func formatSkillTable(skills []output.SkillResult) string {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "%-30s %-10s %-40s\n", "NAME", "SCOPE", "DESCRIPTION")
+	fmt.Fprintf(&b, "%-30s %-10s %-7s %-40s\n", "NAME", "SCOPE", "FILES", "DESCRIPTION")
 	for _, s := range skills {
 		desc := s.Description
 		if len(desc) > 40 {
 			desc = desc[:37] + "..."
 		}
-		fmt.Fprintf(&b, "%-30s %-10s %-40s\n", s.Name, s.Scope, desc)
+		fileCount := "-"
+		if len(s.Files) > 0 {
+			fileCount = fmt.Sprintf("%d", len(s.Files))
+		}
+		fmt.Fprintf(&b, "%-30s %-10s %-7s %-40s\n", s.Name, s.Scope, fileCount, desc)
 	}
 	return b.String()
 }
@@ -116,6 +120,12 @@ func formatSkillShow(s output.SkillResult) string {
 	}
 	if len(s.AllowedTools) > 0 {
 		fmt.Fprintf(&b, "Tools:       %s\n", strings.Join(s.AllowedTools, ", "))
+	}
+	if len(s.Files) > 0 {
+		b.WriteString("Files:\n")
+		for _, f := range s.Files {
+			fmt.Fprintf(&b, "  - %s\n", f)
+		}
 	}
 	if len(s.ModifiedBy) > 0 {
 		b.WriteString("Modified-by:\n")

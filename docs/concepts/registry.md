@@ -15,6 +15,10 @@ Project-scoped skills live in `.skern/skills/` within your project directory. Th
       SKILL.md
     deploy/
       SKILL.md
+      scripts/
+        deploy.sh
+      config/
+        targets.json
 ```
 
 Initialize the project registry with:
@@ -32,6 +36,8 @@ User-scoped skills live in `~/.skern/skills/` and are available across all proje
   skills/
     global-lint/
       SKILL.md
+      scripts/
+        lint-rules.js
 ```
 
 ### Scope Selection
