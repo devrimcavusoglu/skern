@@ -55,11 +55,18 @@ type DuplicateHint struct {
 	Score  float64 `json:"score"`
 }
 
+// ParseWarningResult records a skill directory that could not be parsed.
+type ParseWarningResult struct {
+	Name  string `json:"name"`
+	Error string `json:"error"`
+}
+
 // SkillListResult is the JSON envelope for skill list output.
 type SkillListResult struct {
-	Skills     []SkillResult   `json:"skills"`
-	Count      int             `json:"count"`
-	Duplicates []DuplicateHint `json:"duplicates,omitempty"`
+	Skills        []SkillResult        `json:"skills"`
+	Count         int                  `json:"count"`
+	Duplicates    []DuplicateHint      `json:"duplicates,omitempty"`
+	ParseWarnings []ParseWarningResult `json:"parse_warnings,omitempty"`
 }
 
 // SkillSearchResult is the JSON envelope for skill search output.

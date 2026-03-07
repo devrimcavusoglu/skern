@@ -25,9 +25,10 @@ func newSkillListCmd() *cobra.Command {
 			var skillResults []output.SkillResult
 
 			var discovered []registry.DiscoveredSkill
+			var parseWarnings []registry.ParseWarning
 
 			if scope == "all" {
-				discovered, err = reg.ListAll()
+				discovered, parseWarnings, err = reg.ListAll()
 				if err != nil {
 					return err
 				}
@@ -36,10 +37,11 @@ func newSkillListCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				all, err := reg.ListAll()
+				all, pw, err := reg.ListAll()
 				if err != nil {
 					return err
 				}
+				parseWarnings = pw
 				for _, d := range all {
 					if d.Scope == scopeVal {
 						discovered = append(discovered, d)
@@ -75,14 +77,26 @@ func newSkillListCmd() *cobra.Command {
 				}
 			}
 
+			var pwResults []output.ParseWarningResult
+			for _, w := range parseWarnings {
+				pwResults = append(pwResults, output.ParseWarningResult{
+					Name:  w.Name,
+					Error: w.Error,
+				})
+			}
+
 			result := output.SkillListResult{
-				Skills:     skillResults,
-				Count:      len(skillResults),
-				Duplicates: dupHints,
+				Skills:        skillResults,
+				Count:         len(skillResults),
+				Duplicates:    dupHints,
+				ParseWarnings: pwResults,
 			}
 			text := formatSkillTable(skillResults)
 			if len(dupHints) > 0 {
 				text += formatDedupHints(dupHints)
+			}
+			if len(parseWarnings) > 0 {
+				text += formatParseWarnings(parseWarnings)
 			}
 			ctx.Printer.PrintResult(result, text)
 			return nil

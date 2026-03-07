@@ -147,6 +147,16 @@ func formatDedupHints(hints []output.DuplicateHint) string {
 	return b.String()
 }
 
+// formatParseWarnings formats parse warnings for text output.
+func formatParseWarnings(warnings []registry.ParseWarning) string {
+	var b strings.Builder
+	b.WriteString("\nWarning: some skill directories could not be parsed:\n")
+	for _, w := range warnings {
+		fmt.Fprintf(&b, "  - %s: %s\n", w.Name, w.Error)
+	}
+	return b.String()
+}
+
 // formatSearchResults formats search results for text output.
 func formatSearchResults(query string, results []output.SkillResult) string {
 	if len(results) == 0 {

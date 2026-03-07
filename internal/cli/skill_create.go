@@ -7,6 +7,7 @@ import (
 
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/overlap"
+	"github.com/devrimcavusoglu/skern/internal/registry"
 	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
@@ -45,7 +46,7 @@ func newSkillCreateCmd() *cobra.Command {
 			}
 
 			// Overlap detection: check existing skills for similarity
-			discovered, err := reg.ListAll()
+			discovered, _, err := reg.ListAll()
 			if err != nil {
 				return fmt.Errorf("checking for overlapping skills: %w", err)
 			}
@@ -143,9 +144,9 @@ const (
 )
 
 func checkSkillCountWarnings(p *output.Printer, reg interface {
-	List(skill.Scope) ([]skill.Skill, error)
+	List(skill.Scope) ([]skill.Skill, []registry.ParseWarning, error)
 }, scope skill.Scope) {
-	skills, err := reg.List(scope)
+	skills, _, err := reg.List(scope)
 	if err != nil {
 		return
 	}
