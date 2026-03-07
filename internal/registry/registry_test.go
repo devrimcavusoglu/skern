@@ -101,7 +101,7 @@ func TestRegistry_List(t *testing.T) {
 	_, err = reg.Create(s2, skill.ScopeUser)
 	require.NoError(t, err)
 
-	skills, err := reg.List(skill.ScopeUser)
+	skills, _, err := reg.List(skill.ScopeUser)
 	require.NoError(t, err)
 	assert.Len(t, skills, 2)
 }
@@ -109,7 +109,7 @@ func TestRegistry_List(t *testing.T) {
 func TestRegistry_List_Empty(t *testing.T) {
 	reg := newTestRegistry(t)
 
-	skills, err := reg.List(skill.ScopeUser)
+	skills, _, err := reg.List(skill.ScopeUser)
 	require.NoError(t, err)
 	assert.Empty(t, skills)
 }
@@ -154,7 +154,7 @@ func TestRegistry_ListAll(t *testing.T) {
 	_, err = reg.Create(s2, skill.ScopeProject)
 	require.NoError(t, err)
 
-	all, err := reg.ListAll()
+	all, _, err := reg.ListAll()
 	require.NoError(t, err)
 	assert.Len(t, all, 2)
 
@@ -170,7 +170,7 @@ func TestRegistry_ListAll(t *testing.T) {
 func TestRegistry_ListAll_Empty(t *testing.T) {
 	reg := newTestRegistry(t)
 
-	all, err := reg.ListAll()
+	all, _, err := reg.ListAll()
 	require.NoError(t, err)
 	assert.Empty(t, all)
 }
@@ -234,7 +234,7 @@ func TestRegistry_Search_MultiScope(t *testing.T) {
 	assert.Len(t, results, 2)
 }
 
-func TestRegistry_List_SkipsInvalid(t *testing.T) {
+func TestRegistry_List_SkipsInvalidWithWarning(t *testing.T) {
 	reg := newTestRegistry(t)
 
 	// Create a valid skill
@@ -246,8 +246,13 @@ func TestRegistry_List_SkipsInvalid(t *testing.T) {
 	invalidDir := filepath.Join(reg.userDir, "invalid-dir")
 	require.NoError(t, os.MkdirAll(invalidDir, 0o755))
 
-	skills, err := reg.List(skill.ScopeUser)
+	skills, warnings, err := reg.List(skill.ScopeUser)
 	require.NoError(t, err)
 	assert.Len(t, skills, 1)
 	assert.Equal(t, "valid-skill", skills[0].Name)
+
+	// Should have a parse warning for the invalid directory
+	require.Len(t, warnings, 1)
+	assert.Equal(t, "invalid-dir", warnings[0].Name)
+	assert.NotEmpty(t, warnings[0].Error)
 }

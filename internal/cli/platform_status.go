@@ -33,7 +33,7 @@ func newPlatformStatusCmd() *cobra.Command {
 			}
 
 			// Get skills from registry
-			skills, err := reg.List(scopeVal)
+			skills, _, err := reg.List(scopeVal)
 			if err != nil {
 				return fmt.Errorf("listing skills: %w", err)
 			}

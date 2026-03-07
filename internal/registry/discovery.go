@@ -17,14 +17,16 @@ type DiscoveredSkill struct {
 }
 
 // ListAll returns skills from both user and project scopes.
-func (r *Registry) ListAll() ([]DiscoveredSkill, error) {
+func (r *Registry) ListAll() ([]DiscoveredSkill, []ParseWarning, error) {
 	var result []DiscoveredSkill
+	var allWarnings []ParseWarning
 
 	for _, scope := range []skill.Scope{skill.ScopeUser, skill.ScopeProject} {
-		skills, err := r.List(scope)
+		skills, warnings, err := r.List(scope)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		allWarnings = append(allWarnings, warnings...)
 		dir := r.scopeDir(scope)
 		for _, s := range skills {
 			result = append(result, DiscoveredSkill{
@@ -35,7 +37,7 @@ func (r *Registry) ListAll() ([]DiscoveredSkill, error) {
 		}
 	}
 
-	return result, nil
+	return result, allWarnings, nil
 }
 
 // ScoredSkill pairs a discovered skill with a relevance score.
@@ -47,7 +49,7 @@ type ScoredSkill struct {
 // FuzzySearch finds skills matching the query using fuzzy name and description similarity.
 // Results are filtered by the given threshold and sorted by score descending.
 func (r *Registry) FuzzySearch(query string, threshold float64) ([]ScoredSkill, error) {
-	all, err := r.ListAll()
+	all, _, err := r.ListAll()
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +77,7 @@ func (r *Registry) FuzzySearch(query string, threshold float64) ([]ScoredSkill, 
 
 // Search finds skills whose names contain the query (case-insensitive).
 func (r *Registry) Search(query string) ([]DiscoveredSkill, error) {
-	all, err := r.ListAll()
+	all, _, err := r.ListAll()
 	if err != nil {
 		return nil, err
 	}
