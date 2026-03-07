@@ -8,6 +8,9 @@ Skills follow the [Agent Skills](https://agentskills.io) open standard. Each ski
 ---
 name: code-review
 description: Review PRs for style and correctness
+tags:
+  - review
+  - quality
 version: 1.0.0
 author:
   name: Jane Doe
@@ -36,6 +39,7 @@ Review pull requests for:
 | `author.name` | No | Author name |
 | `author.type` | No | `human` or `agent` |
 | `author.platform` | No | Platform name (e.g., `claude-code`) |
+| `tags` | No | List of classification tags |
 | `allowed-tools` | No | List of tools the skill may use |
 | `modified-by` | No | Modification history entries |
 

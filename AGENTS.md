@@ -227,7 +227,7 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ## Current Status
 
-All milestones (M0–M5) are complete. The first public release (v0.0.1) has shipped.
+All milestones (M0–M5) are complete. The first public release (v0.0.1) has shipped. Recent additions include `skill edit` (metadata + body editing with `modified-by` tracking), skill tags/categories, `--force` flag for install, parse warnings in `skill list`, and stylistic lint hints in `skill validate`.
 
 ### Future Roadmap
 
@@ -238,7 +238,6 @@ These items are tracked as GitHub issues:
 - Skill versioning (semver in frontmatter, upgrade detection)
 - Community skill catalog integration
 - Remote catalog search in `skern skill search`
-- `skern skill update` with `--author` flag appending to `modified-by` list
 - Skill dependency resolution
 - WASI/Docker execution backends
 
