@@ -14,6 +14,7 @@ func newSkillInstallCmd() *cobra.Command {
 	var (
 		platformFlag string
 		scope        string
+		force        bool
 	)
 
 	cmd := &cobra.Command{
@@ -77,6 +78,11 @@ func newSkillInstallCmd() *cobra.Command {
 				entry := output.PlatformActionEntry{
 					Platform: string(p.Name()),
 				}
+				if force {
+					// Remove existing installation before re-installing; ignore errors
+					// (the skill may not be installed yet).
+					_ = p.Uninstall(name, scopeVal)
+				}
 				if installErr := p.Install(skillDir, name, scopeVal); installErr != nil {
 					entry.Error = installErr.Error()
 				} else {
@@ -104,6 +110,7 @@ func newSkillInstallCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&platformFlag, "platform", "", "target platform (claude-code, codex-cli, opencode, or all)")
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
+	cmd.Flags().BoolVar(&force, "force", false, "overwrite existing installation")
 	_ = cmd.MarkFlagRequired("platform")
 
 	return cmd
