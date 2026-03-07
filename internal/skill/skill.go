@@ -44,6 +44,7 @@ type Metadata struct {
 type Skill struct {
 	Name         string   `yaml:"name" json:"name"`
 	Description  string   `yaml:"description" json:"description"`
+	Tags         []string `yaml:"tags,omitempty" json:"tags,omitempty"`
 	AllowedTools []string `yaml:"allowed-tools,omitempty" json:"allowed_tools,omitempty"`
 	Metadata     Metadata `yaml:"metadata" json:"metadata"`
 	Body         string   `yaml:"-" json:"-"`

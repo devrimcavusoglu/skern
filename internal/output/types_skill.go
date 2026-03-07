@@ -34,6 +34,7 @@ type SkillResult struct {
 	Description  string             `json:"description"`
 	Version      string             `json:"version"`
 	Author       AuthorResult       `json:"author"`
+	Tags         []string           `json:"tags,omitempty"`
 	Scope        string             `json:"scope,omitempty"`
 	Path         string             `json:"path,omitempty"`
 	AllowedTools []string           `json:"allowed_tools,omitempty"`
@@ -55,11 +56,18 @@ type DuplicateHint struct {
 	Score  float64 `json:"score"`
 }
 
+// ParseWarningResult records a skill directory that could not be parsed.
+type ParseWarningResult struct {
+	Name  string `json:"name"`
+	Error string `json:"error"`
+}
+
 // SkillListResult is the JSON envelope for skill list output.
 type SkillListResult struct {
-	Skills     []SkillResult   `json:"skills"`
-	Count      int             `json:"count"`
-	Duplicates []DuplicateHint `json:"duplicates,omitempty"`
+	Skills        []SkillResult        `json:"skills"`
+	Count         int                  `json:"count"`
+	Duplicates    []DuplicateHint      `json:"duplicates,omitempty"`
+	ParseWarnings []ParseWarningResult `json:"parse_warnings,omitempty"`
 }
 
 // SkillSearchResult is the JSON envelope for skill search output.
@@ -96,4 +104,5 @@ type SkillValidateResult struct {
 	Issues []ValidationIssueResult `json:"issues"`
 	Errors int                     `json:"errors"`
 	Warns  int                     `json:"warnings"`
+	Hints  int                     `json:"hints"`
 }

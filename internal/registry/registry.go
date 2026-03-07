@@ -11,6 +11,12 @@ import (
 
 const manifestFile = "SKILL.md"
 
+// ParseWarning records a skill directory that could not be parsed.
+type ParseWarning struct {
+	Name  string `json:"name"`
+	Error string `json:"error"`
+}
+
 // Registry manages skills stored on the filesystem.
 type Registry struct {
 	userDir    string
@@ -88,34 +94,40 @@ func (r *Registry) Remove(name string, scope skill.Scope) error {
 	return os.RemoveAll(skillDir)
 }
 
-// List returns all skills in the given scope.
-func (r *Registry) List(scope skill.Scope) ([]skill.Skill, error) {
+// List returns all skills in the given scope along with any parse warnings
+// for skill directories that could not be read.
+func (r *Registry) List(scope skill.Scope) ([]skill.Skill, []ParseWarning, error) {
 	dir := r.scopeDir(scope)
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, fmt.Errorf("reading %s skills directory: %w", scope, err)
+		return nil, nil, fmt.Errorf("reading %s skills directory: %w", scope, err)
 	}
 
 	var skills []skill.Skill
+	var warnings []ParseWarning
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
 
 		manifestPath := filepath.Join(dir, entry.Name(), manifestFile)
-		s, err := skill.ParseManifest(manifestPath)
-		if err != nil {
-			continue // skip invalid entries
+		s, parseErr := skill.ParseManifest(manifestPath)
+		if parseErr != nil {
+			warnings = append(warnings, ParseWarning{
+				Name:  entry.Name(),
+				Error: parseErr.Error(),
+			})
+			continue
 		}
 
 		skills = append(skills, *s)
 	}
 
-	return skills, nil
+	return skills, warnings, nil
 }
 
 // Exists checks whether a skill exists in the given scope.

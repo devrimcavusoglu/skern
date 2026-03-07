@@ -9,7 +9,10 @@ import (
 )
 
 func newSkillListCmd() *cobra.Command {
-	var scope string
+	var (
+		scope string
+		tag   string
+	)
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -25,9 +28,10 @@ func newSkillListCmd() *cobra.Command {
 			var skillResults []output.SkillResult
 
 			var discovered []registry.DiscoveredSkill
+			var parseWarnings []registry.ParseWarning
 
 			if scope == "all" {
-				discovered, err = reg.ListAll()
+				discovered, parseWarnings, err = reg.ListAll()
 				if err != nil {
 					return err
 				}
@@ -36,10 +40,11 @@ func newSkillListCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				all, err := reg.ListAll()
+				all, pw, err := reg.ListAll()
 				if err != nil {
 					return err
 				}
+				parseWarnings = pw
 				for _, d := range all {
 					if d.Scope == scopeVal {
 						discovered = append(discovered, d)
@@ -48,6 +53,9 @@ func newSkillListCmd() *cobra.Command {
 			}
 
 			for _, d := range discovered {
+				if tag != "" && !hasTag(d.Skill.Tags, tag) {
+					continue
+				}
 				r := toDiscoveredSkillResult(d)
 				if files, err := skill.ListFiles(d.Path); err == nil && len(files) > 0 {
 					r.Files = files
@@ -75,14 +83,26 @@ func newSkillListCmd() *cobra.Command {
 				}
 			}
 
+			var pwResults []output.ParseWarningResult
+			for _, w := range parseWarnings {
+				pwResults = append(pwResults, output.ParseWarningResult{
+					Name:  w.Name,
+					Error: w.Error,
+				})
+			}
+
 			result := output.SkillListResult{
-				Skills:     skillResults,
-				Count:      len(skillResults),
-				Duplicates: dupHints,
+				Skills:        skillResults,
+				Count:         len(skillResults),
+				Duplicates:    dupHints,
+				ParseWarnings: pwResults,
 			}
 			text := formatSkillTable(skillResults)
 			if len(dupHints) > 0 {
 				text += formatDedupHints(dupHints)
+			}
+			if len(parseWarnings) > 0 {
+				text += formatParseWarnings(parseWarnings)
 			}
 			ctx.Printer.PrintResult(result, text)
 			return nil
@@ -90,6 +110,7 @@ func newSkillListCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&scope, "scope", "all", "skill scope (user, project, or all)")
+	cmd.Flags().StringVar(&tag, "tag", "", "filter skills by tag")
 
 	return cmd
 }

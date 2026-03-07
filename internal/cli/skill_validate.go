@@ -52,6 +52,7 @@ func toValidateResult(name string, issues []skill.ValidationIssue) output.SkillV
 	var issueResults []output.ValidationIssueResult
 	errors := 0
 	warns := 0
+	hints := 0
 
 	for _, issue := range issues {
 		issueResults = append(issueResults, output.ValidationIssueResult{
@@ -59,10 +60,13 @@ func toValidateResult(name string, issues []skill.ValidationIssue) output.SkillV
 			Severity: string(issue.Severity),
 			Message:  issue.Message,
 		})
-		if issue.Severity == skill.SeverityError {
+		switch issue.Severity {
+		case skill.SeverityError:
 			errors++
-		} else {
+		case skill.SeverityWarning:
 			warns++
+		case skill.SeverityHint:
+			hints++
 		}
 	}
 
@@ -72,6 +76,7 @@ func toValidateResult(name string, issues []skill.ValidationIssue) output.SkillV
 		Issues: issueResults,
 		Errors: errors,
 		Warns:  warns,
+		Hints:  hints,
 	}
 }
 
@@ -83,16 +88,21 @@ func formatValidateResult(r output.SkillValidateResult) string {
 		return b.String()
 	}
 
-	if r.Valid {
-		fmt.Fprintf(&b, "Skill %q is valid with %d warning(s):\n", r.Name, r.Warns)
+	if r.Valid && r.Warns == 0 && r.Hints > 0 {
+		fmt.Fprintf(&b, "Skill %q is valid with %d hint(s):\n", r.Name, r.Hints)
+	} else if r.Valid {
+		fmt.Fprintf(&b, "Skill %q is valid with %d warning(s), %d hint(s):\n", r.Name, r.Warns, r.Hints)
 	} else {
-		fmt.Fprintf(&b, "Skill %q has %d error(s) and %d warning(s):\n", r.Name, r.Errors, r.Warns)
+		fmt.Fprintf(&b, "Skill %q has %d error(s), %d warning(s), %d hint(s):\n", r.Name, r.Errors, r.Warns, r.Hints)
 	}
 
 	for _, issue := range r.Issues {
 		prefix := "  ✗"
-		if issue.Severity == "warning" {
+		switch issue.Severity {
+		case "warning":
 			prefix = "  !"
+		case "hint":
+			prefix = "  ~"
 		}
 		fmt.Fprintf(&b, "%s %s: %s\n", prefix, issue.Field, issue.Message)
 	}

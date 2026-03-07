@@ -7,6 +7,7 @@ import (
 
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/overlap"
+	"github.com/devrimcavusoglu/skern/internal/registry"
 	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +21,7 @@ func newSkillCreateCmd() *cobra.Command {
 		scope          string
 		force          bool
 		fromTemplate   string
+		tags           []string
 	)
 
 	cmd := &cobra.Command{
@@ -45,7 +47,7 @@ func newSkillCreateCmd() *cobra.Command {
 			}
 
 			// Overlap detection: check existing skills for similarity
-			discovered, err := reg.ListAll()
+			discovered, _, err := reg.ListAll()
 			if err != nil {
 				return fmt.Errorf("checking for overlapping skills: %w", err)
 			}
@@ -101,6 +103,7 @@ func newSkillCreateCmd() *cobra.Command {
 			}
 
 			s := skill.NewSkillWithBody(name, description, author, authorType, authorPlatform, body)
+			s.Tags = tags
 
 			// Validate on create (warnings only, don't block)
 			issues := skill.Validate(s)
@@ -132,6 +135,7 @@ func newSkillCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
 	cmd.Flags().BoolVar(&force, "force", false, "bypass overlap detection block")
 	cmd.Flags().StringVar(&fromTemplate, "from-template", "", "path to a template file for the skill body")
+	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags for the skill")
 
 	return cmd
 }
@@ -143,9 +147,9 @@ const (
 )
 
 func checkSkillCountWarnings(p *output.Printer, reg interface {
-	List(skill.Scope) ([]skill.Skill, error)
+	List(skill.Scope) ([]skill.Skill, []registry.ParseWarning, error)
 }, scope skill.Scope) {
-	skills, err := reg.List(scope)
+	skills, _, err := reg.List(scope)
 	if err != nil {
 		return
 	}

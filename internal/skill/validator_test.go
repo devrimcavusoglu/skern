@@ -12,7 +12,7 @@ func TestValidate_ValidSkill(t *testing.T) {
 	s := &Skill{
 		Name:        "my-skill",
 		Description: "A valid skill description",
-		Body:        "## Instructions\n\nDo something useful.",
+		Body:        "## Instructions\n\nThis skill provides step-by-step guidance for completing tasks:\n\n- First, analyze the input carefully and validate the data\n- Then, process the data accordingly and format the results\n- Finally, return the formatted output to the user",
 		Metadata: Metadata{
 			Author:  Author{Name: "alice", Type: "human"},
 			Version: "1.0.0",
@@ -100,8 +100,8 @@ func TestValidate_Description1024OK(t *testing.T) {
 
 	issues := Validate(s)
 	for _, i := range issues {
-		if i.Field == "description" {
-			t.Errorf("unexpected description issue: %s", i.Message)
+		if i.Field == "description" && i.Severity == SeverityError {
+			t.Errorf("unexpected description error: %s", i.Message)
 		}
 	}
 }
@@ -242,6 +242,7 @@ func TestHasErrors(t *testing.T) {
 	}{
 		{"no issues", nil, false},
 		{"warnings only", []ValidationIssue{{Severity: SeverityWarning}}, false},
+		{"hints only", []ValidationIssue{{Severity: SeverityHint}}, false},
 		{"has error", []ValidationIssue{{Severity: SeverityError}}, true},
 		{"mixed", []ValidationIssue{{Severity: SeverityWarning}, {Severity: SeverityError}}, true},
 	}
@@ -260,4 +261,59 @@ func TestValidationIssue_String(t *testing.T) {
 		Message:  "name is invalid",
 	}
 	assert.Equal(t, "[error] name: name is invalid", issue.String())
+}
+
+// Lint style tests
+
+func TestLintStyle_BodyTooShort(t *testing.T) {
+	s := &Skill{
+		Name:        "my-skill",
+		Description: "A valid skill description",
+		Body:        "## Instructions\n\nDo something useful.",
+	}
+
+	issues := lintStyle(s)
+	require.Len(t, issues, 1)
+	assert.Equal(t, "body", issues[0].Field)
+	assert.Equal(t, SeverityHint, issues[0].Severity)
+	assert.Contains(t, issues[0].Message, "words")
+}
+
+func TestLintStyle_DescriptionTooVague(t *testing.T) {
+	s := &Skill{
+		Name:        "my-skill",
+		Description: "Deploy",
+		Body:        "## Instructions\n\nThis skill provides step-by-step guidance for completing tasks:\n\n- First, analyze the input carefully and validate the data\n- Then, process the data accordingly and format the results\n- Finally, return the formatted output to the user",
+	}
+
+	issues := lintStyle(s)
+	require.Len(t, issues, 1)
+	assert.Equal(t, "description", issues[0].Field)
+	assert.Equal(t, SeverityHint, issues[0].Severity)
+	assert.Contains(t, issues[0].Message, "word")
+}
+
+func TestLintStyle_BodyLacksSteps(t *testing.T) {
+	s := &Skill{
+		Name:        "my-skill",
+		Description: "A valid skill description",
+		Body:        strings.Repeat("word ", 25),
+	}
+
+	issues := lintStyle(s)
+	require.Len(t, issues, 1)
+	assert.Equal(t, "body", issues[0].Field)
+	assert.Equal(t, SeverityHint, issues[0].Severity)
+	assert.Contains(t, issues[0].Message, "step-by-step")
+}
+
+func TestLintStyle_NoHints(t *testing.T) {
+	s := &Skill{
+		Name:        "my-skill",
+		Description: "A valid skill description",
+		Body:        "## Instructions\n\nThis skill provides step-by-step guidance for completing tasks:\n\n- First, analyze the input carefully and validate the data\n- Then, process the data accordingly and format the results\n- Finally, return the formatted output to the user",
+	}
+
+	issues := lintStyle(s)
+	assert.Empty(t, issues)
 }

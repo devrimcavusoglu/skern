@@ -190,3 +190,75 @@ func TestManifest_Roundtrip(t *testing.T) {
 	assert.Equal(t, original.Metadata.ModifiedBy, parsed.Metadata.ModifiedBy)
 	assert.Equal(t, original.Body, parsed.Body)
 }
+
+func TestManifest_Roundtrip_Tags(t *testing.T) {
+	original := &Skill{
+		Name:        "tagged-skill",
+		Description: "A skill with tags.\n",
+		Tags:        []string{"code-review", "testing"},
+		Metadata: Metadata{
+			Author:  Author{Name: "alice", Type: "human"},
+			Version: "0.1.0",
+		},
+		Body: "## Instructions\n\nReview code.\n",
+	}
+
+	path := filepath.Join(t.TempDir(), "SKILL.md")
+	require.NoError(t, WriteManifest(original, path))
+
+	parsed, err := ParseManifest(path)
+	require.NoError(t, err)
+
+	assert.Equal(t, original.Tags, parsed.Tags)
+}
+
+func TestParseManifest_WithTags(t *testing.T) {
+	content := `---
+name: my-skill
+description: A tagged skill.
+tags:
+  - devops
+  - ci-cd
+metadata:
+  author:
+    name: bob
+    type: human
+  version: "0.1.0"
+---
+
+## Instructions
+
+Deploy things.
+`
+
+	path := filepath.Join(t.TempDir(), "SKILL.md")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+
+	s, err := ParseManifest(path)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"devops", "ci-cd"}, s.Tags)
+}
+
+func TestParseManifest_NoTags(t *testing.T) {
+	content := `---
+name: my-skill
+description: No tags.
+metadata:
+  author:
+    name: bob
+    type: human
+  version: "0.1.0"
+---
+
+Body.
+`
+
+	path := filepath.Join(t.TempDir(), "SKILL.md")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+
+	s, err := ParseManifest(path)
+	require.NoError(t, err)
+
+	assert.Nil(t, s.Tags)
+}

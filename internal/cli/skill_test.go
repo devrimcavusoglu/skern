@@ -323,6 +323,35 @@ func TestSkillValidate_Text(t *testing.T) {
 	assert.Contains(t, out, "valid")
 }
 
+func TestSkillValidate_HintsJSON(t *testing.T) {
+	cc := testRegistry(t)
+
+	// Default body is short (~8 words) — triggers body-too-short hint
+	_, err := runCmd(t, cc, "skill", "create", "hint-skill", "--description", "A test skill", "--author", "alice")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "validate", "hint-skill", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillValidateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.True(t, result.Valid, "hints should not make skill invalid")
+	assert.Equal(t, 0, result.Errors)
+	assert.Greater(t, result.Hints, 0, "should have at least one hint")
+}
+
+func TestSkillValidate_HintsText(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "hint-text", "--description", "A test skill", "--author", "alice")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "validate", "hint-text")
+	require.NoError(t, err)
+	assert.Contains(t, out, "hint(s)")
+	assert.Contains(t, out, "~")
+}
+
 // --- skill create with overlap ---
 
 func TestSkillCreate_OverlapWarn(t *testing.T) {
@@ -468,6 +497,43 @@ func TestSkillList_NoDedupHints(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, 2, result.Count)
 	assert.Empty(t, result.Duplicates, "should have no duplicate hints for dissimilar skills")
+}
+
+// --- skill list parse warnings ---
+
+func TestSkillList_ParseWarnings_JSON(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+
+	// Create a valid skill
+	_, err := runCmd(t, cc, "skill", "create", "good-skill", "--description", "Works fine")
+	require.NoError(t, err)
+
+	// Create a corrupt skill directory (no SKILL.md)
+	require.NoError(t, os.MkdirAll(filepath.Join(userDir, "broken-skill"), 0o755))
+
+	out, err := runCmd(t, cc, "skill", "list", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, 1, result.Count)
+	require.Len(t, result.ParseWarnings, 1)
+	assert.Equal(t, "broken-skill", result.ParseWarnings[0].Name)
+	assert.NotEmpty(t, result.ParseWarnings[0].Error)
+}
+
+func TestSkillList_ParseWarnings_Text(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "ok-skill", "--description", "Works fine")
+	require.NoError(t, err)
+
+	require.NoError(t, os.MkdirAll(filepath.Join(userDir, "bad-skill"), 0o755))
+
+	out, err := runCmd(t, cc, "skill", "list")
+	require.NoError(t, err)
+	assert.Contains(t, out, "could not be parsed")
+	assert.Contains(t, out, "bad-skill")
 }
 
 // --- author provenance (modified-by) ---
@@ -768,4 +834,90 @@ func TestSkillEdit_TextOutput(t *testing.T) {
 	assert.Contains(t, out, "Updated")
 	assert.Contains(t, out, "description")
 	assert.Contains(t, out, "version")
+}
+
+// --- skill tags ---
+
+func TestSkillCreate_WithTags(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "tagged-skill",
+		"--description", "A tagged skill",
+		"--tags", "devops,testing",
+		"--json")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "show", "tagged-skill", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, []string{"devops", "testing"}, result.Tags)
+}
+
+func TestSkillCreate_WithTags_Show(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "tagged-text",
+		"--description", "A tagged skill",
+		"--tags", "ci,deploy")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "show", "tagged-text")
+	require.NoError(t, err)
+	assert.Contains(t, out, "Tags:")
+	assert.Contains(t, out, "ci")
+	assert.Contains(t, out, "deploy")
+}
+
+func TestSkillList_FilterByTag(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "tool-a",
+		"--description", "Tool A", "--tags", "devops")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "create", "tool-b",
+		"--description", "Tool B", "--tags", "testing")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "create", "tool-c",
+		"--description", "Tool C", "--tags", "devops,testing")
+	require.NoError(t, err)
+
+	// Filter by devops — should get tool-a and tool-c
+	out, err := runCmd(t, cc, "skill", "list", "--tag", "devops", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, 2, result.Count)
+
+	names := map[string]bool{}
+	for _, s := range result.Skills {
+		names[s.Name] = true
+	}
+	assert.True(t, names["tool-a"])
+	assert.True(t, names["tool-c"])
+}
+
+func TestSkillSearch_FilterByTag(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "code-lint",
+		"--description", "Lint code", "--tags", "code-quality")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "create", "code-format",
+		"--description", "Format code", "--tags", "formatting")
+	require.NoError(t, err)
+
+	// Search "code" but filter by code-quality — should get only code-lint
+	out, err := runCmd(t, cc, "skill", "search", "code", "--tag", "code-quality", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillSearchResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, 1, result.Count)
+	assert.Equal(t, "code-lint", result.Results[0].Name)
 }

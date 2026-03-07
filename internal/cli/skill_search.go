@@ -6,6 +6,8 @@ import (
 )
 
 func newSkillSearchCmd() *cobra.Command {
+	var tag string
+
 	cmd := &cobra.Command{
 		Use:   "search <query>",
 		Short: "Search for skills by name",
@@ -26,6 +28,9 @@ func newSkillSearchCmd() *cobra.Command {
 
 			var skillResults []output.SkillResult
 			for _, d := range discovered {
+				if tag != "" && !hasTag(d.Skill.Tags, tag) {
+					continue
+				}
 				skillResults = append(skillResults, toDiscoveredSkillResult(d))
 			}
 
@@ -39,6 +44,8 @@ func newSkillSearchCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVar(&tag, "tag", "", "filter results by tag")
 
 	return cmd
 }
