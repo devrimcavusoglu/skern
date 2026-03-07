@@ -470,6 +470,43 @@ func TestSkillList_NoDedupHints(t *testing.T) {
 	assert.Empty(t, result.Duplicates, "should have no duplicate hints for dissimilar skills")
 }
 
+// --- skill list parse warnings ---
+
+func TestSkillList_ParseWarnings_JSON(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+
+	// Create a valid skill
+	_, err := runCmd(t, cc, "skill", "create", "good-skill", "--description", "Works fine")
+	require.NoError(t, err)
+
+	// Create a corrupt skill directory (no SKILL.md)
+	require.NoError(t, os.MkdirAll(filepath.Join(userDir, "broken-skill"), 0o755))
+
+	out, err := runCmd(t, cc, "skill", "list", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, 1, result.Count)
+	require.Len(t, result.ParseWarnings, 1)
+	assert.Equal(t, "broken-skill", result.ParseWarnings[0].Name)
+	assert.NotEmpty(t, result.ParseWarnings[0].Error)
+}
+
+func TestSkillList_ParseWarnings_Text(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "ok-skill", "--description", "Works fine")
+	require.NoError(t, err)
+
+	require.NoError(t, os.MkdirAll(filepath.Join(userDir, "bad-skill"), 0o755))
+
+	out, err := runCmd(t, cc, "skill", "list")
+	require.NoError(t, err)
+	assert.Contains(t, out, "could not be parsed")
+	assert.Contains(t, out, "bad-skill")
+}
+
 // --- author provenance (modified-by) ---
 
 // --- skill show with files ---
