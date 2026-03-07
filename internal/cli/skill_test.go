@@ -718,6 +718,124 @@ TODO: Add step-by-step instructions for the agent.
 	assert.Contains(t, out, "2025-01-15")
 }
 
+// --- skill edit ---
+
+func TestSkillEdit_Description(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "edit-desc",
+		"--description", "Original description", "--author", "alice")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "edit", "edit-desc",
+		"--description", "Updated description", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillEditResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "edit-desc", result.Name)
+	assert.Contains(t, result.Updated, "description")
+
+	// Verify the change persisted
+	showOut, err := runCmd(t, cc, "skill", "show", "edit-desc", "--json")
+	require.NoError(t, err)
+
+	var showResult output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(showOut), &showResult))
+	assert.Equal(t, "Updated description", showResult.Description)
+}
+
+func TestSkillEdit_Version(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "edit-ver",
+		"--description", "A skill", "--author", "alice")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "edit", "edit-ver", "--version", "2.0.0")
+	require.NoError(t, err)
+
+	showOut, err := runCmd(t, cc, "skill", "show", "edit-ver", "--json")
+	require.NoError(t, err)
+
+	var showResult output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(showOut), &showResult))
+	assert.Equal(t, "2.0.0", showResult.Version)
+}
+
+func TestSkillEdit_Author(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "edit-auth",
+		"--description", "A skill", "--author", "alice")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "edit", "edit-auth",
+		"--author", "bob", "--author-type", "agent", "--author-platform", "claude-code")
+	require.NoError(t, err)
+
+	showOut, err := runCmd(t, cc, "skill", "show", "edit-auth", "--json")
+	require.NoError(t, err)
+
+	var showResult output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(showOut), &showResult))
+	assert.Equal(t, "bob", showResult.Author.Name)
+	assert.Equal(t, "agent", showResult.Author.Type)
+	assert.Equal(t, "claude-code", showResult.Author.Platform)
+}
+
+func TestSkillEdit_ModifiedBy(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "edit-mod",
+		"--description", "A skill", "--author", "alice")
+	require.NoError(t, err)
+
+	editOut, err := runCmd(t, cc, "skill", "edit", "edit-mod",
+		"--description", "New desc",
+		"--modified-by", "claude", "--modified-by-type", "agent", "--modified-by-platform", "claude-code",
+		"--json")
+	require.NoError(t, err)
+
+	var editResult output.SkillEditResult
+	require.NoError(t, json.Unmarshal([]byte(editOut), &editResult))
+	assert.Contains(t, editResult.Updated, "description")
+	assert.Contains(t, editResult.Updated, "modified-by")
+
+	showOut, err := runCmd(t, cc, "skill", "show", "edit-mod", "--json")
+	require.NoError(t, err)
+
+	var showResult output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(showOut), &showResult))
+	require.Len(t, showResult.ModifiedBy, 1)
+	assert.Equal(t, "claude", showResult.ModifiedBy[0].Name)
+	assert.Equal(t, "agent", showResult.ModifiedBy[0].Type)
+	assert.Equal(t, "claude-code", showResult.ModifiedBy[0].Platform)
+	assert.NotEmpty(t, showResult.ModifiedBy[0].Date)
+}
+
+func TestSkillEdit_NotFound(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "edit", "nonexistent", "--description", "x")
+	assert.Error(t, err)
+}
+
+func TestSkillEdit_TextOutput(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "edit-text",
+		"--description", "A skill", "--author", "alice")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "edit", "edit-text",
+		"--description", "Better desc", "--version", "1.0.0")
+	require.NoError(t, err)
+	assert.Contains(t, out, "Updated")
+	assert.Contains(t, out, "description")
+	assert.Contains(t, out, "version")
+}
+
 // --- skill tags ---
 
 func TestSkillCreate_WithTags(t *testing.T) {

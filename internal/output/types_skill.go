@@ -77,6 +77,13 @@ type SkillSearchResult struct {
 	Count   int           `json:"count"`
 }
 
+// SkillEditResult is the JSON envelope for skill edit output.
+type SkillEditResult struct {
+	Name    string   `json:"name"`
+	Scope   string   `json:"scope"`
+	Updated []string `json:"updated"`
+}
+
 // SkillRemoveResult is the JSON envelope for skill remove output.
 type SkillRemoveResult struct {
 	Name  string `json:"name"`

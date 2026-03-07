@@ -12,6 +12,7 @@ func newSkillCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newSkillCreateCmd())
+	cmd.AddCommand(newSkillEditCmd())
 	cmd.AddCommand(newSkillListCmd())
 	cmd.AddCommand(newSkillShowCmd())
 	cmd.AddCommand(newSkillSearchCmd())
