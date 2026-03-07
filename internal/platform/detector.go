@@ -64,11 +64,8 @@ func (d *Detector) All() []Platform {
 func ParsePlatformType(s string) (Type, error) {
 	normalized := strings.ToLower(strings.TrimSpace(s))
 	switch Type(normalized) {
-	case TypeClaudeCode, TypeCodexCLI, TypeOpenCode:
+	case TypeClaudeCode, TypeCodexCLI, TypeOpenCode, TypeAll:
 		return Type(normalized), nil
-	}
-	if normalized == "all" {
-		return Type("all"), nil
 	}
 	return "", fmt.Errorf("unknown platform %q: must be one of claude-code, codex-cli, opencode, or all", s)
 }
