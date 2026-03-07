@@ -45,6 +45,7 @@ skern skill create <name> [flags]
 | `--author-platform` | Platform name (e.g., `claude-code`) |
 | `--description` | Skill description |
 | `--tags` | Comma-separated list of tags |
+| `--scope` | `user` or `project` (default: `user`) |
 | `--force` | Bypass overlap block |
 | `--from-template <path>` | Use file as skill body |
 
