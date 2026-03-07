@@ -4,7 +4,7 @@
 
 Skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
 
-The project is written in **Go 1.25+** and has shipped its first release (**v0.0.1**).
+The project is written in **Go 1.25+** and the current release is **v0.1.0**.
 
 ## Repository Layout
 
@@ -227,7 +227,7 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ## Current Status
 
-All milestones (M0–M5) are complete. The first public release (v0.0.1) has shipped. Recent additions include `skill edit` (metadata + body editing with `modified-by` tracking), skill tags/categories, `--force` flag for install, parse warnings in `skill list`, and stylistic lint hints in `skill validate`.
+All milestones (M0–M5) are complete. The current release is **v0.1.0**, which added `skill edit`, skill tags/categories, `--force` install, parse warnings in `skill list`, stylistic lint hints, and internal refactors (CommandContext, unified scoring, output split).
 
 ### Future Roadmap
 
