@@ -11,7 +11,7 @@ cd skern
 
 ## Requirements
 
-- Go 1.23+
+- Go 1.25+
 - `golangci-lint` (for linting)
 - `make`
 
@@ -30,12 +30,12 @@ cd skern
 
 ## Issue Tracking
 
-The project uses `br` (beads-rust) for issue tracking. Reference issues in commits as `br#<id>`.
+The project uses GitHub Issues for tracking. Reference issues in commits as `#<number>`.
 
 ```sh
-br list               # Open issues
-br create "Title"     # New issue
-br close <id>         # Close an issue
+gh issue list                             # List open issues
+gh issue create --title "Title" --body "" # New issue
+gh issue close <number>                   # Close an issue
 ```
 
 ## License
