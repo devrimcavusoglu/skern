@@ -52,19 +52,12 @@ func (r *Registry) FuzzySearch(query string, threshold float64) ([]ScoredSkill, 
 		return nil, err
 	}
 
-	const (
-		nameWeight = 0.4
-		descWeight = 0.4
-		bodyWeight = 0.2
-	)
-
 	var results []ScoredSkill
 	for _, d := range all {
-		nameSim := overlap.NameSimilarity(query, d.Skill.Name)
-		descSim := overlap.DescriptionSimilarity(query, d.Skill.Description)
-		bodySim := overlap.DescriptionSimilarity(query, d.Skill.Body)
-
-		score := nameSim*nameWeight + descSim*descWeight + bodySim*bodyWeight
+		score := overlap.ScoreAll(overlap.SearchWeights,
+			query, query, query, nil,
+			d.Skill.Name, d.Skill.Description, d.Skill.Body, d.Skill.AllowedTools,
+		)
 		if score >= threshold {
 			results = append(results, ScoredSkill{
 				DiscoveredSkill: d,
