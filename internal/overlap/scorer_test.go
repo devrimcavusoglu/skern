@@ -91,7 +91,30 @@ func TestScoreWithTools(t *testing.T) {
 	assert.GreaterOrEqual(t, score, 0.9)
 }
 
-func TestScore_WeightsSum(t *testing.T) {
-	// Verify weights sum to 1.0
-	assert.InDelta(t, 1.0, nameWeight+descriptionWeight+toolsWeight, 0.001)
+func TestWeightsSum(t *testing.T) {
+	tests := []struct {
+		name    string
+		weights Weights
+	}{
+		{"overlap weights", OverlapWeights},
+		{"search weights", SearchWeights},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sum := tt.weights.Name + tt.weights.Desc + tt.weights.Tools + tt.weights.Body
+			assert.InDelta(t, 1.0, sum, 0.001)
+		})
+	}
+}
+
+func TestScoreAll(t *testing.T) {
+	// ScoreAll with OverlapWeights should match Score
+	s1 := Score("code-review", "reviews code", "code-review", "reviews code", nil)
+	s2 := ScoreAll(OverlapWeights, "code-review", "reviews code", "", nil, "code-review", "reviews code", "", nil)
+	assert.InDelta(t, s1, s2, 1e-9)
+
+	// ScoreAll with SearchWeights includes body similarity
+	s3 := ScoreAll(SearchWeights, "review", "review", "review", nil,
+		"code-review", "reviews code for errors", "## Instructions\nReview code carefully", nil)
+	assert.Greater(t, s3, 0.0)
 }

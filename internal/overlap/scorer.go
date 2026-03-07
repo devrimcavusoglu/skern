@@ -4,31 +4,51 @@ import (
 	"strings"
 )
 
-// Weight constants for combining similarity signals.
-const (
-	nameWeight        = 0.5
-	descriptionWeight = 0.3
-	toolsWeight       = 0.2
-)
+// Weights configures how similarity signals are combined into a final score.
+// All weights should sum to 1.0.
+type Weights struct {
+	Name  float64
+	Desc  float64
+	Tools float64
+	Body  float64
+}
+
+// OverlapWeights are used for overlap detection during skill creation and dedup checks.
+var OverlapWeights = Weights{Name: 0.5, Desc: 0.3, Tools: 0.2, Body: 0.0}
+
+// SearchWeights are used for fuzzy search and skill recommendation.
+var SearchWeights = Weights{Name: 0.4, Desc: 0.4, Tools: 0.0, Body: 0.2}
+
+// ScoreAll computes a weighted similarity score using all available signals.
+// Returns a value in [0, 1].
+func ScoreAll(w Weights, candidateName, candidateDesc, candidateBody string, candidateTools []string,
+	existingName, existingDesc, existingBody string, existingTools []string) float64 {
+	var score float64
+	if w.Name > 0 {
+		score += NameSimilarity(candidateName, existingName) * w.Name
+	}
+	if w.Desc > 0 {
+		score += DescriptionSimilarity(candidateDesc, existingDesc) * w.Desc
+	}
+	if w.Tools > 0 {
+		score += toolsOverlap(candidateTools, existingTools) * w.Tools
+	}
+	if w.Body > 0 {
+		score += DescriptionSimilarity(candidateBody, existingBody) * w.Body
+	}
+	return score
+}
 
 // Score computes an overall similarity score between a candidate skill and an existing skill.
 // Returns a value in [0, 1] where 1 means identical.
 func Score(candidateName, candidateDesc, existingName, existingDesc string, existingTools []string) float64 {
-	nameSim := NameSimilarity(candidateName, existingName)
-	descSim := DescriptionSimilarity(candidateDesc, existingDesc)
-	toolSim := toolsOverlap(nil, existingTools) // candidate has no tools at creation time
-
-	return nameSim*nameWeight + descSim*descriptionWeight + toolSim*toolsWeight
+	return ScoreAll(OverlapWeights, candidateName, candidateDesc, "", nil, existingName, existingDesc, "", existingTools)
 }
 
 // ScoreWithTools computes similarity including the candidate's allowed-tools.
 func ScoreWithTools(candidateName, candidateDesc string, candidateTools []string,
 	existingName, existingDesc string, existingTools []string) float64 {
-	nameSim := NameSimilarity(candidateName, existingName)
-	descSim := DescriptionSimilarity(candidateDesc, existingDesc)
-	toolSim := toolsOverlap(candidateTools, existingTools)
-
-	return nameSim*nameWeight + descSim*descriptionWeight + toolSim*toolsWeight
+	return ScoreAll(OverlapWeights, candidateName, candidateDesc, "", candidateTools, existingName, existingDesc, "", existingTools)
 }
 
 // DescriptionSimilarity computes keyword overlap between two descriptions.
