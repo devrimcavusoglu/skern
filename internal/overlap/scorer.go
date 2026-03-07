@@ -41,25 +41,22 @@ func DescriptionSimilarity(a, b string) float64 {
 		return 0.0
 	}
 
-	// Jaccard similarity on keyword sets
+	// Jaccard similarity on keyword sets.
+	// extractKeywords already returns deduplicated keywords,
+	// so we only need one map for the intersection check.
 	setA := make(map[string]bool, len(wordsA))
 	for _, w := range wordsA {
 		setA[w] = true
 	}
 
-	setB := make(map[string]bool, len(wordsB))
-	for _, w := range wordsB {
-		setB[w] = true
-	}
-
 	intersection := 0
-	for w := range setA {
-		if setB[w] {
+	for _, w := range wordsB {
+		if setA[w] {
 			intersection++
 		}
 	}
 
-	union := len(setA) + len(setB) - intersection
+	union := len(wordsA) + len(wordsB) - intersection
 	if union == 0 {
 		return 0.0
 	}
@@ -109,7 +106,7 @@ var stopWords = map[string]bool{
 	"than": true, "too": true, "very": true, "just": true,
 }
 
-// extractKeywords tokenizes text and filters stop words, returning meaningful keywords.
+// extractKeywords tokenizes text and filters stop words, returning unique meaningful keywords.
 func extractKeywords(text string) []string {
 	text = strings.ToLower(text)
 
@@ -121,6 +118,7 @@ func extractKeywords(text string) []string {
 	text = replacer.Replace(text)
 
 	words := strings.Fields(text)
+	seen := make(map[string]bool, len(words))
 	var keywords []string
 	for _, w := range words {
 		if len(w) < 2 {
@@ -129,6 +127,10 @@ func extractKeywords(text string) []string {
 		if stopWords[w] {
 			continue
 		}
+		if seen[w] {
+			continue
+		}
+		seen[w] = true
 		keywords = append(keywords, w)
 	}
 	return keywords
