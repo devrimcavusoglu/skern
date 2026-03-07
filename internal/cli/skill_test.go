@@ -323,6 +323,35 @@ func TestSkillValidate_Text(t *testing.T) {
 	assert.Contains(t, out, "valid")
 }
 
+func TestSkillValidate_HintsJSON(t *testing.T) {
+	cc := testRegistry(t)
+
+	// Default body is short (~8 words) — triggers body-too-short hint
+	_, err := runCmd(t, cc, "skill", "create", "hint-skill", "--description", "A test skill", "--author", "alice")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "validate", "hint-skill", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillValidateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.True(t, result.Valid, "hints should not make skill invalid")
+	assert.Equal(t, 0, result.Errors)
+	assert.Greater(t, result.Hints, 0, "should have at least one hint")
+}
+
+func TestSkillValidate_HintsText(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "hint-text", "--description", "A test skill", "--author", "alice")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "validate", "hint-text")
+	require.NoError(t, err)
+	assert.Contains(t, out, "hint(s)")
+	assert.Contains(t, out, "~")
+}
+
 // --- skill create with overlap ---
 
 func TestSkillCreate_OverlapWarn(t *testing.T) {
