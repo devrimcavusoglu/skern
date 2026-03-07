@@ -56,7 +56,7 @@ func newSkillInstallCmd() *cobra.Command {
 
 			// Determine target platforms
 			var targets []platform.Platform
-			if platformType == platform.Type("all") {
+			if platformType == platform.TypeAll {
 				targets = det.DetectAll()
 				if len(targets) == 0 {
 					return fmt.Errorf("no platforms detected; install a supported platform first (run 'skern platform list' to see options)")
