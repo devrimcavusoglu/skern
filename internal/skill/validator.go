@@ -15,6 +15,7 @@ type Severity string
 const (
 	SeverityError   Severity = "error"
 	SeverityWarning Severity = "warning"
+	SeverityHint    Severity = "hint"
 )
 
 // ValidationIssue represents a single validation problem found in a skill.
@@ -37,6 +38,7 @@ func Validate(s *Skill) []ValidationIssue {
 	issues = append(issues, validateBody(s.Body)...)
 	issues = append(issues, validateAllowedTools(s.AllowedTools)...)
 	issues = append(issues, validateMetadata(s.Metadata)...)
+	issues = append(issues, lintStyle(s)...)
 
 	return issues
 }
@@ -126,6 +128,54 @@ func ValidateFolder(s *Skill, skillDir string) []ValidationIssue {
 				Message:  fmt.Sprintf("referenced file %q not found in skill directory", ref),
 			})
 		}
+	}
+
+	return issues
+}
+
+// Stylistic lint thresholds.
+const (
+	lintBodyMinWords = 20
+	lintDescMinWords = 3
+)
+
+// lintStyle performs stylistic quality checks on a skill.
+// Issues use SeverityHint to distinguish from structural errors/warnings.
+func lintStyle(s *Skill) []ValidationIssue {
+	var issues []ValidationIssue
+
+	// Body too short
+	bodyWords := len(strings.Fields(strings.TrimSpace(s.Body)))
+	if bodyWords > 0 && bodyWords < lintBodyMinWords {
+		issues = append(issues, ValidationIssue{
+			Field:    "body",
+			Severity: SeverityHint,
+			Message:  fmt.Sprintf("body has only %d words; consider adding more detailed instructions", bodyWords),
+		})
+	}
+
+	// Description too vague (very short)
+	descWords := len(strings.Fields(strings.TrimSpace(s.Description)))
+	if descWords > 0 && descWords < lintDescMinWords {
+		issues = append(issues, ValidationIssue{
+			Field:    "description",
+			Severity: SeverityHint,
+			Message:  fmt.Sprintf("description has only %d word(s); consider being more specific", descWords),
+		})
+	}
+
+	// Body lacks step-by-step guidance markers
+	bodyLower := strings.ToLower(s.Body)
+	hasSteps := strings.Contains(bodyLower, "step") ||
+		strings.Contains(bodyLower, "1.") ||
+		strings.Contains(bodyLower, "- ") ||
+		strings.Contains(bodyLower, "* ")
+	if bodyWords >= lintBodyMinWords && !hasSteps {
+		issues = append(issues, ValidationIssue{
+			Field:    "body",
+			Severity: SeverityHint,
+			Message:  "body lacks step-by-step structure; consider adding numbered steps or bullet points",
+		})
 	}
 
 	return issues

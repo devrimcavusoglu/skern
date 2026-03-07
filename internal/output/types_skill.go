@@ -96,4 +96,5 @@ type SkillValidateResult struct {
 	Issues []ValidationIssueResult `json:"issues"`
 	Errors int                     `json:"errors"`
 	Warns  int                     `json:"warnings"`
+	Hints  int                     `json:"hints"`
 }
