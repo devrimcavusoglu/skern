@@ -8,22 +8,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	jsonFlag  bool
-	quietFlag bool
-	printer   *output.Printer
-)
-
-// NewRootCmd creates the root skern command.
+// NewRootCmd creates the root skern command with default dependencies.
 func NewRootCmd() *cobra.Command {
+	return newRootCmd(nil)
+}
+
+func newRootCmd(cc *CommandContext) *cobra.Command {
+	if cc == nil {
+		cc = &CommandContext{
+			NewRegistry: defaultNewRegistry,
+			NewDetector: defaultNewDetector,
+		}
+	}
+
+	var (
+		jsonFlag  bool
+		quietFlag bool
+	)
+
 	cmd := &cobra.Command{
 		Use:   "skern",
 		Short: "Agent-first CLI for managing Agent Skills",
 		Long:  "skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			printer = output.NewPrinter(jsonFlag, quietFlag)
-			printer.SetOut(cmd.OutOrStdout())
-			printer.SetErrOut(cmd.ErrOrStderr())
+			cc.Printer = output.NewPrinter(jsonFlag, quietFlag)
+			cc.Printer.SetOut(cmd.OutOrStdout())
+			cc.Printer.SetErrOut(cmd.ErrOrStderr())
+			setContext(cmd, cc)
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -43,12 +54,16 @@ func NewRootCmd() *cobra.Command {
 
 // Execute runs the root command.
 func Execute() int {
-	cmd := NewRootCmd()
+	cc := &CommandContext{
+		NewRegistry: defaultNewRegistry,
+		NewDetector: defaultNewDetector,
+	}
+	cmd := newRootCmd(cc)
 	if err := cmd.Execute(); err != nil {
-		if printer == nil {
-			printer = output.NewPrinter(false, false)
+		if cc.Printer == nil {
+			cc.Printer = output.NewPrinter(false, false)
 		}
-		printer.PrintErrorResult(err)
+		cc.Printer.PrintErrorResult(err)
 
 		var ve *ValidationError
 		if errors.As(err, &ve) {

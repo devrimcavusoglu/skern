@@ -13,9 +13,10 @@ func newSkillShowCmd() *cobra.Command {
 		Short: "Show skill details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := getContext(cmd)
 			name := args[0]
 
-			reg, err := newRegistryFunc()
+			reg, err := ctx.NewRegistry()
 			if err != nil {
 				return err
 			}
@@ -30,7 +31,7 @@ func newSkillShowCmd() *cobra.Command {
 				result.Files = files
 			}
 			text := formatSkillShow(result)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 			return nil
 		},
 	}

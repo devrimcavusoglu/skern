@@ -21,6 +21,7 @@ func newSkillInstallCmd() *cobra.Command {
 		Short: "Install a skill to a platform",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := getContext(cmd)
 			name := args[0]
 
 			if err := skill.ValidateName(name); err != nil {
@@ -37,7 +38,7 @@ func newSkillInstallCmd() *cobra.Command {
 				return err
 			}
 
-			reg, err := newRegistryFunc()
+			reg, err := ctx.NewRegistry()
 			if err != nil {
 				return err
 			}
@@ -49,7 +50,7 @@ func newSkillInstallCmd() *cobra.Command {
 			}
 			_ = s // skill metadata not needed for install
 
-			det, err := newDetectorFunc()
+			det, err := ctx.NewDetector()
 			if err != nil {
 				return err
 			}
@@ -92,7 +93,7 @@ func newSkillInstallCmd() *cobra.Command {
 			}
 
 			text := formatInstallResult(name, entries)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 
 			if successCount == 0 {
 				return fmt.Errorf("failed to install %q to any platform", name)

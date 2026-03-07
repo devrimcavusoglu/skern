@@ -16,13 +16,14 @@ func newSkillRemoveCmd() *cobra.Command {
 		Short: "Remove a skill",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := getContext(cmd)
 			name := args[0]
 
 			if err := skill.ValidateName(name); err != nil {
 				return &ValidationError{Message: err.Error()}
 			}
 
-			reg, err := newRegistryFunc()
+			reg, err := ctx.NewRegistry()
 			if err != nil {
 				return err
 			}
@@ -57,7 +58,7 @@ func newSkillRemoveCmd() *cobra.Command {
 				Scope: resolvedScope,
 			}
 			text := fmt.Sprintf("Removed skill %q from %s scope\n", name, resolvedScope)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 			return nil
 		},
 	}

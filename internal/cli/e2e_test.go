@@ -15,16 +15,16 @@ import (
 // create -> validate -> install (all 3 platforms) -> platform status -> uninstall one ->
 // verify remaining -> uninstall all -> remove from registry.
 func TestEndToEnd_FullLifecycle(t *testing.T) {
-	userDir, _ := setupTestRegistryWithDirs(t)
+	cc, userDir, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
 	const skillName = "e2e-test-skill"
 	const skillDesc = "End-to-end test skill for lifecycle validation"
 
 	// Step 1: Create a skill with author metadata
-	out, err := runCmd(t, "skill", "create", skillName,
+	out, err := runCmd(t, cc, "skill", "create", skillName,
 		"--description", skillDesc,
 		"--author", "e2e-tester",
 		"--author-type", "human",
@@ -43,7 +43,7 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	require.NoError(t, err, "SKILL.md should exist in registry")
 
 	// Step 2: Validate the skill
-	out, err = runCmd(t, "skill", "validate", skillName, "--json")
+	out, err = runCmd(t, cc, "skill", "validate", skillName, "--json")
 	require.NoError(t, err)
 
 	var validateResult output.SkillValidateResult
@@ -53,7 +53,7 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	assert.Equal(t, 0, validateResult.Errors, "no validation errors expected")
 
 	// Step 3: Show skill details and verify author
-	out, err = runCmd(t, "skill", "show", skillName, "--json")
+	out, err = runCmd(t, cc, "skill", "show", skillName, "--json")
 	require.NoError(t, err)
 
 	var showResult output.SkillResult
@@ -64,7 +64,7 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	assert.Equal(t, "human", showResult.Author.Type)
 
 	// Step 4: Install to all 3 platforms
-	out, err = runCmd(t, "skill", "install", skillName, "--platform", "all", "--json")
+	out, err = runCmd(t, cc, "skill", "install", skillName, "--platform", "all", "--json")
 	require.NoError(t, err)
 
 	var installResult output.SkillInstallResult
@@ -88,7 +88,7 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	}
 
 	// Step 6: Verify platform status shows all installed
-	out, err = runCmd(t, "platform", "status", "--json")
+	out, err = runCmd(t, cc, "platform", "status", "--json")
 	require.NoError(t, err)
 
 	var statusResult output.PlatformStatusResult
@@ -105,7 +105,7 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	assert.Equal(t, 3, installedCount, "skill should be installed on all 3 platforms")
 
 	// Step 7: Uninstall from claude-code only
-	out, err = runCmd(t, "skill", "uninstall", skillName, "--platform", "claude-code", "--json")
+	out, err = runCmd(t, cc, "skill", "uninstall", skillName, "--platform", "claude-code", "--json")
 	require.NoError(t, err)
 
 	var uninstallResult output.SkillUninstallResult
@@ -125,7 +125,7 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	}
 
 	// Step 8: Verify platform status reflects partial uninstall
-	out, err = runCmd(t, "platform", "status", "--json")
+	out, err = runCmd(t, cc, "platform", "status", "--json")
 	require.NoError(t, err)
 
 	require.NoError(t, json.Unmarshal([]byte(out), &statusResult))
@@ -140,9 +140,9 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	}
 
 	// Step 9: Uninstall from remaining platforms
-	_, err = runCmd(t, "skill", "uninstall", skillName, "--platform", "codex-cli")
+	_, err = runCmd(t, cc, "skill", "uninstall", skillName, "--platform", "codex-cli")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "uninstall", skillName, "--platform", "opencode")
+	_, err = runCmd(t, cc, "skill", "uninstall", skillName, "--platform", "opencode")
 	require.NoError(t, err)
 
 	// All platform files should be gone
@@ -152,13 +152,13 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	}
 
 	// Step 10: Skill should still exist in registry
-	out, err = runCmd(t, "skill", "show", skillName, "--json")
+	out, err = runCmd(t, cc, "skill", "show", skillName, "--json")
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal([]byte(out), &showResult))
 	assert.Equal(t, skillName, showResult.Name)
 
 	// Step 11: Search should find the skill
-	out, err = runCmd(t, "skill", "search", "e2e", "--json")
+	out, err = runCmd(t, cc, "skill", "search", "e2e", "--json")
 	require.NoError(t, err)
 
 	var searchResult output.SkillSearchResult
@@ -167,7 +167,7 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	assert.Equal(t, skillName, searchResult.Results[0].Name)
 
 	// Step 12: Remove from registry
-	out, err = runCmd(t, "skill", "remove", skillName, "--json")
+	out, err = runCmd(t, cc, "skill", "remove", skillName, "--json")
 	require.NoError(t, err)
 
 	var removeResult output.SkillRemoveResult
@@ -175,11 +175,11 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	assert.Equal(t, skillName, removeResult.Name)
 
 	// Step 13: Verify skill is gone
-	_, err = runCmd(t, "skill", "show", skillName)
+	_, err = runCmd(t, cc, "skill", "show", skillName)
 	assert.Error(t, err, "skill should no longer exist in registry")
 
 	// Step 14: List should be empty
-	out, err = runCmd(t, "skill", "list", "--json")
+	out, err = runCmd(t, cc, "skill", "list", "--json")
 	require.NoError(t, err)
 
 	var listResult output.SkillListResult
@@ -189,19 +189,19 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 
 // TestEndToEnd_MultiSkillWorkflow tests managing multiple skills across scopes and platforms.
 func TestEndToEnd_MultiSkillWorkflow(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
 	// Create skills in different scopes
-	_, err := runCmd(t, "skill", "create", "user-formatter", "--scope", "user", "--description", "Formats user code")
+	_, err := runCmd(t, cc, "skill", "create", "user-formatter", "--scope", "user", "--description", "Formats user code")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "create", "project-linter", "--scope", "project", "--description", "Lints project code")
+	_, err = runCmd(t, cc, "skill", "create", "project-linter", "--scope", "project", "--description", "Lints project code")
 	require.NoError(t, err)
 
 	// List all skills
-	out, err := runCmd(t, "skill", "list", "--scope", "all", "--json")
+	out, err := runCmd(t, cc, "skill", "list", "--scope", "all", "--json")
 	require.NoError(t, err)
 
 	var listResult output.SkillListResult
@@ -209,11 +209,11 @@ func TestEndToEnd_MultiSkillWorkflow(t *testing.T) {
 	assert.Equal(t, 2, listResult.Count)
 
 	// Install user skill to claude-code
-	_, err = runCmd(t, "skill", "install", "user-formatter", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "install", "user-formatter", "--platform", "claude-code")
 	require.NoError(t, err)
 
 	// Install project skill to codex-cli (project scope)
-	_, err = runCmd(t, "skill", "install", "project-linter", "--platform", "codex-cli", "--scope", "project")
+	_, err = runCmd(t, cc, "skill", "install", "project-linter", "--platform", "codex-cli", "--scope", "project")
 	require.NoError(t, err)
 
 	// Verify user-formatter on claude-code
@@ -227,7 +227,7 @@ func TestEndToEnd_MultiSkillWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	// Search across scopes — search matches on name
-	out, err = runCmd(t, "skill", "search", "formatter", "--json")
+	out, err = runCmd(t, cc, "skill", "search", "formatter", "--json")
 	require.NoError(t, err)
 
 	var searchResult output.SkillSearchResult
@@ -236,39 +236,39 @@ func TestEndToEnd_MultiSkillWorkflow(t *testing.T) {
 	assert.Equal(t, "user-formatter", searchResult.Results[0].Name)
 
 	// Clean up
-	_, err = runCmd(t, "skill", "uninstall", "user-formatter", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "uninstall", "user-formatter", "--platform", "claude-code")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "uninstall", "project-linter", "--platform", "codex-cli", "--scope", "project")
+	_, err = runCmd(t, cc, "skill", "uninstall", "project-linter", "--platform", "codex-cli", "--scope", "project")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "remove", "user-formatter")
+	_, err = runCmd(t, cc, "skill", "remove", "user-formatter")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "remove", "project-linter", "--scope", "project")
+	_, err = runCmd(t, cc, "skill", "remove", "project-linter", "--scope", "project")
 	require.NoError(t, err)
 }
 
 // TestEndToEnd_OverlapAndValidation tests the overlap detection and validation
 // flows work correctly across the full lifecycle.
 func TestEndToEnd_OverlapAndValidation(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
 	// Create first skill
-	_, err := runCmd(t, "skill", "create", "code-review",
+	_, err := runCmd(t, cc, "skill", "create", "code-review",
 		"--description", "Reviews code for quality issues",
 		"--author", "alice", "--author-type", "human")
 	require.NoError(t, err)
 
 	// Create similar skill — should succeed (warn level overlap)
-	out, err := runCmd(t, "skill", "create", "code-reviewer",
+	out, err := runCmd(t, cc, "skill", "create", "code-reviewer",
 		"--description", "Reviews code changes")
 	require.NoError(t, err)
 	assert.Contains(t, out, "similar", "should warn about overlap")
 
 	// Both skills should validate
 	for _, name := range []string{"code-review", "code-reviewer"} {
-		out, err = runCmd(t, "skill", "validate", name, "--json")
+		out, err = runCmd(t, cc, "skill", "validate", name, "--json")
 		require.NoError(t, err)
 
 		var result output.SkillValidateResult
@@ -277,13 +277,13 @@ func TestEndToEnd_OverlapAndValidation(t *testing.T) {
 	}
 
 	// Install both to a platform, verify both exist
-	_, err = runCmd(t, "skill", "install", "code-review", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "install", "code-review", "--platform", "claude-code")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "install", "code-reviewer", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "install", "code-reviewer", "--platform", "claude-code")
 	require.NoError(t, err)
 
 	// List dedup hints — text output should mention potential duplicates
-	out, err = runCmd(t, "skill", "list")
+	out, err = runCmd(t, cc, "skill", "list")
 	require.NoError(t, err)
 	assert.Contains(t, out, "code-review")
 	assert.Contains(t, out, "code-reviewer")

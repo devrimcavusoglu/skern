@@ -11,9 +11,10 @@ func newSkillSearchCmd() *cobra.Command {
 		Short: "Search for skills by name",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := getContext(cmd)
 			query := args[0]
 
-			reg, err := newRegistryFunc()
+			reg, err := ctx.NewRegistry()
 			if err != nil {
 				return err
 			}
@@ -34,7 +35,7 @@ func newSkillSearchCmd() *cobra.Command {
 				Count:   len(skillResults),
 			}
 			text := formatSearchResults(query, skillResults)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 			return nil
 		},
 	}

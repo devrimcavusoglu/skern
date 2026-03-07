@@ -14,7 +14,8 @@ func newPlatformListCmd() *cobra.Command {
 		Short: "List known platforms and their detection status",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			det, err := newDetectorFunc()
+			ctx := getContext(cmd)
+			det, err := ctx.NewDetector()
 			if err != nil {
 				return err
 			}
@@ -36,7 +37,7 @@ func newPlatformListCmd() *cobra.Command {
 			}
 
 			text := formatPlatformList(platforms)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 			return nil
 		},
 	}

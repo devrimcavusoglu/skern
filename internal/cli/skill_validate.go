@@ -17,9 +17,10 @@ func newSkillValidateCmd() *cobra.Command {
 		Short: "Validate a skill against the Agent Skills spec",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := getContext(cmd)
 			name := args[0]
 
-			reg, err := newRegistryFunc()
+			reg, err := ctx.NewRegistry()
 			if err != nil {
 				return err
 			}
@@ -33,7 +34,7 @@ func newSkillValidateCmd() *cobra.Command {
 			issues = append(issues, skill.ValidateFolder(s, skillDir)...)
 			result := toValidateResult(name, issues)
 			text := formatValidateResult(result)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 
 			if skill.HasErrors(issues) {
 				return &ValidationError{Message: fmt.Sprintf("skill %q has validation errors", name)}

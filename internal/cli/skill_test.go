@@ -13,22 +13,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupTestRegistry overrides newRegistryFunc to use temp directories.
-func setupTestRegistry(t *testing.T) {
+// testRegistry returns a CommandContext with a temp registry.
+func testRegistry(t *testing.T) *CommandContext {
 	t.Helper()
 	userDir := filepath.Join(t.TempDir(), "user-skills")
 	projectDir := filepath.Join(t.TempDir(), "project-skills")
 
-	original := newRegistryFunc
-	newRegistryFunc = func() (*registry.Registry, error) {
-		return registry.New(userDir, projectDir), nil
+	return &CommandContext{
+		NewRegistry: func() (*registry.Registry, error) {
+			return registry.New(userDir, projectDir), nil
+		},
+		NewDetector: defaultNewDetector,
 	}
-	t.Cleanup(func() { newRegistryFunc = original })
 }
 
-func runCmd(t *testing.T, args ...string) (string, error) {
+func runCmd(t *testing.T, cc *CommandContext, args ...string) (string, error) {
 	t.Helper()
-	cmd := NewRootCmd()
+	cmd := newRootCmd(cc)
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
@@ -40,16 +41,16 @@ func runCmd(t *testing.T, args ...string) (string, error) {
 // --- skill create ---
 
 func TestSkillCreate(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "my-skill", "--description", "A test skill")
+	_, err := runCmd(t, cc, "skill", "create", "my-skill", "--description", "A test skill")
 	require.NoError(t, err)
 }
 
 func TestSkillCreate_JSON(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	out, err := runCmd(t, "skill", "create", "my-skill", "--json")
+	out, err := runCmd(t, cc, "skill", "create", "my-skill", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillCreateResult
@@ -60,9 +61,9 @@ func TestSkillCreate_JSON(t *testing.T) {
 }
 
 func TestSkillCreate_ProjectScope(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	out, err := runCmd(t, "skill", "create", "proj-skill", "--scope", "project", "--json")
+	out, err := runCmd(t, cc, "skill", "create", "proj-skill", "--scope", "project", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillCreateResult
@@ -71,26 +72,26 @@ func TestSkillCreate_ProjectScope(t *testing.T) {
 }
 
 func TestSkillCreate_InvalidName(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "INVALID_NAME")
+	_, err := runCmd(t, cc, "skill", "create", "INVALID_NAME")
 	assert.Error(t, err)
 }
 
 func TestSkillCreate_Duplicate(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "dup-skill")
+	_, err := runCmd(t, cc, "skill", "create", "dup-skill")
 	require.NoError(t, err)
 
-	_, err = runCmd(t, "skill", "create", "dup-skill")
+	_, err = runCmd(t, cc, "skill", "create", "dup-skill")
 	assert.Error(t, err)
 }
 
 func TestSkillCreate_WithAuthor(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	out, err := runCmd(t, "skill", "create", "authored-skill",
+	out, err := runCmd(t, cc, "skill", "create", "authored-skill",
 		"--author", "alice", "--author-type", "human",
 		"--json")
 	require.NoError(t, err)
@@ -103,9 +104,9 @@ func TestSkillCreate_WithAuthor(t *testing.T) {
 // --- skill list ---
 
 func TestSkillList_Empty(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	out, err := runCmd(t, "skill", "list", "--json")
+	out, err := runCmd(t, cc, "skill", "list", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillListResult
@@ -114,14 +115,14 @@ func TestSkillList_Empty(t *testing.T) {
 }
 
 func TestSkillList(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "skill-a")
+	_, err := runCmd(t, cc, "skill", "create", "skill-a")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "create", "skill-b")
+	_, err = runCmd(t, cc, "skill", "create", "skill-b")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "list", "--json")
+	out, err := runCmd(t, cc, "skill", "list", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillListResult
@@ -130,14 +131,14 @@ func TestSkillList(t *testing.T) {
 }
 
 func TestSkillList_Scoped(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "user-skill", "--scope", "user")
+	_, err := runCmd(t, cc, "skill", "create", "user-skill", "--scope", "user")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "create", "proj-skill", "--scope", "project")
+	_, err = runCmd(t, cc, "skill", "create", "proj-skill", "--scope", "project")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "list", "--scope", "user", "--json")
+	out, err := runCmd(t, cc, "skill", "list", "--scope", "user", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillListResult
@@ -147,12 +148,12 @@ func TestSkillList_Scoped(t *testing.T) {
 }
 
 func TestSkillList_Text(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "my-skill")
+	_, err := runCmd(t, cc, "skill", "create", "my-skill")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "list")
+	out, err := runCmd(t, cc, "skill", "list")
 	require.NoError(t, err)
 	assert.Contains(t, out, "my-skill")
 }
@@ -160,12 +161,12 @@ func TestSkillList_Text(t *testing.T) {
 // --- skill show ---
 
 func TestSkillShow(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "show-skill", "--description", "Show me")
+	_, err := runCmd(t, cc, "skill", "create", "show-skill", "--description", "Show me")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "show", "show-skill", "--json")
+	out, err := runCmd(t, cc, "skill", "show", "show-skill", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillResult
@@ -175,19 +176,19 @@ func TestSkillShow(t *testing.T) {
 }
 
 func TestSkillShow_NotFound(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "show", "nonexistent")
+	_, err := runCmd(t, cc, "skill", "show", "nonexistent")
 	assert.Error(t, err)
 }
 
 func TestSkillShow_Text(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "detail-skill", "--description", "Detailed info")
+	_, err := runCmd(t, cc, "skill", "create", "detail-skill", "--description", "Detailed info")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "show", "detail-skill")
+	out, err := runCmd(t, cc, "skill", "show", "detail-skill")
 	require.NoError(t, err)
 	assert.Contains(t, out, "detail-skill")
 	assert.Contains(t, out, "Detailed info")
@@ -196,16 +197,16 @@ func TestSkillShow_Text(t *testing.T) {
 // --- skill search ---
 
 func TestSkillSearch(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "code-review")
+	_, err := runCmd(t, cc, "skill", "create", "code-review")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "create", "code-format")
+	_, err = runCmd(t, cc, "skill", "create", "code-format")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "create", "deploy-app")
+	_, err = runCmd(t, cc, "skill", "create", "deploy-app")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "search", "code", "--json")
+	out, err := runCmd(t, cc, "skill", "search", "code", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillSearchResult
@@ -215,12 +216,12 @@ func TestSkillSearch(t *testing.T) {
 }
 
 func TestSkillSearch_NoMatch(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "my-skill")
+	_, err := runCmd(t, cc, "skill", "create", "my-skill")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "search", "nonexistent", "--json")
+	out, err := runCmd(t, cc, "skill", "search", "nonexistent", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillSearchResult
@@ -229,12 +230,12 @@ func TestSkillSearch_NoMatch(t *testing.T) {
 }
 
 func TestSkillSearch_Text(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "find-me")
+	_, err := runCmd(t, cc, "skill", "create", "find-me")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "search", "find")
+	out, err := runCmd(t, cc, "skill", "search", "find")
 	require.NoError(t, err)
 	assert.Contains(t, out, "find-me")
 }
@@ -242,12 +243,12 @@ func TestSkillSearch_Text(t *testing.T) {
 // --- skill remove ---
 
 func TestSkillRemove(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "remove-me")
+	_, err := runCmd(t, cc, "skill", "create", "remove-me")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "remove", "remove-me", "--json")
+	out, err := runCmd(t, cc, "skill", "remove", "remove-me", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillRemoveResult
@@ -256,45 +257,45 @@ func TestSkillRemove(t *testing.T) {
 	assert.Equal(t, "user", result.Scope)
 
 	// Verify it's gone
-	_, err = runCmd(t, "skill", "show", "remove-me")
+	_, err = runCmd(t, cc, "skill", "show", "remove-me")
 	assert.Error(t, err)
 }
 
 func TestSkillRemove_NotFound(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "remove", "nonexistent")
+	_, err := runCmd(t, cc, "skill", "remove", "nonexistent")
 	assert.Error(t, err)
 }
 
 func TestSkillRemove_Text(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "bye-skill")
+	_, err := runCmd(t, cc, "skill", "create", "bye-skill")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "remove", "bye-skill")
+	out, err := runCmd(t, cc, "skill", "remove", "bye-skill")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Removed")
 	assert.Contains(t, out, "bye-skill")
 }
 
 func TestSkillRemove_InvalidName(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "remove", "INVALID")
+	_, err := runCmd(t, cc, "skill", "remove", "INVALID")
 	assert.Error(t, err)
 }
 
 // --- skill validate ---
 
 func TestSkillValidate(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "valid-skill", "--description", "A valid skill", "--author", "alice")
+	_, err := runCmd(t, cc, "skill", "create", "valid-skill", "--description", "A valid skill", "--author", "alice")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "validate", "valid-skill", "--json")
+	out, err := runCmd(t, cc, "skill", "validate", "valid-skill", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillValidateResult
@@ -305,19 +306,19 @@ func TestSkillValidate(t *testing.T) {
 }
 
 func TestSkillValidate_NotFound(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "validate", "nonexistent")
+	_, err := runCmd(t, cc, "skill", "validate", "nonexistent")
 	assert.Error(t, err)
 }
 
 func TestSkillValidate_Text(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "text-skill", "--description", "A skill", "--author", "alice")
+	_, err := runCmd(t, cc, "skill", "create", "text-skill", "--description", "A skill", "--author", "alice")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "validate", "text-skill")
+	out, err := runCmd(t, cc, "skill", "validate", "text-skill")
 	require.NoError(t, err)
 	assert.Contains(t, out, "valid")
 }
@@ -325,34 +326,32 @@ func TestSkillValidate_Text(t *testing.T) {
 // --- skill create with overlap ---
 
 func TestSkillCreate_OverlapWarn(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
 	// Create first skill
-	_, err := runCmd(t, "skill", "create", "code-review", "--description", "Reviews code")
+	_, err := runCmd(t, cc, "skill", "create", "code-review", "--description", "Reviews code")
 	require.NoError(t, err)
 
 	// Create similar skill — should succeed with warning
-	out, err := runCmd(t, "skill", "create", "code-reviewer", "--description", "Reviews code changes")
+	out, err := runCmd(t, cc, "skill", "create", "code-reviewer", "--description", "Reviews code changes")
 	require.NoError(t, err)
 	assert.Contains(t, out, "similar")
 }
 
 func TestSkillCreate_Force(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "my-tool", "--description", "Does things")
+	_, err := runCmd(t, cc, "skill", "create", "my-tool", "--description", "Does things")
 	require.NoError(t, err)
 
 	// Even with high overlap, --force should allow creation
-	_, err = runCmd(t, "skill", "create", "my-tools", "--description", "Does things", "--force")
+	_, err = runCmd(t, cc, "skill", "create", "my-tools", "--description", "Does things", "--force")
 	require.NoError(t, err)
 }
 
 // --- Validation error exit code ---
 
 func TestValidationError_ExitCode(t *testing.T) {
-	setupTestRegistry(t)
-
 	// Execute() returns exit code 2 for validation errors
 	// We test via the error type directly
 	ve := &ValidationError{Message: "test"}
@@ -362,40 +361,40 @@ func TestValidationError_ExitCode(t *testing.T) {
 // --- completion ---
 
 func TestCompletion_Bash(t *testing.T) {
-	out, err := runCmd(t, "completion", "bash")
+	out, err := runCmd(t, nil, "completion", "bash")
 	require.NoError(t, err)
 	assert.NotEmpty(t, out)
 	assert.Contains(t, out, "bash")
 }
 
 func TestCompletion_Zsh(t *testing.T) {
-	out, err := runCmd(t, "completion", "zsh")
+	out, err := runCmd(t, nil, "completion", "zsh")
 	require.NoError(t, err)
 	assert.NotEmpty(t, out)
 }
 
 func TestCompletion_Fish(t *testing.T) {
-	out, err := runCmd(t, "completion", "fish")
+	out, err := runCmd(t, nil, "completion", "fish")
 	require.NoError(t, err)
 	assert.NotEmpty(t, out)
 }
 
 func TestCompletion_Invalid(t *testing.T) {
-	_, err := runCmd(t, "completion", "powershell")
+	_, err := runCmd(t, nil, "completion", "powershell")
 	assert.Error(t, err)
 }
 
 // --- from-template ---
 
 func TestSkillCreate_FromTemplate(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
 	// Write a template file
 	tmplDir := t.TempDir()
 	tmplPath := filepath.Join(tmplDir, "template.md")
 	require.NoError(t, os.WriteFile(tmplPath, []byte("## Custom Instructions\n\nDo something custom.\n"), 0o644))
 
-	out, err := runCmd(t, "skill", "create", "tmpl-skill", "--from-template", tmplPath, "--json")
+	out, err := runCmd(t, cc, "skill", "create", "tmpl-skill", "--from-template", tmplPath, "--json")
 	require.NoError(t, err)
 
 	var result output.SkillCreateResult
@@ -410,9 +409,9 @@ func TestSkillCreate_FromTemplate(t *testing.T) {
 }
 
 func TestSkillCreate_FromTemplate_NotFound(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "tmpl-fail", "--from-template", "/nonexistent/template.md")
+	_, err := runCmd(t, cc, "skill", "create", "tmpl-fail", "--from-template", "/nonexistent/template.md")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "reading template")
 }
@@ -420,15 +419,15 @@ func TestSkillCreate_FromTemplate_NotFound(t *testing.T) {
 // --- dedup hints in list ---
 
 func TestSkillList_DedupHints(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
 	// Create two similar skills
-	_, err := runCmd(t, "skill", "create", "code-review", "--description", "Reviews code")
+	_, err := runCmd(t, cc, "skill", "create", "code-review", "--description", "Reviews code")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "create", "code-reviewer", "--description", "Reviews code changes", "--force")
+	_, err = runCmd(t, cc, "skill", "create", "code-reviewer", "--description", "Reviews code changes", "--force")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "list", "--json")
+	out, err := runCmd(t, cc, "skill", "list", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillListResult
@@ -440,14 +439,14 @@ func TestSkillList_DedupHints(t *testing.T) {
 }
 
 func TestSkillList_DedupHints_Text(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "code-review", "--description", "Reviews code")
+	_, err := runCmd(t, cc, "skill", "create", "code-review", "--description", "Reviews code")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "create", "code-reviewer", "--description", "Reviews code changes", "--force")
+	_, err = runCmd(t, cc, "skill", "create", "code-reviewer", "--description", "Reviews code changes", "--force")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "list")
+	out, err := runCmd(t, cc, "skill", "list")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Potential duplicates")
 	assert.Contains(t, out, "code-review")
@@ -455,14 +454,14 @@ func TestSkillList_DedupHints_Text(t *testing.T) {
 }
 
 func TestSkillList_NoDedupHints(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "alpha-skill", "--description", "Does alpha things")
+	_, err := runCmd(t, cc, "skill", "create", "alpha-skill", "--description", "Does alpha things")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "create", "zeta-deploy", "--description", "Deploys to production")
+	_, err = runCmd(t, cc, "skill", "create", "zeta-deploy", "--description", "Deploys to production")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "list", "--json")
+	out, err := runCmd(t, cc, "skill", "list", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillListResult
@@ -476,13 +475,13 @@ func TestSkillList_NoDedupHints(t *testing.T) {
 // --- skill show with files ---
 
 func TestSkillShow_WithFiles(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "file-skill", "--description", "A skill with files")
+	_, err := runCmd(t, cc, "skill", "create", "file-skill", "--description", "A skill with files")
 	require.NoError(t, err)
 
 	// Get the skill path
-	showOut, err := runCmd(t, "skill", "show", "file-skill", "--json")
+	showOut, err := runCmd(t, cc, "skill", "show", "file-skill", "--json")
 	require.NoError(t, err)
 
 	var initial output.SkillResult
@@ -495,7 +494,7 @@ func TestSkillShow_WithFiles(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(initial.Path, "config.json"), []byte("{}"), 0o644))
 
 	// Show again — should include files
-	out, err := runCmd(t, "skill", "show", "file-skill", "--json")
+	out, err := runCmd(t, cc, "skill", "show", "file-skill", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillResult
@@ -508,13 +507,13 @@ func TestSkillShow_WithFiles(t *testing.T) {
 // --- skill validate folder warning ---
 
 func TestSkillValidate_FolderWarning(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "ref-skill", "--description", "A skill with refs", "--author", "alice")
+	_, err := runCmd(t, cc, "skill", "create", "ref-skill", "--description", "A skill with refs", "--author", "alice")
 	require.NoError(t, err)
 
 	// Get the skill path
-	showOut, err := runCmd(t, "skill", "show", "ref-skill", "--json")
+	showOut, err := runCmd(t, cc, "skill", "show", "ref-skill", "--json")
 	require.NoError(t, err)
 
 	var initial output.SkillResult
@@ -538,7 +537,7 @@ Run ` + "`scripts/run.py`" + ` to process data.
 	require.NoError(t, os.WriteFile(skillMdPath, []byte(content), 0o644))
 
 	// Validate — should warn about missing file
-	out, err := runCmd(t, "skill", "validate", "ref-skill", "--json")
+	out, err := runCmd(t, cc, "skill", "validate", "ref-skill", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillValidateResult
@@ -559,14 +558,14 @@ Run ` + "`scripts/run.py`" + ` to process data.
 }
 
 func TestSkillShow_ModifiedBy(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
 	// Create a skill and manually add modified-by entries
-	_, err := runCmd(t, "skill", "create", "prov-skill", "--description", "Provenance test", "--author", "alice")
+	_, err := runCmd(t, cc, "skill", "create", "prov-skill", "--description", "Provenance test", "--author", "alice")
 	require.NoError(t, err)
 
 	// Read the created SKILL.md and add modified-by to the frontmatter
-	showOut, err := runCmd(t, "skill", "show", "prov-skill", "--json")
+	showOut, err := runCmd(t, cc, "skill", "show", "prov-skill", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillResult
@@ -598,7 +597,7 @@ TODO: Add step-by-step instructions for the agent.
 	require.NoError(t, os.WriteFile(skillMdPath, []byte(modifiedContent), 0o644))
 
 	// Show the skill — JSON should include modified_by
-	out, err := runCmd(t, "skill", "show", "prov-skill", "--json")
+	out, err := runCmd(t, cc, "skill", "show", "prov-skill", "--json")
 	require.NoError(t, err)
 
 	var updated output.SkillResult
@@ -612,12 +611,12 @@ TODO: Add step-by-step instructions for the agent.
 }
 
 func TestSkillShow_ModifiedBy_Text(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "prov-text", "--description", "Provenance text test", "--author", "alice")
+	_, err := runCmd(t, cc, "skill", "create", "prov-text", "--description", "Provenance text test", "--author", "alice")
 	require.NoError(t, err)
 
-	showOut, err := runCmd(t, "skill", "show", "prov-text", "--json")
+	showOut, err := runCmd(t, cc, "skill", "show", "prov-text", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillResult
@@ -644,7 +643,7 @@ TODO: Add step-by-step instructions for the agent.
 `
 	require.NoError(t, os.WriteFile(skillMdPath, []byte(modifiedContent), 0o644))
 
-	out, err := runCmd(t, "skill", "show", "prov-text")
+	out, err := runCmd(t, cc, "skill", "show", "prov-text")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Modified-by")
 	assert.Contains(t, out, "bob")

@@ -36,6 +36,7 @@ Use --name to provide an agent-suggested skill name. When the recommendation is
 CREATE, this overrides the auto-generated name suggestion.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := getContext(cmd)
 			query := args[0]
 
 			// Validate --name if provided
@@ -45,7 +46,7 @@ CREATE, this overrides the auto-generated name suggestion.`,
 				}
 			}
 
-			reg, err := newRegistryFunc()
+			reg, err := ctx.NewRegistry()
 			if err != nil {
 				return err
 			}
@@ -67,7 +68,7 @@ CREATE, this overrides the auto-generated name suggestion.`,
 
 			result := buildRecommendation(query, scored, name)
 			text := formatRecommendation(result)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 			return nil
 		},
 	}
