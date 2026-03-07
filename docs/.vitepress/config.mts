@@ -83,6 +83,7 @@ export default defineConfig({
             { text: 'Contributing Guide', link: '/contributing/' },
             { text: 'Development', link: '/contributing/development' },
             { text: 'Manual Testing', link: '/contributing/manual-testing' },
+            { text: 'PR Manual Testing', link: '/contributing/pr-manual-testing' },
           ],
         },
       ],
