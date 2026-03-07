@@ -21,6 +21,7 @@ func newSkillCreateCmd() *cobra.Command {
 		scope          string
 		force          bool
 		fromTemplate   string
+		tags           []string
 	)
 
 	cmd := &cobra.Command{
@@ -102,6 +103,7 @@ func newSkillCreateCmd() *cobra.Command {
 			}
 
 			s := skill.NewSkillWithBody(name, description, author, authorType, authorPlatform, body)
+			s.Tags = tags
 
 			// Validate on create (warnings only, don't block)
 			issues := skill.Validate(s)
@@ -133,6 +135,7 @@ func newSkillCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
 	cmd.Flags().BoolVar(&force, "force", false, "bypass overlap detection block")
 	cmd.Flags().StringVar(&fromTemplate, "from-template", "", "path to a template file for the skill body")
+	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags for the skill")
 
 	return cmd
 }

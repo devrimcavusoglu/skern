@@ -9,7 +9,10 @@ import (
 )
 
 func newSkillListCmd() *cobra.Command {
-	var scope string
+	var (
+		scope string
+		tag   string
+	)
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -50,6 +53,9 @@ func newSkillListCmd() *cobra.Command {
 			}
 
 			for _, d := range discovered {
+				if tag != "" && !hasTag(d.Skill.Tags, tag) {
+					continue
+				}
 				r := toDiscoveredSkillResult(d)
 				if files, err := skill.ListFiles(d.Path); err == nil && len(files) > 0 {
 					r.Files = files
@@ -104,6 +110,7 @@ func newSkillListCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&scope, "scope", "all", "skill scope (user, project, or all)")
+	cmd.Flags().StringVar(&tag, "tag", "", "filter skills by tag")
 
 	return cmd
 }

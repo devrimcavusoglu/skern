@@ -717,3 +717,89 @@ TODO: Add step-by-step instructions for the agent.
 	assert.Contains(t, out, "claude-code")
 	assert.Contains(t, out, "2025-01-15")
 }
+
+// --- skill tags ---
+
+func TestSkillCreate_WithTags(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "tagged-skill",
+		"--description", "A tagged skill",
+		"--tags", "devops,testing",
+		"--json")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "show", "tagged-skill", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, []string{"devops", "testing"}, result.Tags)
+}
+
+func TestSkillCreate_WithTags_Show(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "tagged-text",
+		"--description", "A tagged skill",
+		"--tags", "ci,deploy")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "show", "tagged-text")
+	require.NoError(t, err)
+	assert.Contains(t, out, "Tags:")
+	assert.Contains(t, out, "ci")
+	assert.Contains(t, out, "deploy")
+}
+
+func TestSkillList_FilterByTag(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "tool-a",
+		"--description", "Tool A", "--tags", "devops")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "create", "tool-b",
+		"--description", "Tool B", "--tags", "testing")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "create", "tool-c",
+		"--description", "Tool C", "--tags", "devops,testing")
+	require.NoError(t, err)
+
+	// Filter by devops — should get tool-a and tool-c
+	out, err := runCmd(t, cc, "skill", "list", "--tag", "devops", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, 2, result.Count)
+
+	names := map[string]bool{}
+	for _, s := range result.Skills {
+		names[s.Name] = true
+	}
+	assert.True(t, names["tool-a"])
+	assert.True(t, names["tool-c"])
+}
+
+func TestSkillSearch_FilterByTag(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "code-lint",
+		"--description", "Lint code", "--tags", "code-quality")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "create", "code-format",
+		"--description", "Format code", "--tags", "formatting")
+	require.NoError(t, err)
+
+	// Search "code" but filter by code-quality — should get only code-lint
+	out, err := runCmd(t, cc, "skill", "search", "code", "--tag", "code-quality", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillSearchResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, 1, result.Count)
+	assert.Equal(t, "code-lint", result.Results[0].Name)
+}

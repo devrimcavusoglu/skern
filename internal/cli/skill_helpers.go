@@ -61,6 +61,7 @@ func toSkillResult(s *skill.Skill, scope string, path string) output.SkillResult
 			Type:     s.Metadata.Author.Type,
 			Platform: s.Metadata.Author.Platform,
 		},
+		Tags:         s.Tags,
 		Scope:        scope,
 		Path:         path,
 		AllowedTools: s.AllowedTools,
@@ -111,6 +112,9 @@ func formatSkillShow(s output.SkillResult) string {
 	}
 	if s.Path != "" {
 		fmt.Fprintf(&b, "Path:        %s\n", s.Path)
+	}
+	if len(s.Tags) > 0 {
+		fmt.Fprintf(&b, "Tags:        %s\n", strings.Join(s.Tags, ", "))
 	}
 	if len(s.AllowedTools) > 0 {
 		fmt.Fprintf(&b, "Tools:       %s\n", strings.Join(s.AllowedTools, ", "))
@@ -167,6 +171,17 @@ func formatSearchResults(query string, results []output.SkillResult) string {
 	fmt.Fprintf(&b, "Found %d skill(s) matching %q:\n\n", len(results), query)
 	b.WriteString(formatSkillTable(results))
 	return b.String()
+}
+
+// hasTag checks if a tag list contains the given tag (case-insensitive).
+func hasTag(tags []string, tag string) bool {
+	t := strings.ToLower(tag)
+	for _, v := range tags {
+		if strings.ToLower(v) == t {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveSkill finds a skill by name, searching the specified scope or both scopes.
