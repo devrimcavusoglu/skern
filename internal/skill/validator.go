@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -130,6 +131,8 @@ func ValidateFolder(s *Skill, skillDir string) []ValidationIssue {
 	return issues
 }
 
+var semverRegex = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`)
+
 func validateMetadata(m Metadata) []ValidationIssue {
 	var issues []ValidationIssue
 
@@ -158,9 +161,7 @@ func validateMetadata(m Metadata) []ValidationIssue {
 	}
 
 	if m.Version != "" {
-		// Basic semver check: at least X.Y.Z format
-		parts := strings.Split(m.Version, ".")
-		if len(parts) < 2 {
+		if !semverRegex.MatchString(m.Version) {
 			issues = append(issues, ValidationIssue{
 				Field:    "metadata.version",
 				Severity: SeverityWarning,

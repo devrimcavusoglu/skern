@@ -196,22 +196,42 @@ func TestValidate_AgentWithoutPlatform(t *testing.T) {
 	assert.True(t, hasPlatformWarn)
 }
 
-func TestValidate_BadVersionFormat(t *testing.T) {
-	s := &Skill{
-		Name:        "my-skill",
-		Description: "A description",
-		Body:        "Some body",
-		Metadata:    Metadata{Author: Author{Name: "alice", Type: "human"}, Version: "1"},
+func TestValidate_VersionFormat(t *testing.T) {
+	tests := []struct {
+		name     string
+		version  string
+		wantWarn bool
+	}{
+		{"valid 0.1.0", "0.1.0", false},
+		{"valid 1.0.0", "1.0.0", false},
+		{"valid 12.34.56", "12.34.56", false},
+		{"single number", "1", true},
+		{"two parts", "1.2", true},
+		{"non-numeric parts", "a.b.c", true},
+		{"mixed non-numeric", "1.2.three", true},
+		{"v prefix", "v1.0.0", true},
+		{"leading zeros", "01.02.03", true},
 	}
 
-	issues := Validate(s)
-	hasVersionWarn := false
-	for _, i := range issues {
-		if i.Field == "metadata.version" && i.Severity == SeverityWarning {
-			hasVersionWarn = true
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Skill{
+				Name:        "my-skill",
+				Description: "A description",
+				Body:        "Some body",
+				Metadata:    Metadata{Author: Author{Name: "alice", Type: "human"}, Version: tt.version},
+			}
+
+			issues := Validate(s)
+			hasVersionWarn := false
+			for _, i := range issues {
+				if i.Field == "metadata.version" && i.Severity == SeverityWarning {
+					hasVersionWarn = true
+				}
+			}
+			assert.Equal(t, tt.wantWarn, hasVersionWarn, "version %q", tt.version)
+		})
 	}
-	assert.True(t, hasVersionWarn)
 }
 
 func TestHasErrors(t *testing.T) {
