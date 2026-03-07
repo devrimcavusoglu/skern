@@ -34,6 +34,7 @@ type SkillResult struct {
 	Description  string             `json:"description"`
 	Version      string             `json:"version"`
 	Author       AuthorResult       `json:"author"`
+	Tags         []string           `json:"tags,omitempty"`
 	Scope        string             `json:"scope,omitempty"`
 	Path         string             `json:"path,omitempty"`
 	AllowedTools []string           `json:"allowed_tools,omitempty"`

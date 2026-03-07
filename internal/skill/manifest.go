@@ -12,6 +12,7 @@ import (
 type frontmatter struct {
 	Name         string   `yaml:"name"`
 	Description  string   `yaml:"description"`
+	Tags         []string `yaml:"tags,omitempty"`
 	AllowedTools []string `yaml:"allowed-tools,omitempty"`
 	Metadata     Metadata `yaml:"metadata"`
 }
@@ -41,6 +42,7 @@ func ParseManifest(path string) (*Skill, error) {
 	return &Skill{
 		Name:         f.Name,
 		Description:  f.Description,
+		Tags:         f.Tags,
 		AllowedTools: f.AllowedTools,
 		Metadata:     f.Metadata,
 		Body:         body,
@@ -52,6 +54,7 @@ func WriteManifest(s *Skill, path string) error {
 	fm := frontmatter{
 		Name:         s.Name,
 		Description:  s.Description,
+		Tags:         s.Tags,
 		AllowedTools: s.AllowedTools,
 		Metadata:     s.Metadata,
 	}
