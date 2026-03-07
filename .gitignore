@@ -22,9 +22,6 @@ Thumbs.db
 # Manual test reports (per-run artifacts)
 tests/manual/reports/
 
-# bv (beads viewer) local config and caches
-.bv/
-
 # Docs (VitePress)
 docs/.vitepress/cache
 docs/.vitepress/dist

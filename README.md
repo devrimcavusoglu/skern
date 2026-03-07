@@ -42,7 +42,7 @@ skern skill install code-review --platform all
 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.sh | bash
 ```
 
-Or with Go 1.23+:
+Or with Go 1.25+:
 
 ```sh
 go install github.com/devrimcavusoglu/skern/cmd/skern@latest
