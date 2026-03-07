@@ -4,7 +4,7 @@
 
 Skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
 
-The project is written in **Go 1.23+** and is preparing for its first release (**v0.0.1**).
+The project is written in **Go 1.25+** and has shipped its first release (**v0.0.1**).
 
 ## Repository Layout
 
@@ -17,80 +17,58 @@ internal/
   registry/                   # Filesystem CRUD over ~/.skern/skills/ and .skern/skills/
   platform/                   # Platform adapters (Claude Code, Codex CLI, OpenCode)
   output/                     # JSON/text structured output formatting
+scripts/
+  install.sh                  # Installer script
+  install_test.sh             # Installer tests
+  smoke_test.sh               # Smoke tests for built binary
+tests/manual/                 # Manual (agent-driven) test scenarios
+docs/                         # Documentation site (VitePress)
 go.mod, go.sum
 Makefile
 .goreleaser.yaml
 .golangci.yml
-.github/workflows/ci.yml
-.github/workflows/release.yml
-scripts/install.sh
+.github/
+  workflows/ci.yml
+  workflows/release.yml
+  workflows/docs-deploy.yml
+  workflows/docs-pr-check.yml
+  CODEOWNERS
 ```
 
-## Build & Run
+## Build, Test & Lint
 
 ```sh
-# Build
-make build
-# or directly:
-go build -o skern ./cmd/skern
-
-# Run
-./skern version
-```
-
-## Testing
-
-```sh
-# Run all tests
-go test ./...
-
-# Run tests for a specific package
-go test ./internal/skill/...
-
-# Run tests with verbose output
-go test -v ./...
-
-# Run tests with coverage
-go test -coverprofile=coverage.out ./...
+make build                  # Build binary with version/commit/date injected
+make test                   # go test ./...
+make test-v                 # Verbose test output
+make test-cover             # Generate coverage report (coverage.out + coverage.html)
+make test-install           # Run installer script tests
+make test-smoke             # Build binary then run smoke tests
+make test-manual-setup      # Set up manual test scenarios
+make test-manual-report     # Report manual test results
+make test-manual-teardown   # Clean up manual test environment
+make lint                   # golangci-lint run
+make fmt                    # gofmt -w .
+make clean                  # Remove binary and coverage files
 ```
 
 Tests use stdlib `testing` + `testify`. Follow table-driven test patterns. Integration tests should use temporary directories to simulate filesystem layouts.
 
-## Linting & Formatting
-
-```sh
-# Format code
-gofmt -w .
-
-# Run linter
-golangci-lint run
-
-# Lint a specific package
-golangci-lint run ./internal/skill/...
-```
-
-Configuration lives in `.golangci.yml`.
+Linter configuration lives in `.golangci.yml`.
 
 ## Issue Tracking Workflow
 
-Development is tracked using **beads-rust (`br`)**, an agent-first CLI issue tracker.
+Development is tracked using **GitHub Issues** via the `gh` CLI.
 
 ```sh
-br list                           # List all open issues
-br ready                          # Show issues ready to work
-br create "Title" --type task     # Create a new issue
-br update <id> --status in_progress
-br close <id> --reason "Done"
-br sync --flush-only              # Export JSONL (then git add .beads/ && git commit)
+gh issue list                             # List open issues
+gh issue create --title "Title" --body "" # Create a new issue
+gh issue view <number>                    # View issue details
+gh issue close <number>                   # Close an issue
+gh issue edit <number> --add-label "bug"  # Add labels
 ```
 
-Each milestone (M0-M6) maps to a `br` epic. Reference issues in commit messages as `br#<id>`.
-
-### Mandatory Workflow
-
-1. **Before starting work**: Create a `br` epic for the milestone and individual issues for each task
-2. **During development**: Update issue status (`in_progress`, `closed`) as work progresses
-3. **In commit messages**: Reference `br#<id>` to link commits to issues
+Reference issues in commit messages as `#<number>` (e.g. `Fix validation edge case (#42)`).
 
 ## Branching Strategy
 
@@ -144,7 +122,7 @@ Each milestone gets its own feature branch. All commits for that milestone go on
 ### Commit Messages
 
 - Keep the subject line concise and imperative ("Add manifest parser", not "Added manifest parser")
-- Reference `br` issues when applicable: `br#<id>`
+- Reference GitHub issues when applicable: `#<number>`
 
 ## Architecture Notes
 
@@ -249,7 +227,7 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ## Current Status
 
-All milestones (M0–M5) are complete. The project is preparing for its first public release (v0.0.1).
+All milestones (M0–M5) are complete. The first public release (v0.0.1) has shipped.
 
 ### Future Roadmap
 
@@ -264,69 +242,3 @@ These items are tracked as GitHub issues:
 - Skill dependency resolution
 - WASI/Docker execution backends
 
-<!-- br-agent-instructions-v1 -->
-
----
-
-## Beads Workflow Integration
-
-This project uses [beads_rust](https://github.com/Dicklesworthstone/beads_rust) for issue tracking. Issues are stored in `.beads/` and tracked in git.
-
-**Note:** `br` is non-invasive and never executes git commands. After `br sync --flush-only`, you must manually run `git add .beads/ && git commit`.
-
-### Essential Commands
-
-```bash
-# View issues (launches TUI - avoid in automated sessions)
-bv
-
-# CLI commands for agents (use these instead)
-br ready              # Show issues ready to work (no blockers)
-br list --status=open # All open issues
-br show <id>          # Full issue details with dependencies
-br create --title="..." --type=task --priority=2
-br update <id> --status=in_progress
-br close <id> --reason="Completed"
-br close <id1> <id2>  # Close multiple issues at once
-br sync --flush-only  # Export JSONL (does NOT commit)
-git add .beads/
-git commit -m "sync beads"
-```
-
-### Workflow Pattern
-
-1. **Start**: Run `br ready` to find actionable work
-2. **Claim**: Use `br update <id> --status=in_progress`
-3. **Work**: Implement the task
-4. **Complete**: Use `br close <id>`
-5. **Sync**: Run `br sync --flush-only`, then `git add .beads/ && git commit`
-
-### Key Concepts
-
-- **Dependencies**: Issues can block other issues. `br ready` shows only unblocked work.
-- **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers, not words)
-- **Types**: task, bug, feature, epic, question, docs
-- **Blocking**: `br dep add <issue> <depends-on>` to add dependencies
-
-### Session Protocol
-
-**Before ending any session, run this checklist:**
-
-```bash
-git status              # Check what changed
-git add <files>         # Stage code changes
-br sync --flush-only    # Export beads JSONL
-git add .beads/
-git commit -m "..."     # Commit code + beads changes
-git push                # Push to remote
-```
-
-### Best Practices
-
-- Check `br ready` at session start to find available work
-- Update status as you work (in_progress → closed)
-- Create new issues with `br create` when you discover tasks
-- Use descriptive titles and set appropriate priority/type
-- Always `br sync --flush-only` + git add/commit before ending session
-
-<!-- end-br-agent-instructions -->
