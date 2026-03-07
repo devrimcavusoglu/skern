@@ -137,6 +137,32 @@ func TestSkillInstall_Duplicate(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestSkillInstall_Force(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	_, err := runCmd(t, cc, "skill", "create", "force-install", "--description", "Test")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "install", "force-install", "--platform", "claude-code")
+	require.NoError(t, err)
+
+	// Second install with --force should succeed
+	out, err := runCmd(t, cc, "skill", "install", "force-install", "--platform", "claude-code", "--force", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillInstallResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.True(t, result.Platforms[0].Success)
+
+	// Verify file still exists
+	installed := filepath.Join(home, ".claude", "skills", "force-install", "SKILL.md")
+	_, err = os.Stat(installed)
+	require.NoError(t, err)
+}
+
 func TestSkillInstall_NotFound(t *testing.T) {
 	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
