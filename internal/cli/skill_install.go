@@ -71,10 +71,10 @@ func newSkillInstallCmd() *cobra.Command {
 			}
 
 			// Install to each target platform
-			var entries []output.PlatformInstallEntry
+			var entries []output.PlatformActionEntry
 			var successCount int
 			for _, p := range targets {
-				entry := output.PlatformInstallEntry{
+				entry := output.PlatformActionEntry{
 					Platform: string(p.Name()),
 				}
 				if installErr := p.Install(skillDir, name, scopeVal); installErr != nil {
@@ -109,7 +109,7 @@ func newSkillInstallCmd() *cobra.Command {
 	return cmd
 }
 
-func formatInstallResult(name string, entries []output.PlatformInstallEntry) string {
+func formatInstallResult(name string, entries []output.PlatformActionEntry) string {
 	var b strings.Builder
 	for _, e := range entries {
 		if e.Success {

@@ -59,10 +59,10 @@ func newSkillUninstallCmd() *cobra.Command {
 			}
 
 			// Uninstall from each target platform
-			var entries []output.PlatformUninstallEntry
+			var entries []output.PlatformActionEntry
 			var successCount int
 			for _, p := range targets {
-				entry := output.PlatformUninstallEntry{
+				entry := output.PlatformActionEntry{
 					Platform: string(p.Name()),
 				}
 				if uninstallErr := p.Uninstall(name, scopeVal); uninstallErr != nil {
@@ -97,7 +97,7 @@ func newSkillUninstallCmd() *cobra.Command {
 	return cmd
 }
 
-func formatUninstallResult(name string, entries []output.PlatformUninstallEntry) string {
+func formatUninstallResult(name string, entries []output.PlatformActionEntry) string {
 	var b strings.Builder
 	for _, e := range entries {
 		if e.Success {
