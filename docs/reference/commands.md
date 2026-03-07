@@ -5,6 +5,7 @@
 ```
 skern init                                    # Initialize .skern/ in current project
 skern skill create <name>                     # Scaffold a new skill
+skern skill edit <name>                       # Edit skill metadata or body
 skern skill search <query>                    # Search skills by name/description
 skern skill recommend <query>                 # Recommend: reuse, extend, or create
 skern skill list [--scope user|project|all]   # List skills in registry
@@ -43,18 +44,50 @@ skern skill create <name> [flags]
 | `--author-type` | `human` or `agent` |
 | `--author-platform` | Platform name (e.g., `claude-code`) |
 | `--description` | Skill description |
+| `--tags` | Comma-separated list of tags |
+| `--scope` | `user` or `project` (default: `user`) |
 | `--force` | Bypass overlap block |
 | `--from-template <path>` | Use file as skill body |
 
 Overlap detection runs automatically during creation. See [Overlap Detection](/reference/overlap-detection) for details.
+
+## `skern skill edit`
+
+Edit a skill's metadata fields or open the body in an editor.
+
+```sh
+skern skill edit <name> [flags]
+```
+
+When called with field flags, the specified fields are updated directly. When called without field flags, the skill body is opened in `$EDITOR` (defaults to `vi`).
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--scope` | `user` or `project` |
+| `--description` | New description |
+| `--author` | New author name |
+| `--author-type` | `human` or `agent` |
+| `--author-platform` | Platform name |
+| `--version` | New version string |
+| `--modified-by` | Name of modifier (appends to `modified-by` list) |
+| `--modified-by-type` | `human` or `agent` |
+| `--modified-by-platform` | Platform name for modifier |
 
 ## `skern skill search`
 
 Search skills by name or description.
 
 ```sh
-skern skill search <query>
+skern skill search <query> [flags]
 ```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--tag` | Filter results to skills with this tag |
 
 ## `skern skill recommend`
 
@@ -77,10 +110,19 @@ skern skill recommend <query> [flags]
 List all skills in the registry.
 
 ```sh
-skern skill list [--scope user|project|all]
+skern skill list [--scope user|project|all] [flags]
 ```
 
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--scope` | `user`, `project`, or `all` |
+| `--tag` | Filter results to skills with this tag |
+
 Also runs pairwise overlap detection across all listed skills and appends a "Potential duplicates" section when matches are found (score >= 0.6). In `--json` mode, these appear in the `duplicates` array.
+
+Skills that cannot be parsed are reported as parse warnings rather than silently skipped. In text mode these appear as warning lines; in `--json` mode they appear in the `parse_warnings` array.
 
 ## `skern skill show`
 
@@ -122,6 +164,7 @@ skern skill install <name> --platform <platform>
 |------|-------------|
 | `--platform` | `claude-code`, `codex-cli`, `opencode`, or `all` (required) |
 | `--scope` | `user` or `project` |
+| `--force` | Overwrite existing installation |
 
 ## `skern skill uninstall`
 

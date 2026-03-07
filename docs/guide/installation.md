@@ -14,7 +14,7 @@ SKERN_VERSION=v0.0.1 curl -fsSL https://raw.githubusercontent.com/devrimcavusogl
 
 ## Go Install
 
-Requires Go 1.23+.
+Requires Go 1.25+.
 
 ```sh
 go install github.com/devrimcavusoglu/skern/cmd/skern@latest
