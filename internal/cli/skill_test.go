@@ -725,10 +725,16 @@ func TestSkillEdit_ModifiedBy(t *testing.T) {
 		"--description", "A skill", "--author", "alice")
 	require.NoError(t, err)
 
-	_, err = runCmd(t, cc, "skill", "edit", "edit-mod",
+	editOut, err := runCmd(t, cc, "skill", "edit", "edit-mod",
 		"--description", "New desc",
-		"--modified-by", "bob", "--modified-by-type", "human")
+		"--modified-by", "claude", "--modified-by-type", "agent", "--modified-by-platform", "claude-code",
+		"--json")
 	require.NoError(t, err)
+
+	var editResult output.SkillEditResult
+	require.NoError(t, json.Unmarshal([]byte(editOut), &editResult))
+	assert.Contains(t, editResult.Updated, "description")
+	assert.Contains(t, editResult.Updated, "modified-by")
 
 	showOut, err := runCmd(t, cc, "skill", "show", "edit-mod", "--json")
 	require.NoError(t, err)
@@ -736,8 +742,9 @@ func TestSkillEdit_ModifiedBy(t *testing.T) {
 	var showResult output.SkillResult
 	require.NoError(t, json.Unmarshal([]byte(showOut), &showResult))
 	require.Len(t, showResult.ModifiedBy, 1)
-	assert.Equal(t, "bob", showResult.ModifiedBy[0].Name)
-	assert.Equal(t, "human", showResult.ModifiedBy[0].Type)
+	assert.Equal(t, "claude", showResult.ModifiedBy[0].Name)
+	assert.Equal(t, "agent", showResult.ModifiedBy[0].Type)
+	assert.Equal(t, "claude-code", showResult.ModifiedBy[0].Platform)
 	assert.NotEmpty(t, showResult.ModifiedBy[0].Date)
 }
 
