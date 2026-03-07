@@ -13,6 +13,7 @@ const (
 	TypeClaudeCode Type = "claude-code"
 	TypeCodexCLI   Type = "codex-cli"
 	TypeOpenCode   Type = "opencode"
+	TypeAll        Type = "all"
 )
 
 // Platform defines the interface that each platform adapter must implement.
