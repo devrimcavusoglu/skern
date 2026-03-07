@@ -27,6 +27,7 @@ func newSkillCreateCmd() *cobra.Command {
 		Short: "Create a new skill",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := getContext(cmd)
 			name := args[0]
 
 			if err := skill.ValidateName(name); err != nil {
@@ -38,7 +39,7 @@ func newSkillCreateCmd() *cobra.Command {
 				return err
 			}
 
-			reg, err := newRegistryFunc()
+			reg, err := ctx.NewRegistry()
 			if err != nil {
 				return err
 			}
@@ -76,18 +77,18 @@ func newSkillCreateCmd() *cobra.Command {
 
 					if blocked {
 						text := formatOverlapBlock(name, matches)
-						printer.PrintResult(overlapResult, text)
+						ctx.Printer.PrintResult(overlapResult, text)
 						return &ValidationError{Message: fmt.Sprintf("skill %q blocked due to near-duplicate (score %.2f); use --force to override", name, maxScore)}
 					}
 
 					// Warn but proceed
 					text := formatOverlapWarn(name, matches)
-					printer.Print("%s", text)
+					ctx.Printer.Print("%s", text)
 				}
 			}
 
 			// Skill count threshold warnings
-			checkSkillCountWarnings(reg, scopeVal)
+			checkSkillCountWarnings(ctx.Printer, reg, scopeVal)
 
 			// Read template body if --from-template is specified
 			var body string
@@ -105,7 +106,7 @@ func newSkillCreateCmd() *cobra.Command {
 			issues := skill.Validate(s)
 			if len(issues) > 0 {
 				warnText := formatCreateValidationWarnings(issues)
-				printer.Print("%s", warnText)
+				ctx.Printer.Print("%s", warnText)
 			}
 
 			path, err := reg.Create(s, scopeVal)
@@ -119,7 +120,7 @@ func newSkillCreateCmd() *cobra.Command {
 				Path:  path,
 			}
 			text := fmt.Sprintf("Created skill %q in %s scope at %s\n", name, scope, path)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 			return nil
 		},
 	}
@@ -141,7 +142,7 @@ const (
 	userSkillCountWarn    = 50
 )
 
-func checkSkillCountWarnings(reg interface {
+func checkSkillCountWarnings(p *output.Printer, reg interface {
 	List(skill.Scope) ([]skill.Skill, error)
 }, scope skill.Scope) {
 	skills, err := reg.List(scope)
@@ -156,7 +157,7 @@ func checkSkillCountWarnings(reg interface {
 	}
 
 	if count >= threshold {
-		printer.Print("Warning: %s scope has %d skills (threshold: %d). Consider reviewing for duplicates.\n", scope, count, threshold)
+		p.Print("Warning: %s scope has %d skills (threshold: %d). Consider reviewing for duplicates.\n", scope, count, threshold)
 	}
 }
 

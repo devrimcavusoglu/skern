@@ -17,7 +17,7 @@ func TestInit(t *testing.T) {
 	require.NoError(t, os.Chdir(dir))
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
-	out, err := runCmd(t, "init")
+	out, err := runCmd(t, nil, "init")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Initialized")
 
@@ -34,11 +34,11 @@ func TestInit_Idempotent(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
 	// First init
-	_, err := runCmd(t, "init")
+	_, err := runCmd(t, nil, "init")
 	require.NoError(t, err)
 
 	// Second init should succeed with "already initialized" message
-	out, err := runCmd(t, "init")
+	out, err := runCmd(t, nil, "init")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Already initialized")
 }
@@ -49,7 +49,7 @@ func TestInit_JSON(t *testing.T) {
 	require.NoError(t, os.Chdir(dir))
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
-	out, err := runCmd(t, "init", "--json")
+	out, err := runCmd(t, nil, "init", "--json")
 	require.NoError(t, err)
 
 	var result output.InitResult
@@ -65,11 +65,11 @@ func TestInit_JSON_AlreadyExists(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
 	// First init
-	_, err := runCmd(t, "init", "--json")
+	_, err := runCmd(t, nil, "init", "--json")
 	require.NoError(t, err)
 
 	// Second init
-	out, err := runCmd(t, "init", "--json")
+	out, err := runCmd(t, nil, "init", "--json")
 	require.NoError(t, err)
 
 	var result output.InitResult

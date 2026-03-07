@@ -16,7 +16,8 @@ func newSkillListCmd() *cobra.Command {
 		Short: "List skills",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			reg, err := newRegistryFunc()
+			ctx := getContext(cmd)
+			reg, err := ctx.NewRegistry()
 			if err != nil {
 				return err
 			}
@@ -83,7 +84,7 @@ func newSkillListCmd() *cobra.Command {
 			if len(dupHints) > 0 {
 				text += formatDedupHints(dupHints)
 			}
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 			return nil
 		},
 	}

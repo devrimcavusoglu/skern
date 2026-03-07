@@ -16,17 +16,18 @@ func newPlatformStatusCmd() *cobra.Command {
 		Short: "Show skill installation status across platforms",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := getContext(cmd)
 			scopeVal, err := parseScope(scope)
 			if err != nil {
 				return err
 			}
 
-			reg, err := newRegistryFunc()
+			reg, err := ctx.NewRegistry()
 			if err != nil {
 				return err
 			}
 
-			det, err := newDetectorFunc()
+			det, err := ctx.NewDetector()
 			if err != nil {
 				return err
 			}
@@ -81,7 +82,7 @@ func newPlatformStatusCmd() *cobra.Command {
 			}
 
 			text := formatPlatformStatus(scope, entries)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 			return nil
 		},
 	}

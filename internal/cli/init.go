@@ -25,7 +25,7 @@ func newInitCmd() *cobra.Command {
 					Created: false,
 				}
 				text := fmt.Sprintf("Already initialized: %s\n", filepath.Join(".", ".skern"))
-				printer.PrintResult(result, text)
+				getContext(cmd).Printer.PrintResult(result, text)
 				return nil
 			}
 
@@ -38,7 +38,7 @@ func newInitCmd() *cobra.Command {
 				Created: true,
 			}
 			text := fmt.Sprintf("Initialized skern project at %s\n", filepath.Join(".", ".skern"))
-			printer.PrintResult(result, text)
+			getContext(cmd).Printer.PrintResult(result, text)
 			return nil
 		},
 	}

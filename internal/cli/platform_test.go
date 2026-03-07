@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupTestDetector overrides newDetectorFunc to use temp directories with all platforms detected.
-func setupTestDetector(t *testing.T, home, project string) {
+// withTestDetector configures a CommandContext with a test detector using temp directories.
+func withTestDetector(t *testing.T, cc *CommandContext, home, project string) {
 	t.Helper()
 
 	// Create platform directories so they are detected
@@ -22,45 +22,44 @@ func setupTestDetector(t *testing.T, home, project string) {
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".agents"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".config", "opencode"), 0o755))
 
-	original := newDetectorFunc
-	newDetectorFunc = func() (*platform.Detector, error) {
+	cc.NewDetector = func() (*platform.Detector, error) {
 		return platform.NewDetectorWithPlatforms([]platform.Platform{
 			platform.NewClaudeCode(home, project),
 			platform.NewCodexCLI(home, project),
 			platform.NewOpenCode(home, project),
 		}), nil
 	}
-	t.Cleanup(func() { newDetectorFunc = original })
 }
 
-// setupTestRegistryWithDirs overrides newRegistryFunc and returns the dirs used.
-func setupTestRegistryWithDirs(t *testing.T) (userDir, projectDir string) {
+// testRegistryWithDirs returns a CommandContext with temp registry dirs.
+func testRegistryWithDirs(t *testing.T) (cc *CommandContext, userDir, projectDir string) {
 	t.Helper()
 	userDir = filepath.Join(t.TempDir(), "user-skills")
 	projectDir = filepath.Join(t.TempDir(), "project-skills")
 
-	original := newRegistryFunc
-	newRegistryFunc = func() (*registry.Registry, error) {
-		return registry.New(userDir, projectDir), nil
+	cc = &CommandContext{
+		NewRegistry: func() (*registry.Registry, error) {
+			return registry.New(userDir, projectDir), nil
+		},
+		NewDetector: defaultNewDetector,
 	}
-	t.Cleanup(func() { newRegistryFunc = original })
-	return userDir, projectDir
+	return cc, userDir, projectDir
 }
 
 // --- skill install ---
 
 func TestSkillInstall(t *testing.T) {
-	userDir, _ := setupTestRegistryWithDirs(t)
+	cc, userDir, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
 	// Create a skill first
-	_, err := runCmd(t, "skill", "create", "install-me", "--description", "A test skill")
+	_, err := runCmd(t, cc, "skill", "create", "install-me", "--description", "A test skill")
 	require.NoError(t, err)
 
 	// Install to claude-code
-	out, err := runCmd(t, "skill", "install", "install-me", "--platform", "claude-code", "--json")
+	out, err := runCmd(t, cc, "skill", "install", "install-me", "--platform", "claude-code", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillInstallResult
@@ -85,15 +84,15 @@ func TestSkillInstall(t *testing.T) {
 }
 
 func TestSkillInstall_Text(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "create", "text-install", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "text-install", "--description", "Test")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "install", "text-install", "--platform", "claude-code")
+	out, err := runCmd(t, cc, "skill", "install", "text-install", "--platform", "claude-code")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Installed")
 	assert.Contains(t, out, "text-install")
@@ -101,15 +100,15 @@ func TestSkillInstall_Text(t *testing.T) {
 }
 
 func TestSkillInstall_AllPlatforms(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "create", "all-platforms", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "all-platforms", "--description", "Test")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "install", "all-platforms", "--platform", "all", "--json")
+	out, err := runCmd(t, cc, "skill", "install", "all-platforms", "--platform", "all", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillInstallResult
@@ -122,80 +121,80 @@ func TestSkillInstall_AllPlatforms(t *testing.T) {
 }
 
 func TestSkillInstall_Duplicate(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "create", "dup-install", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "dup-install", "--description", "Test")
 	require.NoError(t, err)
 
-	_, err = runCmd(t, "skill", "install", "dup-install", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "install", "dup-install", "--platform", "claude-code")
 	require.NoError(t, err)
 
 	// Second install should fail
-	_, err = runCmd(t, "skill", "install", "dup-install", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "install", "dup-install", "--platform", "claude-code")
 	assert.Error(t, err)
 }
 
 func TestSkillInstall_NotFound(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "install", "nonexistent", "--platform", "claude-code")
+	_, err := runCmd(t, cc, "skill", "install", "nonexistent", "--platform", "claude-code")
 	assert.Error(t, err)
 }
 
 func TestSkillInstall_InvalidPlatform(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "create", "my-skill", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "my-skill", "--description", "Test")
 	require.NoError(t, err)
 
-	_, err = runCmd(t, "skill", "install", "my-skill", "--platform", "invalid")
+	_, err = runCmd(t, cc, "skill", "install", "my-skill", "--platform", "invalid")
 	assert.Error(t, err)
 }
 
 func TestSkillInstall_MissingPlatformFlag(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "install", "my-skill")
+	_, err := runCmd(t, cc, "skill", "install", "my-skill")
 	assert.Error(t, err)
 }
 
 func TestSkillInstall_InvalidName(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "install", "INVALID", "--platform", "claude-code")
+	_, err := runCmd(t, cc, "skill", "install", "INVALID", "--platform", "claude-code")
 	assert.Error(t, err)
 }
 
 // --- skill uninstall ---
 
 func TestSkillUninstall(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "create", "remove-platform", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "remove-platform", "--description", "Test")
 	require.NoError(t, err)
 
-	_, err = runCmd(t, "skill", "install", "remove-platform", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "install", "remove-platform", "--platform", "claude-code")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "uninstall", "remove-platform", "--platform", "claude-code", "--json")
+	out, err := runCmd(t, cc, "skill", "uninstall", "remove-platform", "--platform", "claude-code", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillUninstallResult
@@ -211,59 +210,67 @@ func TestSkillUninstall(t *testing.T) {
 }
 
 func TestSkillUninstall_Text(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "create", "text-uninstall", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "text-uninstall", "--description", "Test")
 	require.NoError(t, err)
 
-	_, err = runCmd(t, "skill", "install", "text-uninstall", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "install", "text-uninstall", "--platform", "claude-code")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "uninstall", "text-uninstall", "--platform", "claude-code")
+	out, err := runCmd(t, cc, "skill", "uninstall", "text-uninstall", "--platform", "claude-code")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Uninstalled")
 	assert.Contains(t, out, "text-uninstall")
 }
 
 func TestSkillUninstall_NotInstalled(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "uninstall", "nonexistent", "--platform", "claude-code")
+	_, err := runCmd(t, cc, "skill", "uninstall", "nonexistent", "--platform", "claude-code")
 	assert.Error(t, err)
 }
 
 // --- platform list ---
 
 func TestPlatformList(t *testing.T) {
+	cc := &CommandContext{
+		NewRegistry: defaultNewRegistry,
+		NewDetector: defaultNewDetector,
+	}
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	out, err := runCmd(t, "platform", "list", "--json")
+	out, err := runCmd(t, cc, "platform", "list", "--json")
 	require.NoError(t, err)
 
 	var result output.PlatformListResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, 3, result.Count)
 
-	// All should be detected since setupTestDetector creates the directories
+	// All should be detected since withTestDetector creates the directories
 	for _, p := range result.Platforms {
 		assert.True(t, p.Detected, "expected %s to be detected", p.Name)
 	}
 }
 
 func TestPlatformList_Text(t *testing.T) {
+	cc := &CommandContext{
+		NewRegistry: defaultNewRegistry,
+		NewDetector: defaultNewDetector,
+	}
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	out, err := runCmd(t, "platform", "list")
+	out, err := runCmd(t, cc, "platform", "list")
 	require.NoError(t, err)
 	assert.Contains(t, out, "claude-code")
 	assert.Contains(t, out, "codex-cli")
@@ -278,17 +285,18 @@ func TestPlatformList_PartialDetection(t *testing.T) {
 	// Only create .claude directory
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".claude"), 0o755))
 
-	original := newDetectorFunc
-	newDetectorFunc = func() (*platform.Detector, error) {
-		return platform.NewDetectorWithPlatforms([]platform.Platform{
-			platform.NewClaudeCode(home, project),
-			platform.NewCodexCLI(home, project),
-			platform.NewOpenCode(home, project),
-		}), nil
+	cc := &CommandContext{
+		NewRegistry: defaultNewRegistry,
+		NewDetector: func() (*platform.Detector, error) {
+			return platform.NewDetectorWithPlatforms([]platform.Platform{
+				platform.NewClaudeCode(home, project),
+				platform.NewCodexCLI(home, project),
+				platform.NewOpenCode(home, project),
+			}), nil
+		},
 	}
-	t.Cleanup(func() { newDetectorFunc = original })
 
-	out, err := runCmd(t, "platform", "list", "--json")
+	out, err := runCmd(t, cc, "platform", "list", "--json")
 	require.NoError(t, err)
 
 	var result output.PlatformListResult
@@ -307,12 +315,12 @@ func TestPlatformList_PartialDetection(t *testing.T) {
 // --- platform status ---
 
 func TestPlatformStatus_Empty(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	out, err := runCmd(t, "platform", "status", "--json")
+	out, err := runCmd(t, cc, "platform", "status", "--json")
 	require.NoError(t, err)
 
 	var result output.PlatformStatusResult
@@ -322,19 +330,19 @@ func TestPlatformStatus_Empty(t *testing.T) {
 }
 
 func TestPlatformStatus_WithSkills(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
 	// Create and install a skill
-	_, err := runCmd(t, "skill", "create", "status-skill", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "status-skill", "--description", "Test")
 	require.NoError(t, err)
 
-	_, err = runCmd(t, "skill", "install", "status-skill", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "install", "status-skill", "--platform", "claude-code")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "platform", "status", "--json")
+	out, err := runCmd(t, cc, "platform", "status", "--json")
 	require.NoError(t, err)
 
 	var result output.PlatformStatusResult
@@ -354,37 +362,37 @@ func TestPlatformStatus_WithSkills(t *testing.T) {
 }
 
 func TestPlatformStatus_Text(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, "skill", "create", "text-status", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "text-status", "--description", "Test")
 	require.NoError(t, err)
 
-	_, err = runCmd(t, "skill", "install", "text-status", "--platform", "claude-code")
+	_, err = runCmd(t, cc, "skill", "install", "text-status", "--platform", "claude-code")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "platform", "status")
+	out, err := runCmd(t, cc, "platform", "status")
 	require.NoError(t, err)
 	assert.Contains(t, out, "text-status")
 	assert.Contains(t, out, "installed")
 }
 
 func TestPlatformStatus_ProjectScope(t *testing.T) {
-	setupTestRegistryWithDirs(t)
+	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
-	setupTestDetector(t, home, project)
+	withTestDetector(t, cc, home, project)
 
 	// Create skill in project scope
-	_, err := runCmd(t, "skill", "create", "proj-status", "--scope", "project", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "proj-status", "--scope", "project", "--description", "Test")
 	require.NoError(t, err)
 
-	_, err = runCmd(t, "skill", "install", "proj-status", "--platform", "claude-code", "--scope", "project")
+	_, err = runCmd(t, cc, "skill", "install", "proj-status", "--platform", "claude-code", "--scope", "project")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "platform", "status", "--scope", "project", "--json")
+	out, err := runCmd(t, cc, "platform", "status", "--scope", "project", "--json")
 	require.NoError(t, err)
 
 	var result output.PlatformStatusResult

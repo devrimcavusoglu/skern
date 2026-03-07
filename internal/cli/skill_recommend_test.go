@@ -10,9 +10,9 @@ import (
 )
 
 func TestSkillRecommend_Create_NoSkills(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	out, err := runCmd(t, "skill", "recommend", "format go source code", "--json")
+	out, err := runCmd(t, cc, "skill", "recommend", "format go source code", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillRecommendResult
@@ -25,14 +25,14 @@ func TestSkillRecommend_Create_NoSkills(t *testing.T) {
 }
 
 func TestSkillRecommend_Reuse(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
 	// Create a skill — name and description both contain "code-review"
-	_, err := runCmd(t, "skill", "create", "code-review", "--description", "code review")
+	_, err := runCmd(t, cc, "skill", "create", "code-review", "--description", "code review")
 	require.NoError(t, err)
 
 	// Query that exactly matches both name and description
-	out, err := runCmd(t, "skill", "recommend", "code-review", "--json")
+	out, err := runCmd(t, cc, "skill", "recommend", "code-review", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillRecommendResult
@@ -49,13 +49,13 @@ func TestSkillRecommend_Reuse(t *testing.T) {
 }
 
 func TestSkillRecommend_Create_LowMatch(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
 	// Create a skill that won't match the query
-	_, err := runCmd(t, "skill", "create", "deploy-app", "--description", "Deploys applications to production")
+	_, err := runCmd(t, cc, "skill", "create", "deploy-app", "--description", "Deploys applications to production")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "recommend", "format go source code", "--json")
+	out, err := runCmd(t, cc, "skill", "recommend", "format go source code", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillRecommendResult
@@ -64,13 +64,13 @@ func TestSkillRecommend_Create_LowMatch(t *testing.T) {
 }
 
 func TestSkillRecommend_Threshold(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "go-fmt", "--description", "Format Go source files")
+	_, err := runCmd(t, cc, "skill", "create", "go-fmt", "--description", "Format Go source files")
 	require.NoError(t, err)
 
 	// Very high threshold should yield CREATE
-	out, err := runCmd(t, "skill", "recommend", "format go code", "--threshold", "0.99", "--json")
+	out, err := runCmd(t, cc, "skill", "recommend", "format go code", "--threshold", "0.99", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillRecommendResult
@@ -80,15 +80,15 @@ func TestSkillRecommend_Threshold(t *testing.T) {
 }
 
 func TestSkillRecommend_ScopedSearch(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "user-lint", "--description", "Lints user code", "--scope", "user")
+	_, err := runCmd(t, cc, "skill", "create", "user-lint", "--description", "Lints user code", "--scope", "user")
 	require.NoError(t, err)
-	_, err = runCmd(t, "skill", "create", "proj-lint", "--description", "Lints project code", "--scope", "project")
+	_, err = runCmd(t, cc, "skill", "create", "proj-lint", "--description", "Lints project code", "--scope", "project")
 	require.NoError(t, err)
 
 	// Search only user scope
-	out, err := runCmd(t, "skill", "recommend", "lint", "--scope", "user", "--json")
+	out, err := runCmd(t, cc, "skill", "recommend", "lint", "--scope", "user", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillRecommendResult
@@ -100,9 +100,9 @@ func TestSkillRecommend_ScopedSearch(t *testing.T) {
 }
 
 func TestSkillRecommend_TextOutput(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	out, err := runCmd(t, "skill", "recommend", "deploy to production")
+	out, err := runCmd(t, cc, "skill", "recommend", "deploy to production")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Recommendation:")
 	assert.Contains(t, out, "CREATE")
@@ -110,21 +110,21 @@ func TestSkillRecommend_TextOutput(t *testing.T) {
 }
 
 func TestSkillRecommend_TextOutput_WithMatch(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "create", "code-review", "--description", "code review")
+	_, err := runCmd(t, cc, "skill", "create", "code-review", "--description", "code review")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, "skill", "recommend", "code review")
+	out, err := runCmd(t, cc, "skill", "recommend", "code review")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Recommendation:")
 	assert.Contains(t, out, "REUSE")
 }
 
 func TestSkillRecommend_NameOverride(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	out, err := runCmd(t, "skill", "recommend", "format go source code", "--name", "gofmt-runner", "--json")
+	out, err := runCmd(t, cc, "skill", "recommend", "format go source code", "--name", "gofmt-runner", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillRecommendResult
@@ -134,31 +134,31 @@ func TestSkillRecommend_NameOverride(t *testing.T) {
 }
 
 func TestSkillRecommend_NameOverride_TextOutput(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	out, err := runCmd(t, "skill", "recommend", "format go source code", "--name", "gofmt-runner")
+	out, err := runCmd(t, cc, "skill", "recommend", "format go source code", "--name", "gofmt-runner")
 	require.NoError(t, err)
 	assert.Contains(t, out, "gofmt-runner")
 	assert.Contains(t, out, "skern skill create")
 }
 
 func TestSkillRecommend_NameOverride_InvalidName(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "recommend", "test query", "--name", "INVALID_NAME")
+	_, err := runCmd(t, cc, "skill", "recommend", "test query", "--name", "INVALID_NAME")
 	assert.Error(t, err)
 }
 
 func TestSkillRecommend_InvalidScope(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "recommend", "test", "--scope", "invalid")
+	_, err := runCmd(t, cc, "skill", "recommend", "test", "--scope", "invalid")
 	assert.Error(t, err)
 }
 
 func TestSkillRecommend_MissingArg(t *testing.T) {
-	setupTestRegistry(t)
+	cc := testRegistry(t)
 
-	_, err := runCmd(t, "skill", "recommend")
+	_, err := runCmd(t, cc, "skill", "recommend")
 	assert.Error(t, err)
 }

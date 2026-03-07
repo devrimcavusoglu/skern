@@ -21,6 +21,7 @@ func newSkillUninstallCmd() *cobra.Command {
 		Short: "Uninstall a skill from a platform",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := getContext(cmd)
 			name := args[0]
 
 			if err := skill.ValidateName(name); err != nil {
@@ -37,7 +38,7 @@ func newSkillUninstallCmd() *cobra.Command {
 				return err
 			}
 
-			det, err := newDetectorFunc()
+			det, err := ctx.NewDetector()
 			if err != nil {
 				return err
 			}
@@ -80,7 +81,7 @@ func newSkillUninstallCmd() *cobra.Command {
 			}
 
 			text := formatUninstallResult(name, entries)
-			printer.PrintResult(result, text)
+			ctx.Printer.PrintResult(result, text)
 
 			if successCount == 0 {
 				return fmt.Errorf("failed to uninstall %q from any platform", name)

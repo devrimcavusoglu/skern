@@ -12,12 +12,6 @@ import (
 	"github.com/devrimcavusoglu/skern/internal/skill"
 )
 
-// newRegistryFunc creates a Registry. Overridable in tests.
-var newRegistryFunc = defaultNewRegistry
-
-// newDetectorFunc creates a platform Detector. Overridable in tests.
-var newDetectorFunc = defaultNewDetector
-
 func defaultNewRegistry() (*registry.Registry, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
