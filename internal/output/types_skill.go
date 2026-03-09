@@ -106,3 +106,23 @@ type SkillValidateResult struct {
 	Warns  int                     `json:"warnings"`
 	Hints  int                     `json:"hints"`
 }
+
+// FieldDiff represents a difference in a single metadata field between two skills.
+type FieldDiff struct {
+	Field string `json:"field"`
+	Left  string `json:"left"`
+	Right string `json:"right"`
+}
+
+// SkillDiffResult is the JSON envelope for skill diff output.
+type SkillDiffResult struct {
+	LeftName    string      `json:"left_name"`
+	LeftSource  string      `json:"left_source"`
+	RightName   string      `json:"right_name"`
+	RightSource string      `json:"right_source"`
+	Identical   bool        `json:"identical"`
+	Fields      []FieldDiff `json:"fields,omitempty"`
+	BodyDiff    bool        `json:"body_diff"`
+	LeftBody    string      `json:"left_body,omitempty"`
+	RightBody   string      `json:"right_body,omitempty"`
+}
