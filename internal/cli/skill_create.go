@@ -22,6 +22,7 @@ func newSkillCreateCmd() *cobra.Command {
 		force          bool
 		fromTemplate   string
 		tags           []string
+		version        string
 	)
 
 	cmd := &cobra.Command{
@@ -105,6 +106,13 @@ func newSkillCreateCmd() *cobra.Command {
 			s := skill.NewSkillWithBody(name, description, author, authorType, authorPlatform, body)
 			s.Tags = tags
 
+			if version != "" {
+				if _, err := skill.ParseVersion(version); err != nil {
+					return &ValidationError{Message: err.Error()}
+				}
+				s.Metadata.Version = version
+			}
+
 			// Validate on create (warnings only, don't block)
 			issues := skill.Validate(s)
 			if len(issues) > 0 {
@@ -136,6 +144,7 @@ func newSkillCreateCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&force, "force", false, "bypass overlap detection block")
 	cmd.Flags().StringVar(&fromTemplate, "from-template", "", "path to a template file for the skill body")
 	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags for the skill")
+	cmd.Flags().StringVar(&version, "version", "", "initial version (default: 0.1.0)")
 
 	return cmd
 }
