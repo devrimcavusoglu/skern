@@ -21,6 +21,7 @@ func newSkillCmd() *cobra.Command {
 	cmd.AddCommand(newSkillInstallCmd())
 	cmd.AddCommand(newSkillUninstallCmd())
 	cmd.AddCommand(newSkillRecommendCmd())
+	cmd.AddCommand(newSkillVersionCmd())
 
 	return cmd
 }
