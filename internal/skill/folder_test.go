@@ -183,6 +183,7 @@ func TestLooksLikeURL(t *testing.T) {
 		{"./scripts/run.py", false},
 		{"../lib/utils.py", false},
 		{"assets/template.json", false},
+		{"C://Windows//Users//", false},
 	}
 
 	for _, tt := range tests {
