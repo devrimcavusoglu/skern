@@ -126,3 +126,20 @@ type SkillDiffResult struct {
 	LeftBody    string      `json:"left_body,omitempty"`
 	RightBody   string      `json:"right_body,omitempty"`
 }
+
+// SkillVersionResult is the JSON envelope for skill version output.
+type SkillVersionResult struct {
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	Scope           string `json:"scope"`
+	PreviousVersion string `json:"previous_version,omitempty"`
+	Bumped          bool   `json:"bumped"`
+}
+
+// VersionCompareResult is the JSON envelope for version comparison output.
+type VersionCompareResult struct {
+	Installed string `json:"installed"`
+	Available string `json:"available"`
+	Kind      string `json:"kind,omitempty"`
+	Upgrade   bool   `json:"upgrade"`
+}
