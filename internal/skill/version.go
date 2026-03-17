@@ -6,6 +6,18 @@ import (
 	"strings"
 )
 
+// parseVersionPart parses a single version component, rejecting leading zeros per semver spec.
+func parseVersionPart(s string) (int, error) {
+	if len(s) > 1 && s[0] == '0' {
+		return 0, fmt.Errorf("leading zeros not allowed: %q", s)
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("invalid part: %q", s)
+	}
+	return n, nil
+}
+
 // Version represents a semantic version (MAJOR.MINOR.PATCH).
 type Version struct {
 	Major int
@@ -20,19 +32,19 @@ func ParseVersion(s string) (Version, error) {
 		return Version{}, fmt.Errorf("invalid version %q: must be MAJOR.MINOR.PATCH", s)
 	}
 
-	major, err := strconv.Atoi(parts[0])
-	if err != nil || major < 0 {
-		return Version{}, fmt.Errorf("invalid version %q: major must be a non-negative integer", s)
+	major, err := parseVersionPart(parts[0])
+	if err != nil {
+		return Version{}, fmt.Errorf("invalid version %q: major must be a non-negative integer without leading zeros", s)
 	}
 
-	minor, err := strconv.Atoi(parts[1])
-	if err != nil || minor < 0 {
-		return Version{}, fmt.Errorf("invalid version %q: minor must be a non-negative integer", s)
+	minor, err := parseVersionPart(parts[1])
+	if err != nil {
+		return Version{}, fmt.Errorf("invalid version %q: minor must be a non-negative integer without leading zeros", s)
 	}
 
-	patch, err := strconv.Atoi(parts[2])
-	if err != nil || patch < 0 {
-		return Version{}, fmt.Errorf("invalid version %q: patch must be a non-negative integer", s)
+	patch, err := parseVersionPart(parts[2])
+	if err != nil {
+		return Version{}, fmt.Errorf("invalid version %q: patch must be a non-negative integer without leading zeros", s)
 	}
 
 	return Version{Major: major, Minor: minor, Patch: patch}, nil

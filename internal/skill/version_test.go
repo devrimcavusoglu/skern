@@ -26,8 +26,8 @@ func TestParseVersion(t *testing.T) {
 		},
 		{
 			name:  "default version",
-			input: "0.1.0",
-			want:  Version{Major: 0, Minor: 1, Patch: 0},
+			input: "0.0.1",
+			want:  Version{Major: 0, Minor: 0, Patch: 1},
 		},
 		{
 			name:  "large numbers",
@@ -77,6 +77,21 @@ func TestParseVersion(t *testing.T) {
 		{
 			name:    "negative patch",
 			input:   "1.0.-1",
+			wantErr: true,
+		},
+		{
+			name:    "leading zero major",
+			input:   "01.0.0",
+			wantErr: true,
+		},
+		{
+			name:    "leading zero minor",
+			input:   "1.01.0",
+			wantErr: true,
+		},
+		{
+			name:    "leading zero patch",
+			input:   "1.0.01",
 			wantErr: true,
 		},
 	}
@@ -165,19 +180,19 @@ func TestBumpVersion(t *testing.T) {
 		},
 		{
 			name:    "bump default version patch",
-			version: "0.1.0",
+			version: "0.0.1",
 			level:   "patch",
-			want:    "0.1.1",
+			want:    "0.0.2",
 		},
 		{
 			name:    "bump default version minor",
-			version: "0.1.0",
+			version: "0.0.1",
 			level:   "minor",
-			want:    "0.2.0",
+			want:    "0.1.0",
 		},
 		{
 			name:    "bump default version major",
-			version: "0.1.0",
+			version: "0.0.1",
 			level:   "major",
 			want:    "1.0.0",
 		},

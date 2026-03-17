@@ -23,7 +23,7 @@ func TestSkillVersion_Show(t *testing.T) {
 	var result output.SkillVersionResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, "ver-skill", result.Name)
-	assert.Equal(t, "0.1.0", result.Version)
+	assert.Equal(t, "0.0.1", result.Version)
 	assert.Equal(t, "user", result.Scope)
 	assert.False(t, result.Bumped)
 }
@@ -36,7 +36,7 @@ func TestSkillVersion_Show_Text(t *testing.T) {
 
 	out, err := runCmd(t, cc, "skill", "version", "ver-text")
 	require.NoError(t, err)
-	assert.Contains(t, out, "0.1.0")
+	assert.Contains(t, out, "0.0.1")
 }
 
 func TestSkillVersion_NotFound(t *testing.T) {
@@ -60,8 +60,8 @@ func TestSkillVersion_BumpPatch(t *testing.T) {
 	var result output.SkillVersionResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, "bump-patch", result.Name)
-	assert.Equal(t, "0.1.1", result.Version)
-	assert.Equal(t, "0.1.0", result.PreviousVersion)
+	assert.Equal(t, "0.0.2", result.Version)
+	assert.Equal(t, "0.0.1", result.PreviousVersion)
 	assert.True(t, result.Bumped)
 
 	// Verify the change persisted
@@ -70,7 +70,7 @@ func TestSkillVersion_BumpPatch(t *testing.T) {
 
 	var showResult output.SkillResult
 	require.NoError(t, json.Unmarshal([]byte(showOut), &showResult))
-	assert.Equal(t, "0.1.1", showResult.Version)
+	assert.Equal(t, "0.0.2", showResult.Version)
 }
 
 func TestSkillVersion_BumpMinor(t *testing.T) {
@@ -84,8 +84,8 @@ func TestSkillVersion_BumpMinor(t *testing.T) {
 
 	var result output.SkillVersionResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.Equal(t, "0.2.0", result.Version)
-	assert.Equal(t, "0.1.0", result.PreviousVersion)
+	assert.Equal(t, "0.1.0", result.Version)
+	assert.Equal(t, "0.0.1", result.PreviousVersion)
 	assert.True(t, result.Bumped)
 }
 
@@ -101,7 +101,7 @@ func TestSkillVersion_BumpMajor(t *testing.T) {
 	var result output.SkillVersionResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, "1.0.0", result.Version)
-	assert.Equal(t, "0.1.0", result.PreviousVersion)
+	assert.Equal(t, "0.0.1", result.PreviousVersion)
 	assert.True(t, result.Bumped)
 }
 
@@ -124,8 +124,8 @@ func TestSkillVersion_BumpText(t *testing.T) {
 	out, err := runCmd(t, cc, "skill", "version", "bump-text", "--bump", "patch")
 	require.NoError(t, err)
 	assert.Contains(t, out, "Bumped")
-	assert.Contains(t, out, "0.1.0")
-	assert.Contains(t, out, "0.1.1")
+	assert.Contains(t, out, "0.0.1")
+	assert.Contains(t, out, "0.0.2")
 }
 
 func TestSkillVersion_MultipleBumps(t *testing.T) {
@@ -145,7 +145,7 @@ func TestSkillVersion_MultipleBumps(t *testing.T) {
 
 	var result output.SkillVersionResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.Equal(t, "0.1.2", result.Version)
+	assert.Equal(t, "0.0.3", result.Version)
 }
 
 func TestSkillVersion_Scoped(t *testing.T) {
@@ -160,7 +160,7 @@ func TestSkillVersion_Scoped(t *testing.T) {
 	var result output.SkillVersionResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, "project", result.Scope)
-	assert.Equal(t, "0.1.0", result.Version)
+	assert.Equal(t, "0.0.1", result.Version)
 }
 
 // --- skill create --version ---
@@ -220,5 +220,5 @@ func TestSkillCreate_DefaultVersion(t *testing.T) {
 
 	var result output.SkillResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.Equal(t, "0.1.0", result.Version)
+	assert.Equal(t, "0.0.1", result.Version)
 }

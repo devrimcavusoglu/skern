@@ -176,7 +176,7 @@ metadata:
     name: author-name
     type: human           # human | agent
     platform: claude-code  # only when type=agent
-  version: "0.1.0"
+  version: "0.0.1"
   modified-by:            # append-only provenance list
     - name: codex-cli
       type: agent

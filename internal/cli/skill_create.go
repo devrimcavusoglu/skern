@@ -144,7 +144,7 @@ func newSkillCreateCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&force, "force", false, "bypass overlap detection block")
 	cmd.Flags().StringVar(&fromTemplate, "from-template", "", "path to a template file for the skill body")
 	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags for the skill")
-	cmd.Flags().StringVar(&version, "version", "", "initial version (default: 0.1.0)")
+	cmd.Flags().StringVar(&version, "version", "", "initial version (default: 0.0.1)")
 
 	return cmd
 }

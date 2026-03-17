@@ -31,7 +31,7 @@ func NewSkillWithBody(name, description, authorName, authorType, authorPlatform,
 		Description: description,
 		Metadata: Metadata{
 			Author:  author,
-			Version: "0.1.0",
+			Version: "0.0.1",
 		},
 		Body: body,
 	}

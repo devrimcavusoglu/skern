@@ -11,7 +11,7 @@ func TestNewSkill_NameOnly(t *testing.T) {
 
 	assert.Equal(t, "my-skill", s.Name)
 	assert.Contains(t, s.Description, "TODO")
-	assert.Equal(t, "0.1.0", s.Metadata.Version)
+	assert.Equal(t, "0.0.1", s.Metadata.Version)
 	assert.Contains(t, s.Body, "## Instructions")
 }
 
