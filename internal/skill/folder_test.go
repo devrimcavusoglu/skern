@@ -123,12 +123,72 @@ func TestExtractFileReferences(t *testing.T) {
 			body:     "Run `scripts/run.py` or see [script](scripts/run.py).",
 			expected: []string{"scripts/run.py"},
 		},
+		{
+			name:     "backtick URL with protocol skipped",
+			body:     "See `https://example.com/docs/guide` for details.",
+			expected: nil,
+		},
+		{
+			name:     "backtick URL without protocol skipped",
+			body:     "Use `example.com/api/v1` as the endpoint.",
+			expected: nil,
+		},
+		{
+			name:     "backtick domain-like paths skipped",
+			body:     "Check `docs.example.io/guide` and `pkg.go.dev/encoding/json` for reference.",
+			expected: nil,
+		},
+		{
+			name:     "markdown link with domain-like URL skipped",
+			body:     "See [docs](docs.example.com/guide) for more info.",
+			expected: nil,
+		},
+		{
+			name:     "backtick URL mixed with real path",
+			body:     "Use `example.com/api` for the API and `scripts/run.py` for processing.",
+			expected: []string{"scripts/run.py"},
+		},
+		{
+			name:     "relative path with dots not skipped",
+			body:     "Use `./scripts/run.py` and `../lib/utils.py` as helpers.",
+			expected: []string{"./scripts/run.py", "../lib/utils.py"},
+		},
+		{
+			name:     "ftp URL in backtick skipped",
+			body:     "Download from `ftp://files.example.com/data`.",
+			expected: nil,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			refs := ExtractFileReferences(tt.body)
 			assert.Equal(t, tt.expected, refs)
+		})
+	}
+}
+
+func TestLooksLikeURL(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"https://example.com/path", true},
+		{"http://example.com/path", true},
+		{"ftp://files.example.com/data", true},
+		{"example.com/path", true},
+		{"docs.example.io/guide", true},
+		{"pkg.go.dev/encoding/json", true},
+		{"scripts/run.py", false},
+		{"./scripts/run.py", false},
+		{"../lib/utils.py", false},
+		{"assets/template.json", false},
+		{"C://Windows//Users//", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			assert.Equal(t, tt.want, looksLikeURL(tt.input))
 		})
 	}
 }
@@ -158,6 +218,12 @@ func TestValidateFolder(t *testing.T) {
 		{
 			name:       "no references",
 			body:       "Simple instructions without file references.",
+			setup:      func(dir string) {},
+			wantIssues: 0,
+		},
+		{
+			name:       "URLs in backticks do not warn",
+			body:       "See `https://example.com/docs` and `example.com/api/v1` for details.",
 			setup:      func(dir string) {},
 			wantIssues: 0,
 		},
