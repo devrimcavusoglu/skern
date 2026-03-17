@@ -287,6 +287,115 @@ func TestSkillDiff_NoArgs(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestSkillDiff_RegistryVsPlatform_ProjectScope(t *testing.T) {
+	cc, _, projectDir := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	_, err := runCmd(t, cc, "skill", "create", "proj-diff", "--description", "A project skill", "--scope", "project")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "install", "proj-diff", "--platform", "claude-code", "--scope", "project")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "diff", "proj-diff",
+		"--platform", "claude-code", "--scope", "project", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillDiffResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.True(t, result.Identical)
+	assert.Contains(t, result.LeftSource, "project")
+	assert.Contains(t, result.RightSource, "platform")
+	_ = projectDir // used indirectly by the registry
+}
+
+func TestSkillDiff_InvalidScope(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "scope-test", "--description", "A skill")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "diff", "scope-test", "--platform", "claude-code", "--scope", "invalid")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid scope")
+}
+
+func TestSkillDiff_TwoSkills_ExplicitScope(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "scoped-a", "--description", "Desc A")
+	require.NoError(t, err)
+	_, err = runCmd(t, cc, "skill", "create", "scoped-b", "--description", "Desc B")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "diff", "scoped-a", "scoped-b", "--scope", "user", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillDiffResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.False(t, result.Identical)
+	assert.Contains(t, result.LeftSource, "user")
+	assert.Contains(t, result.RightSource, "user")
+}
+
+func TestSkillDiff_InvalidName(t *testing.T) {
+	cc := testRegistry(t)
+
+	_, err := runCmd(t, cc, "skill", "diff", "INVALID_NAME", "--platform", "claude-code")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid")
+}
+
+func TestSkillDiff_DifferentModifiedBy(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+
+	_, err := runCmd(t, cc, "skill", "create", "mod-a", "--description", "Same desc", "--author", "alice")
+	require.NoError(t, err)
+	_, err = runCmd(t, cc, "skill", "create", "mod-b", "--description", "Same desc", "--author", "alice")
+	require.NoError(t, err)
+
+	// Add modified-by entry to mod-b
+	skillMdPath := filepath.Join(userDir, "mod-b", "SKILL.md")
+	content := `---
+name: mod-b
+description: Same desc
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+  modified-by:
+    - name: codex-cli
+      type: agent
+      platform: codex-cli
+      date: "2026-01-15T10:30:00Z"
+---
+
+## Instructions
+
+Add your instructions here.
+`
+	require.NoError(t, os.WriteFile(skillMdPath, []byte(content), 0o644))
+
+	out, err := runCmd(t, cc, "skill", "diff", "mod-a", "mod-b", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillDiffResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.False(t, result.Identical)
+
+	fieldMap := make(map[string]output.FieldDiff)
+	for _, f := range result.Fields {
+		fieldMap[f.Field] = f
+	}
+
+	assert.Contains(t, fieldMap, "modified-by")
+	assert.Empty(t, fieldMap["modified-by"].Left)
+	assert.Contains(t, fieldMap["modified-by"].Right, "codex-cli")
+}
+
 func TestSkillDiff_RegistryVsPlatform_DefaultScope(t *testing.T) {
 	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()

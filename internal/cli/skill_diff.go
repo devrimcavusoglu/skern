@@ -23,12 +23,19 @@ func newSkillDiffCmd() *cobra.Command {
 		Long: `Compare two skills side by side.
 
 With one argument, compares a registry skill against its installed copy on a platform
-(requires --platform and --scope flags).
+(requires --platform; --scope defaults to "user").
 
-With two arguments, compares two registry skills by name.`,
+With two arguments, compares two registry skills by name
+(--scope filters to a specific scope; omit to search both).`,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := getContext(cmd)
+
+			for _, name := range args {
+				if err := skill.ValidateName(name); err != nil {
+					return &ValidationError{Message: err.Error()}
+				}
+			}
 
 			if len(args) == 2 {
 				return diffTwoSkills(ctx, args[0], args[1], scope)
@@ -176,6 +183,12 @@ func compareSkills(a *skill.Skill, nameA, sourceA string, b *skill.Skill, nameB,
 		fields = append(fields, output.FieldDiff{Field: "allowed-tools", Left: toolsA, Right: toolsB})
 	}
 
+	modA := formatModifiedBy(a.Metadata.ModifiedBy)
+	modB := formatModifiedBy(b.Metadata.ModifiedBy)
+	if modA != modB {
+		fields = append(fields, output.FieldDiff{Field: "modified-by", Left: modA, Right: modB})
+	}
+
 	bodyDiff := a.Body != b.Body
 
 	result := output.SkillDiffResult{
@@ -232,4 +245,13 @@ func displayValue(v string) string {
 		return "(empty)"
 	}
 	return v
+}
+
+// formatModifiedBy serializes a modified-by list into a comparable string.
+func formatModifiedBy(entries []skill.ModifiedByEntry) string {
+	parts := make([]string, len(entries))
+	for i, e := range entries {
+		parts[i] = fmt.Sprintf("%s (%s/%s @ %s)", e.Name, e.Type, e.Platform, e.Date)
+	}
+	return strings.Join(parts, "; ")
 }
