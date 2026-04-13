@@ -11,8 +11,29 @@ import (
 func TestValidate_ValidSkill(t *testing.T) {
 	s := &Skill{
 		Name:        "my-skill",
-		Description: "A valid skill description",
-		Body:        "## Instructions\n\nThis skill provides step-by-step guidance for completing tasks:\n\n- First, analyze the input carefully and validate the data\n- Then, process the data accordingly and format the results\n- Finally, return the formatted output to the user",
+		Description: "Use when you need to complete tasks with step-by-step guidance",
+		Body: `## Overview
+
+This skill provides step-by-step guidance for completing tasks.
+
+## When to Use
+
+- When you need structured task completion
+
+## Core Pattern
+
+- First, analyze the input carefully and validate the data
+- Then, process the data accordingly and format the results
+- Finally, return the formatted output to the user
+
+## Quick Reference
+
+- Analyze → Process → Format → Return
+
+## Common Mistakes
+
+- Skipping validation of input data
+`,
 		Metadata: Metadata{
 			Author:  Author{Name: "alice", Type: "human"},
 			Version: "1.0.0",
@@ -268,15 +289,18 @@ func TestValidationIssue_String(t *testing.T) {
 func TestLintStyle_BodyTooShort(t *testing.T) {
 	s := &Skill{
 		Name:        "my-skill",
-		Description: "A valid skill description",
+		Description: "Use when you need a valid skill description",
 		Body:        "## Instructions\n\nDo something useful.",
 	}
 
 	issues := lintStyle(s)
-	require.Len(t, issues, 1)
-	assert.Equal(t, "body", issues[0].Field)
-	assert.Equal(t, SeverityHint, issues[0].Severity)
-	assert.Contains(t, issues[0].Message, "words")
+	hasBodyShortHint := false
+	for _, i := range issues {
+		if i.Field == "body" && i.Severity == SeverityHint && strings.Contains(i.Message, "words") {
+			hasBodyShortHint = true
+		}
+	}
+	assert.True(t, hasBodyShortHint)
 }
 
 func TestLintStyle_DescriptionTooVague(t *testing.T) {
@@ -287,33 +311,155 @@ func TestLintStyle_DescriptionTooVague(t *testing.T) {
 	}
 
 	issues := lintStyle(s)
-	require.Len(t, issues, 1)
-	assert.Equal(t, "description", issues[0].Field)
-	assert.Equal(t, SeverityHint, issues[0].Severity)
-	assert.Contains(t, issues[0].Message, "word")
+	hasDescVague := false
+	for _, i := range issues {
+		if i.Field == "description" && i.Severity == SeverityHint && strings.Contains(i.Message, "word") {
+			hasDescVague = true
+		}
+	}
+	assert.True(t, hasDescVague)
 }
 
 func TestLintStyle_BodyLacksSteps(t *testing.T) {
 	s := &Skill{
 		Name:        "my-skill",
-		Description: "A valid skill description",
+		Description: "Use when you need to do something specific",
 		Body:        strings.Repeat("word ", 25),
 	}
 
 	issues := lintStyle(s)
-	require.Len(t, issues, 1)
-	assert.Equal(t, "body", issues[0].Field)
-	assert.Equal(t, SeverityHint, issues[0].Severity)
-	assert.Contains(t, issues[0].Message, "step-by-step")
+	hasStepHint := false
+	for _, i := range issues {
+		if i.Field == "body" && i.Severity == SeverityHint && strings.Contains(i.Message, "step-by-step") {
+			hasStepHint = true
+		}
+	}
+	assert.True(t, hasStepHint)
 }
 
 func TestLintStyle_NoHints(t *testing.T) {
 	s := &Skill{
 		Name:        "my-skill",
-		Description: "A valid skill description",
-		Body:        "## Instructions\n\nThis skill provides step-by-step guidance for completing tasks:\n\n- First, analyze the input carefully and validate the data\n- Then, process the data accordingly and format the results\n- Finally, return the formatted output to the user",
+		Description: "Use when you need step-by-step task guidance",
+		Body: `## Overview
+
+This skill provides step-by-step guidance for completing tasks.
+
+## When to Use
+
+- When you need structured task completion
+
+## Core Pattern
+
+- First, analyze the input carefully and validate the data
+- Then, process the data accordingly and format the results
+
+## Quick Reference
+
+- Analyze → Process → Format → Return
+
+## Common Mistakes
+
+- Skipping validation of input data
+`,
 	}
 
 	issues := lintStyle(s)
 	assert.Empty(t, issues)
+}
+
+func TestLintStyle_DescriptionMissingTriggerPrefix(t *testing.T) {
+	s := &Skill{
+		Name:        "my-skill",
+		Description: "A skill that helps with task management",
+		Body:        "## Instructions\n\nSome body content here.",
+	}
+
+	issues := lintStyle(s)
+	hasTriggerHint := false
+	for _, i := range issues {
+		if i.Field == "description" && i.Severity == SeverityHint && strings.Contains(i.Message, "Use when") {
+			hasTriggerHint = true
+		}
+	}
+	assert.True(t, hasTriggerHint, "should hint that description should start with 'Use when'")
+}
+
+func TestLintStyle_DescriptionWithTriggerPrefix(t *testing.T) {
+	tests := []struct {
+		name string
+		desc string
+	}{
+		{"use when", "Use when deploying services to production"},
+		{"use for", "Use for formatting code according to team standards"},
+		{"use to", "Use to validate API responses before processing"},
+		{"trigger when", "Trigger when a new pull request is opened"},
+		{"apply when", "Apply when refactoring legacy code modules"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Skill{
+				Name:        "my-skill",
+				Description: tt.desc,
+				Body:        "Short body.",
+			}
+
+			issues := lintStyle(s)
+			for _, i := range issues {
+				if i.Field == "description" && strings.Contains(i.Message, "Use when") {
+					t.Errorf("should not hint about trigger prefix for description %q", tt.desc)
+				}
+			}
+		})
+	}
+}
+
+func TestLintStyle_BodyMissingRecommendedSections(t *testing.T) {
+	s := &Skill{
+		Name:        "my-skill",
+		Description: "Use when you need to do something specific",
+		Body:        "## Instructions\n\nThis skill provides step-by-step guidance for completing tasks:\n\n- First, analyze the input carefully and validate the data\n- Then, process the data accordingly and format the results\n- Finally, return the formatted output to the user",
+	}
+
+	issues := lintStyle(s)
+	hasSectionHint := false
+	for _, i := range issues {
+		if i.Field == "body" && i.Severity == SeverityHint && strings.Contains(i.Message, "missing recommended sections") {
+			hasSectionHint = true
+			assert.Contains(t, i.Message, "when to use")
+			assert.Contains(t, i.Message, "common mistakes")
+		}
+	}
+	assert.True(t, hasSectionHint, "should hint about missing recommended sections")
+}
+
+func TestLintStyle_BodyWithAllRecommendedSections(t *testing.T) {
+	s := &Skill{
+		Name:        "my-skill",
+		Description: "Use when you need structured guidance",
+		Body: `## When to Use
+
+- Structured tasks
+
+## Core Pattern
+
+- Step-by-step approach
+
+## Quick Reference
+
+- Key points here
+
+## Common Mistakes
+
+- Forgetting validation
+`,
+	}
+
+	issues := lintStyle(s)
+	for _, i := range issues {
+		if i.Field == "body" && strings.Contains(i.Message, "missing recommended sections") {
+			t.Errorf("should not hint about missing sections when all are present: %s", i.Message)
+		}
+	}
 }
