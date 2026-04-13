@@ -9,8 +9,6 @@ import (
 	"github.com/devrimcavusoglu/skern/internal/skill"
 )
 
-const manifestFile = "SKILL.md"
-
 // ParseWarning records a skill directory that could not be parsed.
 type ParseWarning struct {
 	Name  string `json:"name"`
@@ -49,7 +47,7 @@ func (r *Registry) Create(s *skill.Skill, scope skill.Scope) (string, error) {
 		return "", fmt.Errorf("creating skill directory: %w", err)
 	}
 
-	manifestPath := filepath.Join(skillDir, manifestFile)
+	manifestPath := filepath.Join(skillDir, skill.ManifestFile)
 	if err := skill.WriteManifest(s, manifestPath); err != nil {
 		// Clean up on failure
 		_ = os.RemoveAll(skillDir)
@@ -68,7 +66,7 @@ func (r *Registry) Get(name string, scope skill.Scope) (*skill.Skill, string, er
 
 	dir := r.scopeDir(scope)
 	skillDir := filepath.Join(dir, name)
-	manifestPath := filepath.Join(skillDir, manifestFile)
+	manifestPath := filepath.Join(skillDir, skill.ManifestFile)
 
 	s, err := skill.ParseManifest(manifestPath)
 	if err != nil {
@@ -114,7 +112,7 @@ func (r *Registry) List(scope skill.Scope) ([]skill.Skill, []ParseWarning, error
 			continue
 		}
 
-		manifestPath := filepath.Join(dir, entry.Name(), manifestFile)
+		manifestPath := filepath.Join(dir, entry.Name(), skill.ManifestFile)
 		s, parseErr := skill.ParseManifest(manifestPath)
 		if parseErr != nil {
 			warnings = append(warnings, ParseWarning{
@@ -134,8 +132,53 @@ func (r *Registry) List(scope skill.Scope) ([]skill.Skill, []ParseWarning, error
 func (r *Registry) Exists(name string, scope skill.Scope) bool {
 	dir := r.scopeDir(scope)
 	skillDir := filepath.Join(dir, name)
-	_, err := os.Stat(filepath.Join(skillDir, manifestFile))
+	_, err := os.Stat(filepath.Join(skillDir, skill.ManifestFile))
 	return err == nil
+}
+
+// Import writes a remotely fetched skill and its companion files into the registry.
+// If force is true and the skill already exists, it is removed first.
+func (r *Registry) Import(s *skill.Skill, files map[string][]byte, scope skill.Scope, force bool) (string, error) {
+	if err := skill.ValidateName(s.Name); err != nil {
+		return "", err
+	}
+
+	dir := r.scopeDir(scope)
+	skillDir := filepath.Join(dir, s.Name)
+
+	if _, err := os.Stat(skillDir); err == nil {
+		if !force {
+			return "", fmt.Errorf("skill %q already exists in %s scope; use --force to overwrite", s.Name, scope)
+		}
+		if err := os.RemoveAll(skillDir); err != nil {
+			return "", fmt.Errorf("removing existing skill: %w", err)
+		}
+	}
+
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		return "", fmt.Errorf("creating skill directory: %w", err)
+	}
+
+	// Write SKILL.md via manifest serializer
+	manifestPath := filepath.Join(skillDir, skill.ManifestFile)
+	if err := skill.WriteManifest(s, manifestPath); err != nil {
+		_ = os.RemoveAll(skillDir)
+		return "", fmt.Errorf("writing manifest: %w", err)
+	}
+
+	// Write companion files (skip SKILL.md since we already wrote it via WriteManifest)
+	for name, content := range files {
+		if name == skill.ManifestFile {
+			continue
+		}
+		filePath := filepath.Join(skillDir, name)
+		if err := os.WriteFile(filePath, content, 0o644); err != nil {
+			_ = os.RemoveAll(skillDir)
+			return "", fmt.Errorf("writing companion file %q: %w", name, err)
+		}
+	}
+
+	return skillDir, nil
 }
 
 func (r *Registry) scopeDir(scope skill.Scope) string {

@@ -136,6 +136,14 @@ type SkillVersionResult struct {
 	Bumped          bool   `json:"bumped"`
 }
 
+// SkillImportResult is the JSON envelope for skill import output.
+type SkillImportResult struct {
+	Name   string `json:"name"`
+	Scope  string `json:"scope"`
+	Path   string `json:"path"`
+	Source string `json:"source"`
+}
+
 // VersionCompareResult is the JSON envelope for version comparison output.
 type VersionCompareResult struct {
 	Installed string `json:"installed"`
