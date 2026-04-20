@@ -36,10 +36,10 @@ TODO: Describe the core pattern or technique.
 `
 }
 
-// DefaultDescription returns the default placeholder description for a new skill.
+// defaultDescription returns the default placeholder description for a new skill.
 // Follows the writing-skills guideline: start with "Use when..." to describe
 // triggering conditions, not a workflow summary.
-func DefaultDescription() string {
+func defaultDescription() string {
 	return "Use when TODO: describe the triggering conditions for this skill.\n"
 }
 
@@ -51,7 +51,7 @@ func NewSkill(name, description, authorName, authorType, authorPlatform string) 
 // NewSkillWithBody creates a new Skill with a custom body. If body is empty, DefaultBody() is used.
 func NewSkillWithBody(name, description, authorName, authorType, authorPlatform, body string) *Skill {
 	if description == "" {
-		description = DefaultDescription()
+		description = defaultDescription()
 	}
 
 	if body == "" {

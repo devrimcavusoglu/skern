@@ -170,7 +170,6 @@ On subsequent encounters, the agent finds the existing skill via `skern skill se
 name: skill-name
 description: |
   Use when <triggering conditions for this skill>.
-tags: []
 allowed-tools: []
 metadata:
   author:
@@ -210,60 +209,15 @@ Required fields: `name`, `description`. Directory name must match the `name` fie
 
 ### Writing Skills Guidelines
 
-When creating or editing skills (via `skern skill create` or manually), follow these guidelines adapted from [superpowers/writing-skills](https://github.com/obra/superpowers/tree/main/skills/writing-skills):
+When creating or editing skills (via `skern skill create` or manually), follow these guidelines adapted from [superpowers/writing-skills](https://github.com/obra/superpowers/tree/main/skills/writing-skills). For full details, see [docs/writing-skills.md](docs/writing-skills.md).
 
-#### Description Field (Claude Search Optimization)
+Key points:
 
-- **Start with "Use when..."** — describe the triggering conditions, not a summary of what the skill does
-- Agents load skills based on description matching. If the description summarizes the workflow, agents may shortcut and follow the description instead of reading the full SKILL.md
-- Include error messages, symptom words ("flaky", "hanging", "race condition"), tool names, and synonyms to improve discoverability
-
-#### Naming Conventions
-
-- Use `kebab-case` with verb-first active voice: `creating-skills` not `skill-creation`
-- Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters
-
-#### Recommended Body Structure
-
-| Section | Purpose |
-|---------|---------|
-| **Overview** | 1-2 sentence core principle |
-| **When to Use** | Symptoms, use cases, when NOT to use |
-| **Core Pattern** | Main technique; before/after for techniques |
-| **Quick Reference** | Scannable table or bullets |
-| **Common Mistakes** | Frequent errors + fixes |
-
-#### Token Efficiency
-
-- Getting-started skills: < 150 words
-- Frequently-loaded skills: < 200 words
-- Other skills: < 500 words
-- Use cross-references for shared concepts; compress examples
-
-#### Skill Types
-
-| Type | Description | Example |
-|------|-------------|---------|
-| **Technique** | Concrete method with steps | `condition-based-waiting` |
-| **Pattern** | Mental model for problem-solving | `flatten-with-flags` |
-| **Reference** | API docs, syntax guides | `office-docs` |
-
-#### Code Examples
-
-- One excellent example beats many mediocre ones
-- Use the most relevant language for the skill's domain
-
-#### Anti-Patterns
-
-- Narrative storytelling ("In session 2025-10-03...")
-- Multi-language code examples (dilutes quality)
-- Generic semantic labels (helper1, step3)
-- Summarizing the workflow in the description field
-
-#### File Organization
-
-- **Self-contained**: Single SKILL.md when all content fits
-- **With supporting files**: Only for heavy reference (100+ lines) or reusable tools
+- **Description**: Start with "Use when..." — describe triggering conditions, not a workflow summary
+- **Naming**: `kebab-case`, verb-first active voice (`creating-skills` not `skill-creation`)
+- **Body structure**: Overview → When to Use → Core Pattern → Quick Reference → Common Mistakes
+- **Token budget**: Getting-started < 150 words; frequently-loaded < 200 words; others < 500 words
+- **Examples**: One excellent example beats many mediocre ones
 
 ### Skill Name Validation
 

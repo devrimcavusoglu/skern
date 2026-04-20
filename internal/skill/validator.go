@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // Severity represents the severity of a validation issue.
@@ -155,10 +156,34 @@ var descriptionTriggerPrefixes = []string{
 // recommendedBodySections lists the sections recommended by the writing-skills
 // guidelines. These improve discoverability, scannability, and quality.
 var recommendedBodySections = []string{
+	"overview",
 	"when to use",
 	"core pattern",
 	"quick reference",
 	"common mistakes",
+}
+
+// hasMarkdownHeading checks whether the body contains a markdown heading (any level)
+// whose text matches the given section name (case-insensitive).
+func hasMarkdownHeading(body, section string) bool {
+	sectionLower := strings.ToLower(section)
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(line)
+		// Strip leading '#' characters
+		stripped := strings.TrimLeft(trimmed, "#")
+		if stripped == trimmed {
+			continue // no '#' prefix — not a heading
+		}
+		// Must have at least one space after '#'s
+		if len(stripped) == 0 || !unicode.IsSpace(rune(stripped[0])) {
+			continue
+		}
+		headingText := strings.TrimSpace(stripped)
+		if strings.ToLower(headingText) == sectionLower {
+			return true
+		}
+	}
+	return false
 }
 
 // lintStyle performs stylistic quality checks on a skill.
@@ -201,7 +226,7 @@ func lintStyle(s *Skill) []ValidationIssue {
 			issues = append(issues, ValidationIssue{
 				Field:    "description",
 				Severity: SeverityHint,
-				Message:  "description should start with \"Use when\" to describe triggering conditions, not summarize the workflow",
+				Message:  "description should start with a trigger phrase (\"Use when\", \"Use for\", \"Use to\", \"Trigger when\", or \"Apply when\") to describe triggering conditions, not summarize the workflow",
 			})
 		}
 	}
@@ -224,7 +249,7 @@ func lintStyle(s *Skill) []ValidationIssue {
 	if bodyWords >= lintBodyMinWords {
 		var missing []string
 		for _, section := range recommendedBodySections {
-			if !strings.Contains(bodyLower, section) {
+			if !hasMarkdownHeading(s.Body, section) {
 				missing = append(missing, section)
 			}
 		}

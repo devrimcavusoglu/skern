@@ -8,7 +8,8 @@ dist/
 coverage.out
 coverage.html
 
-# IDE
+# IDE / agent workspaces
+.claude/
 .idea/
 .vscode/
 *.swp

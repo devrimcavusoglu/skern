@@ -40,7 +40,6 @@ export default defineConfig({
             { text: 'Installation', link: '/guide/installation' },
             { text: 'Quick Start', link: '/guide/quick-start' },
             { text: 'Agent Setup', link: '/guide/agent-setup' },
-            { text: 'Writing Skills', link: '/guide/writing-skills' },
           ],
         },
       ],

@@ -53,7 +53,7 @@ func TestDefaultBody(t *testing.T) {
 }
 
 func TestDefaultDescription(t *testing.T) {
-	desc := DefaultDescription()
+	desc := defaultDescription()
 	assert.True(t, len(desc) > 0)
 	assert.Contains(t, desc, "Use when")
 	assert.Contains(t, desc, "TODO")

@@ -438,7 +438,11 @@ func TestLintStyle_BodyWithAllRecommendedSections(t *testing.T) {
 	s := &Skill{
 		Name:        "my-skill",
 		Description: "Use when you need structured guidance",
-		Body: `## When to Use
+		Body: `## Overview
+
+- What this skill does
+
+## When to Use
 
 - Structured tasks
 
