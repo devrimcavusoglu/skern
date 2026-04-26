@@ -6,6 +6,7 @@ import (
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/platform"
 	"github.com/devrimcavusoglu/skern/internal/registry"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -13,9 +14,11 @@ type contextKey struct{}
 
 // CommandContext holds injectable dependencies for CLI commands.
 type CommandContext struct {
-	Printer     *output.Printer
-	NewRegistry func() (*registry.Registry, error)
-	NewDetector func() (*platform.Detector, error)
+	Printer       *output.Printer
+	NewRegistry   func() (*registry.Registry, error)
+	NewDetector   func() (*platform.Detector, error)
+	HTTPClient    skill.HTTPClient // optional; defaults to http.DefaultClient
+	GitHubBaseURL string           // optional; override GitHub API base URL (for testing)
 }
 
 func setContext(cmd *cobra.Command, cc *CommandContext) {

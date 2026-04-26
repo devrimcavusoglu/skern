@@ -234,6 +234,36 @@ func TestRegistry_Search_MultiScope(t *testing.T) {
 	assert.Len(t, results, 2)
 }
 
+func TestRegistry_Import_RejectsUnsafeCompanionFilenames(t *testing.T) {
+	cases := []string{
+		"../escape.md",
+		"../../etc/passwd",
+		"sub/dir.md",
+		`subdir\file.md`,
+		"..",
+		".",
+		"",
+	}
+
+	for _, badName := range cases {
+		t.Run(badName, func(t *testing.T) {
+			reg := newTestRegistry(t)
+			s := skill.NewSkill("safe-skill", "Desc.", "", "", "")
+			files := map[string][]byte{
+				"SKILL.md": []byte("---\nname: safe-skill\ndescription: Desc.\nmetadata:\n  author:\n    name: a\n    type: human\n  version: \"0.0.1\"\n---\n\nbody\n"),
+				badName:    []byte("payload"),
+			}
+
+			_, err := reg.Import(s, files, skill.ScopeUser, false)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "unsafe companion filename")
+
+			// Skill directory must not be left behind on rejection.
+			assert.NoFileExists(t, filepath.Join(reg.userDir, "safe-skill", "SKILL.md"))
+		})
+	}
+}
+
 func TestRegistry_List_SkipsInvalidWithWarning(t *testing.T) {
 	reg := newTestRegistry(t)
 

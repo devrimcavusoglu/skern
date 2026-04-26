@@ -9,6 +9,9 @@ import (
 // Scope represents where a skill is stored.
 type Scope string
 
+// ManifestFile is the canonical filename for a skill manifest.
+const ManifestFile = "SKILL.md"
+
 // Scope constants for skill storage locations.
 const (
 	ScopeUser    Scope = "user"
