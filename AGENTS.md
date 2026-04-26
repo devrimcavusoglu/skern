@@ -169,7 +169,7 @@ On subsequent encounters, the agent finds the existing skill via `skern skill se
 ---
 name: skill-name
 description: |
-  What this skill does and when to use it
+  Use when <triggering conditions for this skill>.
 allowed-tools: []
 metadata:
   author:
@@ -184,12 +184,40 @@ metadata:
       date: "2025-07-15T10:30:00Z"
 ---
 
-## Instructions
+## Overview
 
-Step-by-step instructions for the agent.
+1-2 sentence core principle of the skill.
+
+## When to Use
+
+- Triggering conditions and symptoms
+
+## Core Pattern
+
+The main technique or pattern (before/after for techniques).
+
+## Quick Reference
+
+- Scannable summary for fast lookup
+
+## Common Mistakes
+
+- Frequent errors and fixes
 ```
 
 Required fields: `name`, `description`. Directory name must match the `name` field.
+
+### Writing Skills Guidelines
+
+When creating or editing skills (via `skern skill create` or manually), follow these guidelines adapted from [superpowers/writing-skills](https://github.com/obra/superpowers/tree/main/skills/writing-skills). For full details, see [docs/writing-skills.md](docs/writing-skills.md).
+
+Key points:
+
+- **Description**: Start with "Use when..." — describe triggering conditions, not a workflow summary
+- **Naming**: `kebab-case`, verb-first active voice (`creating-skills` not `skill-creation`)
+- **Body structure**: Overview → When to Use → Core Pattern → Quick Reference → Common Mistakes
+- **Token budget**: Getting-started < 150 words; frequently-loaded < 200 words; others < 500 words
+- **Examples**: One excellent example beats many mediocre ones
 
 ### Skill Name Validation
 
