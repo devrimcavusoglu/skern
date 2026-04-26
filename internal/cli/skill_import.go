@@ -3,12 +3,17 @@ package cli
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/overlap"
 	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
+
+// importHTTPTimeout caps individual HTTP requests during skill import so a
+// slow or malicious endpoint cannot hang the CLI indefinitely.
+const importHTTPTimeout = 30 * time.Second
 
 func newSkillImportCmd() *cobra.Command {
 	var (
@@ -40,7 +45,7 @@ func newSkillImportCmd() *cobra.Command {
 			ctx.Printer.Print("Fetching skill from %s...\n", rawURL)
 			httpClient := ctx.HTTPClient
 			if httpClient == nil {
-				httpClient = http.DefaultClient
+				httpClient = &http.Client{Timeout: importHTTPTimeout}
 			}
 			var fetched *skill.FetchedSkill
 			if ctx.GitHubBaseURL != "" {
@@ -161,4 +166,3 @@ func formatSource(src *skill.ImportSource) string {
 		return src.RawURL
 	}
 }
-

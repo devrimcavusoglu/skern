@@ -50,16 +50,16 @@ func newImportTestServer(t *testing.T, manifest string, companions map[string]st
 			})
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(entries)
+		_ = json.NewEncoder(w).Encode(entries)
 	})
 
 	mux.HandleFunc("/raw/SKILL.md", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte(manifest))
+		_, _ = w.Write([]byte(manifest))
 	})
 	for name, content := range companions {
 		name, content := name, content
 		mux.HandleFunc("/raw/"+name, func(w http.ResponseWriter, _ *http.Request) {
-			w.Write([]byte(content))
+			_, _ = w.Write([]byte(content))
 		})
 	}
 
@@ -79,7 +79,7 @@ func newImportTestServer(t *testing.T, manifest string, companions map[string]st
 		}
 		gist := map[string]interface{}{"files": gistFiles}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(gist)
+		_ = json.NewEncoder(w).Encode(gist)
 	})
 
 	return httptest.NewServer(mux)

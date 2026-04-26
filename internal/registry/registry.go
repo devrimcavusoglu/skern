@@ -5,9 +5,28 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/devrimcavusoglu/skern/internal/skill"
 )
+
+// isSafeCompanionName rejects filenames that could escape the skill directory
+// when joined via filepath.Join — e.g., "..", absolute paths, or any name
+// containing a path separator. The contents-API normally returns base names,
+// but the gist API echoes whatever filename the user set, so we validate
+// defensively at the registry write boundary.
+func isSafeCompanionName(name string) bool {
+	if name == "" || name == "." || name == ".." {
+		return false
+	}
+	if strings.ContainsAny(name, `/\`) {
+		return false
+	}
+	if filepath.IsAbs(name) {
+		return false
+	}
+	return true
+}
 
 // ParseWarning records a skill directory that could not be parsed.
 type ParseWarning struct {
@@ -170,6 +189,10 @@ func (r *Registry) Import(s *skill.Skill, files map[string][]byte, scope skill.S
 	for name, content := range files {
 		if name == skill.ManifestFile {
 			continue
+		}
+		if !isSafeCompanionName(name) {
+			_ = os.RemoveAll(skillDir)
+			return "", fmt.Errorf("rejecting unsafe companion filename %q", name)
 		}
 		filePath := filepath.Join(skillDir, name)
 		if err := os.WriteFile(filePath, content, 0o644); err != nil {

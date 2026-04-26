@@ -11,6 +11,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// maxDownloadSize caps the size of any single fetched payload (API JSON or
+// companion file) to protect against malicious or misconfigured remotes that
+// could otherwise return an unbounded body.
+const maxDownloadSize = 10 * 1024 * 1024 // 10 MiB
+
 // SourceType identifies the kind of remote source for skill import.
 type SourceType string
 
@@ -60,10 +65,10 @@ func ParseImportURL(rawURL string) (*ImportSource, error) {
 
 	host := strings.ToLower(u.Host)
 
-	switch {
-	case host == "gist.github.com":
+	switch host {
+	case "gist.github.com":
 		return parseGistURL(u, rawURL)
-	case host == "github.com":
+	case "github.com":
 		return parseGitHubRepoURL(u, rawURL)
 	default:
 		return nil, fmt.Errorf("unsupported host %q; supported sources: github.com (repo directory), gist.github.com", host)
@@ -72,6 +77,10 @@ func ParseImportURL(rawURL string) (*ImportSource, error) {
 
 func parseGitHubRepoURL(u *url.URL, rawURL string) (*ImportSource, error) {
 	// Expected format: /<owner>/<repo>/tree/<ref>/<path...>
+	//
+	// NOTE: refs containing slashes (e.g., "feature/v2") cannot be unambiguously
+	// parsed from this URL form — only the first segment after `tree/` is taken
+	// as the ref. Use a ref without slashes or a commit SHA for reliable imports.
 	parts := strings.SplitN(strings.TrimPrefix(u.Path, "/"), "/", 5)
 	if len(parts) < 4 || parts[2] != "tree" {
 		return nil, fmt.Errorf("expected GitHub directory URL format: https://github.com/<owner>/<repo>/tree/<ref>/<path>")
@@ -167,7 +176,7 @@ func fetchFromGitHubRepoWithBase(client HTTPClient, src *ImportSource, baseURL s
 	if err != nil {
 		return nil, fmt.Errorf("fetching directory listing: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API returned %d for %s", resp.StatusCode, apiURL)
@@ -178,7 +187,7 @@ func fetchFromGitHubRepoWithBase(client HTTPClient, src *ImportSource, baseURL s
 		Type        string `json:"type"`
 		DownloadURL string `json:"download_url"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxDownloadSize)).Decode(&entries); err != nil {
 		return nil, fmt.Errorf("parsing directory listing: %w", err)
 	}
 
@@ -227,7 +236,7 @@ func fetchFromGitHubGistWithBase(client HTTPClient, src *ImportSource, baseURL s
 	if err != nil {
 		return nil, fmt.Errorf("fetching gist: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API returned %d for gist %s", resp.StatusCode, src.GistID)
@@ -239,7 +248,7 @@ func fetchFromGitHubGistWithBase(client HTTPClient, src *ImportSource, baseURL s
 			Content  string `json:"content"`
 		} `json:"files"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&gist); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxDownloadSize)).Decode(&gist); err != nil {
 		return nil, fmt.Errorf("parsing gist response: %w", err)
 	}
 
@@ -270,13 +279,22 @@ func downloadFile(client HTTPClient, fileURL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d for %s", resp.StatusCode, fileURL)
 	}
 
-	return io.ReadAll(resp.Body)
+	// Read at most maxDownloadSize+1 to detect oversize without buffering
+	// arbitrarily large bodies.
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDownloadSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxDownloadSize {
+		return nil, fmt.Errorf("file %s exceeds maximum download size of %d bytes", fileURL, maxDownloadSize)
+	}
+	return data, nil
 }
 
 // ParseManifestFromBytes parses a SKILL.md from raw bytes (for imported content).

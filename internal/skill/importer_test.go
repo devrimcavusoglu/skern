@@ -31,18 +31,6 @@ func TestParseImportURL(t *testing.T) {
 			},
 		},
 		{
-			name: "github repo with branch ref",
-			url:  "https://github.com/org/project/tree/feature/v2/path/to/skill",
-			want: &ImportSource{
-				Type:   SourceGitHubRepo,
-				RawURL: "https://github.com/org/project/tree/feature/v2/path/to/skill",
-				Owner:  "org",
-				Repo:   "project",
-				Ref:    "feature",
-				Path:   "v2/path/to/skill",
-			},
-		},
-		{
 			name: "github repo root tree",
 			url:  "https://github.com/owner/repo/tree/main",
 			want: &ImportSource{
@@ -156,13 +144,13 @@ func TestFetchSkill_GitHubRepo(t *testing.T) {
 			{"name": "subdir", "type": "dir", "download_url": ""},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(entries)
+		_ = json.NewEncoder(w).Encode(entries)
 	})
 	mux.HandleFunc("/raw/SKILL.md", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte(manifest))
+		_, _ = w.Write([]byte(manifest))
 	})
 	mux.HandleFunc("/raw/helper.md", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte(companion))
+		_, _ = w.Write([]byte(companion))
 	})
 
 	srv := httptest.NewServer(mux)
@@ -191,10 +179,10 @@ func TestFetchSkill_GitHubRepo_NoManifest(t *testing.T) {
 			{"name": "README.md", "type": "file", "download_url": fmt.Sprintf("http://%s/raw/README.md", r.Host)},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(entries)
+		_ = json.NewEncoder(w).Encode(entries)
 	})
 	mux.HandleFunc("/raw/README.md", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte("just a readme"))
+		_, _ = w.Write([]byte("just a readme"))
 	})
 
 	srv := httptest.NewServer(mux)
@@ -253,7 +241,7 @@ func TestFetchSkill_GitHubGist(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(gist)
+		_ = json.NewEncoder(w).Encode(gist)
 	})
 
 	srv := httptest.NewServer(mux)
@@ -284,7 +272,7 @@ func TestFetchSkill_GitHubGist_NoManifest(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(gist)
+		_ = json.NewEncoder(w).Encode(gist)
 	})
 
 	srv := httptest.NewServer(mux)
