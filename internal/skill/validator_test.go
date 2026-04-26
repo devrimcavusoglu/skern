@@ -467,3 +467,15 @@ func TestLintStyle_BodyWithAllRecommendedSections(t *testing.T) {
 		}
 	}
 }
+
+// TestScaffold_FreshSkillProducesNoLintHints guards the central UX promise of
+// the writing-skills guidelines integration: a freshly scaffolded skill must
+// be guideline-compliant out of the box. If DefaultBody, defaultDescription,
+// or any lintStyle rule changes such that the scaffold is no longer
+// compliant, this test fails and forces them back into sync.
+func TestScaffold_FreshSkillProducesNoLintHints(t *testing.T) {
+	s := NewSkill("my-skill", "", "alice", "human", "")
+
+	issues := lintStyle(s)
+	assert.Empty(t, issues, "freshly scaffolded skill must produce zero lint hints")
+}
