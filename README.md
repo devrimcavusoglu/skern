@@ -24,7 +24,7 @@ Skern is a minimal, agent-first CLI for managing [Agent Skills](https://agentski
 ```bash
 skern init
 skern skill create code-review --description "Review PRs for style and correctness"
-skern skill install code-review --platform all
+skern skill install code-review --platform claude-code
 ```
 
 ## Features

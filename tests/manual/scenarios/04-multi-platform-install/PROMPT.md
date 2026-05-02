@@ -12,7 +12,7 @@
 ## What to observe
 
 1. Does the agent check which platforms are available (`skern platform list`)?
-2. Does it use `--platform all` or install one-by-one?
+2. Does it loop the install one platform at a time? (`--platform all` was removed in v0.2.0; each invocation targets exactly one platform.)
 3. Does it verify installation with `skern platform status`?
 4. Does the status output show `deploy-helper` installed on all three platforms?
 
