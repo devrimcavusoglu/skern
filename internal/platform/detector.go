@@ -60,12 +60,16 @@ func (d *Detector) All() []Platform {
 }
 
 // ParsePlatformType validates and returns a platform type from a string flag value.
-// It accepts "all" as a special value.
+// Each invocation of skern targets exactly one platform; the agent that is
+// running skern is expected to specify its own platform explicitly.
 func ParsePlatformType(s string) (Type, error) {
 	normalized := strings.ToLower(strings.TrimSpace(s))
 	switch Type(normalized) {
-	case TypeClaudeCode, TypeCodexCLI, TypeOpenCode, TypeAll:
+	case TypeClaudeCode, TypeCodexCLI, TypeOpenCode:
 		return Type(normalized), nil
 	}
-	return "", fmt.Errorf("unknown platform %q: must be one of claude-code, codex-cli, opencode, or all", s)
+	if normalized == "all" {
+		return "", fmt.Errorf("platform %q is no longer supported; specify a single platform (claude-code, codex-cli, or opencode) — agents should target the platform they are running on", s)
+	}
+	return "", fmt.Errorf("unknown platform %q: must be one of claude-code, codex-cli, opencode", s)
 }

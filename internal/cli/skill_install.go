@@ -12,21 +12,33 @@ import (
 
 func newSkillInstallCmd() *cobra.Command {
 	var (
-		platformFlag string
-		scope        string
-		force        bool
+		platformFlag  string
+		scope         string
+		force         bool
+		enforceBudget bool
 	)
 
 	cmd := &cobra.Command{
-		Use:   "install <name>",
-		Short: "Install a skill to a platform",
-		Args:  cobra.ExactArgs(1),
+		Use:   "install <name>...",
+		Short: "Install one or more skills to a platform",
+		Long: `Install one or more skills to a single platform.
+
+Each invocation targets exactly one platform — agents are expected to specify
+the platform they are running on. Multiple skill names can be passed in one
+call to install them as a batch.
+
+When --enforce-budget is set, install refuses to proceed if the resulting
+installed-skill count would meet or exceed the per-platform threshold (see
+'skern platform status' for current capacity).`,
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := getContext(cmd)
-			name := args[0]
 
-			if err := skill.ValidateName(name); err != nil {
-				return &ValidationError{Message: err.Error()}
+			// Validate every skill name up-front so we fail fast.
+			for _, name := range args {
+				if err := skill.ValidateName(name); err != nil {
+					return &ValidationError{Message: err.Error()}
+				}
 			}
 
 			platformType, err := platform.ParsePlatformType(platformFlag)
@@ -44,45 +56,48 @@ func newSkillInstallCmd() *cobra.Command {
 				return err
 			}
 
-			// Resolve skill from registry
-			s, skillDir, err := reg.Get(name, scopeVal)
-			if err != nil {
-				return fmt.Errorf("skill %q not found in %s scope (run 'skern skill list' to see available skills)", name, scope)
-			}
-			_ = s // skill metadata not needed for install
-
 			det, err := ctx.NewDetector()
 			if err != nil {
 				return err
 			}
 
-			// Determine target platforms
-			var targets []platform.Platform
-			if platformType == platform.TypeAll {
-				targets = det.DetectAll()
-				if len(targets) == 0 {
-					return fmt.Errorf("no platforms detected; install a supported platform first (run 'skern platform list' to see options)")
-				}
-			} else {
-				p := det.Get(platformType)
-				if p == nil {
-					return &ValidationError{Message: fmt.Sprintf("platform %q not recognized; valid platforms: claude-code, codex-cli, opencode", platformFlag)}
-				}
-				targets = []platform.Platform{p}
+			p := det.Get(platformType)
+			if p == nil {
+				return &ValidationError{Message: fmt.Sprintf("platform %q not recognized; valid platforms: claude-code, codex-cli, opencode", platformFlag)}
 			}
 
-			// Install to each target platform
-			var entries []output.PlatformActionEntry
-			var successCount int
-			for _, p := range targets {
-				entry := output.PlatformActionEntry{
-					Platform: string(p.Name()),
+			// Capacity pre-check: if --enforce-budget is set, refuse the entire
+			// batch when the resulting count would exceed the threshold. This
+			// is intentionally strict — agents that hit this should evict
+			// stale skills first or invoke without --enforce-budget.
+			if enforceBudget {
+				pre := buildCapacityReport(p, scopeVal)
+				if pre != nil && pre.Installed+len(args) > pre.Threshold {
+					return fmt.Errorf("capacity: %s (%s) has %d/%d skills installed; installing %d more would exceed the threshold (uninstall stale skills or drop --enforce-budget to proceed)",
+						pre.Platform, pre.Scope, pre.Installed, pre.Threshold, len(args))
 				}
+			}
+
+			// Resolve skills and perform installs in input order. Failures
+			// for one skill do not abort the batch — each gets its own entry
+			// so the agent can react per-skill.
+			var entries []output.SkillActionEntry
+			var successCount int
+			for _, name := range args {
+				entry := output.SkillActionEntry{Skill: name}
+
+				_, skillDir, getErr := reg.Get(name, scopeVal)
+				if getErr != nil {
+					entry.Error = fmt.Sprintf("not found in %s scope (run 'skern skill list' to see available skills)", scope)
+					entries = append(entries, entry)
+					continue
+				}
+
 				if force {
-					// Remove existing installation before re-installing; ignore errors
-					// (the skill may not be installed yet).
+					// Best-effort cleanup: skill may not be installed yet.
 					_ = p.Uninstall(name, scopeVal)
 				}
+
 				if installErr := p.Install(skillDir, name, scopeVal); installErr != nil {
 					entry.Error = installErr.Error()
 				} else {
@@ -92,37 +107,41 @@ func newSkillInstallCmd() *cobra.Command {
 				entries = append(entries, entry)
 			}
 
+			capacity := buildCapacityReport(p, scopeVal)
+
 			result := output.SkillInstallResult{
-				Skill:     name,
-				Scope:     scope,
-				Platforms: entries,
+				Platform: string(p.Name()),
+				Scope:    scope,
+				Skills:   entries,
+				Capacity: capacity,
 			}
 
-			text := formatInstallResult(name, entries)
+			text := formatInstallResult(string(p.Name()), entries) + formatCapacityWarning(capacity)
 			ctx.Printer.PrintResult(result, text)
 
 			if successCount == 0 {
-				return fmt.Errorf("failed to install %q to any platform", name)
+				return fmt.Errorf("failed to install any skill to %s", p.Name())
 			}
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&platformFlag, "platform", "", "target platform (claude-code, codex-cli, opencode, or all)")
+	cmd.Flags().StringVar(&platformFlag, "platform", "", "target platform (claude-code, codex-cli, or opencode)")
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
 	cmd.Flags().BoolVar(&force, "force", false, "overwrite existing installation")
+	cmd.Flags().BoolVar(&enforceBudget, "enforce-budget", false, "refuse to install when at or over capacity")
 	_ = cmd.MarkFlagRequired("platform")
 
 	return cmd
 }
 
-func formatInstallResult(name string, entries []output.PlatformActionEntry) string {
+func formatInstallResult(platformName string, entries []output.SkillActionEntry) string {
 	var b strings.Builder
 	for _, e := range entries {
 		if e.Success {
-			fmt.Fprintf(&b, "Installed %q to %s\n", name, e.Platform)
+			fmt.Fprintf(&b, "Installed %q to %s\n", e.Skill, platformName)
 		} else {
-			fmt.Fprintf(&b, "Failed to install %q to %s: %s\n", name, e.Platform, e.Error)
+			fmt.Fprintf(&b, "Failed to install %q to %s: %s\n", e.Skill, platformName, e.Error)
 		}
 	}
 	return b.String()

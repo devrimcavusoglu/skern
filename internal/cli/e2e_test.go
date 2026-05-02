@@ -12,8 +12,8 @@ import (
 )
 
 // TestEndToEnd_FullLifecycle exercises the complete skern workflow:
-// create -> validate -> install (all 3 platforms) -> platform status -> uninstall one ->
-// verify remaining -> uninstall all -> remove from registry.
+// create -> validate -> install (per platform, looped) -> platform status ->
+// uninstall one -> verify remaining -> uninstall all -> remove from registry.
 func TestEndToEnd_FullLifecycle(t *testing.T) {
 	cc, userDir, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
@@ -63,17 +63,21 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 	assert.Equal(t, "e2e-tester", showResult.Author.Name)
 	assert.Equal(t, "human", showResult.Author.Type)
 
-	// Step 4: Install to all 3 platforms
-	out, err = runCmd(t, cc, "skill", "install", skillName, "--platform", "all", "--json")
-	require.NoError(t, err)
+	// Step 4: Install to each platform individually. Per #52 D6, --platform all
+	// is no longer supported; agents loop per-platform when they need to.
+	for _, plat := range []string{"claude-code", "codex-cli", "opencode"} {
+		out, err = runCmd(t, cc, "skill", "install", skillName, "--platform", plat, "--json")
+		require.NoError(t, err)
 
-	var installResult output.SkillInstallResult
-	require.NoError(t, json.Unmarshal([]byte(out), &installResult))
-	assert.Equal(t, skillName, installResult.Skill)
-	assert.Len(t, installResult.Platforms, 3, "should install to all 3 platforms")
-	for _, p := range installResult.Platforms {
-		assert.True(t, p.Success, "install should succeed for %s", p.Platform)
-		assert.Empty(t, p.Error, "no error expected for %s", p.Platform)
+		var installResult output.SkillInstallResult
+		require.NoError(t, json.Unmarshal([]byte(out), &installResult))
+		assert.Equal(t, plat, installResult.Platform)
+		require.Len(t, installResult.Skills, 1)
+		assert.Equal(t, skillName, installResult.Skills[0].Skill)
+		assert.True(t, installResult.Skills[0].Success, "install should succeed on %s", plat)
+		assert.Empty(t, installResult.Skills[0].Error, "no error expected on %s", plat)
+		assert.NotNil(t, installResult.Capacity, "capacity report should be present")
+		assert.Equal(t, plat, installResult.Capacity.Platform)
 	}
 
 	// Step 5: Verify files exist on all 3 platforms
@@ -110,9 +114,10 @@ func TestEndToEnd_FullLifecycle(t *testing.T) {
 
 	var uninstallResult output.SkillUninstallResult
 	require.NoError(t, json.Unmarshal([]byte(out), &uninstallResult))
-	assert.Equal(t, skillName, uninstallResult.Skill)
-	assert.Len(t, uninstallResult.Platforms, 1)
-	assert.True(t, uninstallResult.Platforms[0].Success)
+	assert.Equal(t, "claude-code", uninstallResult.Platform)
+	require.Len(t, uninstallResult.Skills, 1)
+	assert.Equal(t, skillName, uninstallResult.Skills[0].Skill)
+	assert.True(t, uninstallResult.Skills[0].Success)
 
 	// Verify claude-code no longer has it
 	_, err = os.Stat(platformPaths["claude-code"])

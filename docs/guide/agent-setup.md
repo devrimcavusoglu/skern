@@ -43,5 +43,7 @@ For more comprehensive agent integration, add these to your `AGENTS.md`:
 - Before creating a new skill, search with `skern skill search <query>`
 - Use `skern skill recommend <query>` to get suggestions before creating
 - Always validate skills after creation: `skern skill validate <name>`
-- Install to the current platform: `skern skill install <name> --platform all`
+- Install to your current platform (the one you are running on), e.g. `skern skill install <name> --platform claude-code`
+- Multiple skills can be installed in one call: `skern skill install <a> <b> <c> --platform <p>`
+- Watch the `capacity` block in install/uninstall JSON output to manage your platform's working set; uninstall stale skills before adding new ones when capacity is tight
 ```

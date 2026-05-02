@@ -26,10 +26,18 @@ Install to Claude Code:
 skern skill install code-review --platform claude-code
 ```
 
-Or install to all detected platforms at once:
+Each invocation targets one platform. To install to multiple platforms, loop the call:
 
 ```sh
-skern skill install code-review --platform all
+for p in claude-code codex-cli opencode; do
+  skern skill install code-review --platform "$p"
+done
+```
+
+You can also install several skills at once:
+
+```sh
+skern skill install code-review test-runner deploy-checker --platform claude-code
 ```
 
 ## 4. List Installed Skills

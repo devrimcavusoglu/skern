@@ -336,9 +336,10 @@ func TestParsePlatformType(t *testing.T) {
 		{"claude-code", TypeClaudeCode, false},
 		{"codex-cli", TypeCodexCLI, false},
 		{"opencode", TypeOpenCode, false},
-		{"all", TypeAll, false},
 		{"Claude-Code", TypeClaudeCode, false},
-		{"ALL", TypeAll, false},
+		// "all" is rejected per #52 D6 — agents must specify their own platform.
+		{"all", "", true},
+		{"ALL", "", true},
 		{"", "", true},
 		{"unknown", "", true},
 		{"github-copilot", "", true},

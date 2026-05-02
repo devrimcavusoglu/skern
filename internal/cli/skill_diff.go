@@ -97,10 +97,6 @@ func diffRegistryVsPlatform(ctx *CommandContext, name, scopeStr, platformFlag st
 		return &ValidationError{Message: err.Error()}
 	}
 
-	if platformType == platform.TypeAll {
-		return &ValidationError{Message: "diff requires a specific platform, not \"all\""}
-	}
-
 	reg, err := ctx.NewRegistry()
 	if err != nil {
 		return err

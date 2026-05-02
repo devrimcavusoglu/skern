@@ -9,7 +9,7 @@ Skern supports three agentic development platforms. Each platform has a dedicate
 | User-level skills | `~/.claude/skills/` | `~/.agents/skills/` | `~/.config/opencode/skills/` |
 | Project-level skills | `.claude/skills/` | `.agents/skills/` | `.opencode/skills/` |
 | Auto-detection | Yes | Yes | Yes |
-| Install with `--platform all` | Yes | Yes | Yes |
+| Batch install (multiple skills, one call) | Yes | Yes | Yes |
 
 ## Feature Comparison
 

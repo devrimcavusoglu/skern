@@ -149,12 +149,8 @@ func newSkillCreateCmd() *cobra.Command {
 	return cmd
 }
 
-// Skill count thresholds
-const (
-	projectSkillCountWarn = 20
-	userSkillCountWarn    = 50
-)
-
+// checkSkillCountWarnings emits a warning when a registry scope is at or above
+// its capacity threshold (see internal/skill/capacity.go for values).
 func checkSkillCountWarnings(p *output.Printer, reg interface {
 	List(skill.Scope) ([]skill.Skill, []registry.ParseWarning, error)
 }, scope skill.Scope) {
@@ -163,11 +159,7 @@ func checkSkillCountWarnings(p *output.Printer, reg interface {
 		return
 	}
 	count := len(skills)
-
-	threshold := userSkillCountWarn
-	if scope == skill.ScopeProject {
-		threshold = projectSkillCountWarn
-	}
+	threshold := skill.ScopeThreshold(scope)
 
 	if count >= threshold {
 		p.Print("Warning: %s scope has %d skills (threshold: %d). Consider reviewing for duplicates.\n", scope, count, threshold)

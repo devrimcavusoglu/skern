@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -64,10 +65,13 @@ func TestSkillInstall(t *testing.T) {
 
 	var result output.SkillInstallResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.Equal(t, "install-me", result.Skill)
-	assert.Len(t, result.Platforms, 1)
-	assert.True(t, result.Platforms[0].Success)
-	assert.Equal(t, "claude-code", result.Platforms[0].Platform)
+	assert.Equal(t, "claude-code", result.Platform)
+	require.Len(t, result.Skills, 1)
+	assert.Equal(t, "install-me", result.Skills[0].Skill)
+	assert.True(t, result.Skills[0].Success)
+	require.NotNil(t, result.Capacity)
+	assert.Equal(t, "claude-code", result.Capacity.Platform)
+	assert.Equal(t, 1, result.Capacity.Installed)
 
 	// Verify file exists
 	installed := filepath.Join(home, ".claude", "skills", "install-me", "SKILL.md")
@@ -99,25 +103,131 @@ func TestSkillInstall_Text(t *testing.T) {
 	assert.Contains(t, out, "claude-code")
 }
 
-func TestSkillInstall_AllPlatforms(t *testing.T) {
+// TestSkillInstall_PlatformAllRejected verifies that "--platform all" is no
+// longer accepted (per #52 D6). Agents must specify the platform they're
+// running on; bulk-deploy semantics are removed.
+func TestSkillInstall_PlatformAllRejected(t *testing.T) {
 	cc, _, _ := testRegistryWithDirs(t)
 	home := t.TempDir()
 	project := t.TempDir()
 	withTestDetector(t, cc, home, project)
 
-	_, err := runCmd(t, cc, "skill", "create", "all-platforms", "--description", "Test")
+	_, err := runCmd(t, cc, "skill", "create", "all-rejected", "--description", "Test")
 	require.NoError(t, err)
 
-	out, err := runCmd(t, cc, "skill", "install", "all-platforms", "--platform", "all", "--json")
+	_, err = runCmd(t, cc, "skill", "install", "all-rejected", "--platform", "all")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no longer supported")
+}
+
+// TestSkillInstall_Batch verifies that multiple skill names install in a
+// single invocation and each gets its own per-skill action entry.
+func TestSkillInstall_Batch(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	for _, n := range []string{"batch-a", "batch-b", "batch-c"} {
+		_, err := runCmd(t, cc, "skill", "create", n, "--description", "Test")
+		require.NoError(t, err)
+	}
+
+	out, err := runCmd(t, cc, "skill", "install",
+		"batch-a", "batch-b", "batch-c",
+		"--platform", "claude-code", "--json")
 	require.NoError(t, err)
 
 	var result output.SkillInstallResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.Equal(t, "all-platforms", result.Skill)
-	assert.Len(t, result.Platforms, 3)
-	for _, p := range result.Platforms {
-		assert.True(t, p.Success, "expected success for %s", p.Platform)
+	assert.Equal(t, "claude-code", result.Platform)
+	require.Len(t, result.Skills, 3)
+	for i, want := range []string{"batch-a", "batch-b", "batch-c"} {
+		assert.Equal(t, want, result.Skills[i].Skill, "input order should be preserved")
+		assert.True(t, result.Skills[i].Success)
 	}
+	require.NotNil(t, result.Capacity)
+	assert.Equal(t, 3, result.Capacity.Installed)
+
+	// Files exist on disk for each skill.
+	for _, n := range []string{"batch-a", "batch-b", "batch-c"} {
+		_, err := os.Stat(filepath.Join(home, ".claude", "skills", n, "SKILL.md"))
+		require.NoError(t, err, "expected %s to be installed", n)
+	}
+}
+
+// TestSkillInstall_BatchPartialFailure verifies that a missing skill in a
+// batch produces a per-skill error without aborting the whole batch.
+func TestSkillInstall_BatchPartialFailure(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	_, err := runCmd(t, cc, "skill", "create", "real-skill", "--description", "Test")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "install",
+		"real-skill", "ghost-skill",
+		"--platform", "claude-code", "--json")
+	// Exit code 0 because at least one install succeeded.
+	require.NoError(t, err)
+
+	var result output.SkillInstallResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Len(t, result.Skills, 2)
+	assert.True(t, result.Skills[0].Success, "real-skill should succeed")
+	assert.False(t, result.Skills[1].Success, "ghost-skill should fail")
+	assert.Contains(t, result.Skills[1].Error, "not found")
+}
+
+// TestSkillInstall_BatchAllFail verifies a non-zero exit when every skill in
+// the batch fails to install.
+func TestSkillInstall_BatchAllFail(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	_, err := runCmd(t, cc, "skill", "install",
+		"ghost-a", "ghost-b",
+		"--platform", "claude-code")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to install any skill")
+}
+
+// TestSkillInstall_EnforceBudget verifies that --enforce-budget refuses to
+// install when the resulting count would exceed the platform threshold.
+func TestSkillInstall_EnforceBudget(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	// Project scope has the smaller threshold (20). Pre-fill the platform
+	// dir so the threshold is hit without creating 20 registry skills.
+	skillsDir := filepath.Join(project, ".claude", "skills")
+	require.NoError(t, os.MkdirAll(skillsDir, 0o755))
+	for i := 0; i < 20; i++ {
+		dir := filepath.Join(skillsDir, fmt.Sprintf("filler-%02d", i))
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"),
+			[]byte("---\nname: filler\ndescription: x\n---\n"), 0o644))
+	}
+
+	_, err := runCmd(t, cc, "skill", "create", "over-budget",
+		"--description", "Test", "--scope", "project")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "install", "over-budget",
+		"--platform", "claude-code", "--scope", "project", "--enforce-budget")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "capacity")
+
+	// Without --enforce-budget the same install proceeds (only a warning).
+	_, err = runCmd(t, cc, "skill", "install", "over-budget",
+		"--platform", "claude-code", "--scope", "project")
+	require.NoError(t, err)
 }
 
 func TestSkillInstall_Duplicate(t *testing.T) {
@@ -155,7 +265,8 @@ func TestSkillInstall_Force(t *testing.T) {
 
 	var result output.SkillInstallResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.True(t, result.Platforms[0].Success)
+	require.Len(t, result.Skills, 1)
+	assert.True(t, result.Skills[0].Success)
 
 	// Verify file still exists
 	installed := filepath.Join(home, ".claude", "skills", "force-install", "SKILL.md")
@@ -225,9 +336,10 @@ func TestSkillUninstall(t *testing.T) {
 
 	var result output.SkillUninstallResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.Equal(t, "remove-platform", result.Skill)
-	assert.Len(t, result.Platforms, 1)
-	assert.True(t, result.Platforms[0].Success)
+	assert.Equal(t, "claude-code", result.Platform)
+	require.Len(t, result.Skills, 1)
+	assert.Equal(t, "remove-platform", result.Skills[0].Skill)
+	assert.True(t, result.Skills[0].Success)
 
 	// Verify removed
 	installed := filepath.Join(home, ".claude", "skills", "remove-platform")
