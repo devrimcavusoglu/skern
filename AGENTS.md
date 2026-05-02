@@ -4,7 +4,7 @@
 
 Skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
 
-The project is written in **Go 1.25+** and the current release is **v0.1.0**.
+The project is written in **Go 1.25+** and the current release is **v0.2.0**.
 
 ## Repository Layout
 
@@ -260,18 +260,19 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ## Current Status
 
-Milestones M0–M5 are complete (v0.1.0). M6 is in progress on `feature/m6-dynamic-loading-batch`: dynamic skill loading per #52 — batch install/uninstall, capacity reporting in install/uninstall output, `--enforce-budget` opt-in, `--with-platforms` flag on `skill list`, removal of `--platform all`. This is a **breaking change** to the JSON shape of install/uninstall results (`skills[]` + top-level `platform`/`capacity` instead of `platforms[]`); the next release is v0.2.0.
+Milestones M0–M6 are complete (v0.2.0). M6 shipped dynamic skill loading per #52 — batch install/uninstall, capacity reporting in install/uninstall output, `--enforce-budget` opt-in, `--with-platforms` flag on `skill list`, removal of `--platform all`. The v0.1.x → v0.2.0 transition introduced a **breaking change** to the JSON shape of install/uninstall results (`skills[]` + top-level `platform`/`capacity` instead of `platforms[]`).
 
 ### Future Roadmap
 
 These items are tracked as GitHub issues:
 
 - MCP server mode (`skern serve`) — expose skills as MCP tools
-- Skill import from URL / git repo
-- Skill versioning (semver in frontmatter, upgrade detection)
 - Community skill catalog integration
 - Remote catalog search in `skern skill search`
-- Skill dependency resolution
+- Skill dependencies and composition (#45)
+- Platform-specific skill variants (#47)
+- Skill sync: bulk reconcile registry with platforms (#48)
+- Dry run / preview mode for mutating commands (#51)
 - WASI/Docker execution backends
 - LRU usage tracking for dynamic loading (#52 Phase 3) — state file at `~/.skern/state/usage.json`, `skern skill touch`/`skern skill evict` commands; deferred until the agent-side "skill use" signal is settled
 - Skill stats for context optimization (#75) — byte size, cross-platform presence, future token estimation
