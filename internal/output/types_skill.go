@@ -40,6 +40,12 @@ type SkillResult struct {
 	AllowedTools []string           `json:"allowed_tools,omitempty"`
 	Files        []string           `json:"files,omitempty"`
 	ModifiedBy   []ModifiedByResult `json:"modified_by,omitempty"`
+	// InstalledOn lists detected platforms where this skill is currently
+	// installed at the same scope as the registry entry. Populated by
+	// `skern skill list --with-platforms`. Always emitted as an empty slice
+	// (never null) when the flag is set, so JSON consumers can distinguish
+	// "queried, none" from "not queried".
+	InstalledOn []string `json:"installed_on,omitempty"`
 }
 
 // SkillCreateResult is the JSON envelope for skill create output.

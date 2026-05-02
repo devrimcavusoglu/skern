@@ -134,7 +134,7 @@ Each milestone gets its own feature branch. All commits for that milestone go on
 
 3. **Platform adapters are copiers** — Installing a skill to a platform means copying the skill directory to the platform's expected location. Each adapter knows its platform's directory convention.
 
-4. **Platform auto-detection** — Skern detects which platforms are installed by checking for their config directories/binaries (`~/.claude/`, `~/.codex/` or `~/.agents/`, `~/.config/opencode/`). `--platform all` installs to every detected platform.
+4. **Platform auto-detection** — Skern detects which platforms are installed by checking for their config directories/binaries (`~/.claude/`, `~/.codex/` or `~/.agents/`, `~/.config/opencode/`). Each `install`/`uninstall` invocation targets exactly one platform (per #52 D6); `--platform all` is not accepted. Agents specify the platform they are running on, and `skill install`/`skill uninstall` accept multiple skill names per call for batch operations.
 
 5. **JSON output as first-class** — Every command supports `--json` for machine-readable output. Default is human-friendly text. Exit codes are semantic: 0=success, 1=error, 2=validation failure.
 
@@ -159,9 +159,14 @@ On subsequent encounters, the agent finds the existing skill via `skern skill se
 |---|---|---|
 | Overlap warning threshold | Similarity score 0.0–1.0 | Warn at >= 0.6 |
 | Overlap block threshold | Similarity score | Block at >= 0.9, require `--force` |
-| Skill count warning (project) | Count in `.skern/skills/` | Warn at > 20 |
-| Skill count warning (user) | Count in `~/.skern/skills/` | Warn at > 50 |
+| Skill count warning (project) | Count in `.skern/skills/` | Warn at >= 20 |
+| Skill count warning (user) | Count in `~/.skern/skills/` | Warn at >= 50 |
+| Per-platform capacity (project scope) | Count installed at `<platform>/.skern/skills/` (project) | Warn at >= 20 |
+| Per-platform capacity (user scope) | Count installed at user-level platform skills dir | Warn at >= 50 |
+| Capacity enforcement (install) | `--enforce-budget` | Off by default; refuses install when threshold would be exceeded |
 | Deduplication hints | On `skern skill list` | Flag potential duplicates |
+
+Capacity thresholds are defined in `internal/skill/capacity.go`. Every `install`/`uninstall` JSON response carries a `capacity` block (count, threshold, headroom, over-budget flag) so agents can react to capacity pressure without an extra query.
 
 ### SKILL.md Format (Agent Skills Spec)
 
@@ -255,7 +260,7 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ## Current Status
 
-All milestones (M0–M5) are complete. The current release is **v0.1.0**, which added `skill edit`, skill tags/categories, `--force` install, parse warnings in `skill list`, stylistic lint hints, and internal refactors (CommandContext, unified scoring, output split).
+Milestones M0–M5 are complete (v0.1.0). M6 is in progress on `feature/m6-dynamic-loading-batch`: dynamic skill loading per #52 — batch install/uninstall, capacity reporting in install/uninstall output, `--enforce-budget` opt-in, `--with-platforms` flag on `skill list`, removal of `--platform all`. This is a **breaking change** to the JSON shape of install/uninstall results (`skills[]` + top-level `platform`/`capacity` instead of `platforms[]`); the next release is v0.2.0.
 
 ### Future Roadmap
 
@@ -268,4 +273,6 @@ These items are tracked as GitHub issues:
 - Remote catalog search in `skern skill search`
 - Skill dependency resolution
 - WASI/Docker execution backends
+- LRU usage tracking for dynamic loading (#52 Phase 3) — state file at `~/.skern/state/usage.json`, `skern skill touch`/`skern skill evict` commands; deferred until the agent-side "skill use" signal is settled
+- Skill stats for context optimization (#75) — byte size, cross-platform presence, future token estimation
 

@@ -37,13 +37,30 @@ Skern auto-detects which platforms are installed on your system. Use `skern plat
 skern platform list
 ```
 
-## Install to All Platforms
+## One Platform per Invocation
 
-Use `--platform all` to install a skill to every detected platform at once:
+Each `skern skill install` call targets exactly one platform. Agents are expected to specify the platform they are running on — there is no `all` value, and skern does not broadcast skills across platforms automatically.
+
+This design supports the [dynamic skill loading](./registry) model: each agent maintains its own working set of installed skills, sized to its context budget, independent of other platforms.
+
+To deploy a skill across several platforms, loop the call:
 
 ```sh
-skern skill install code-review --platform all
+for p in claude-code codex-cli opencode; do
+  skern skill install code-review --platform "$p"
+done
 ```
+
+## Batch Install/Uninstall
+
+Multiple skills can be installed (or uninstalled) in one call:
+
+```sh
+skern skill install code-review test-runner deploy-checker --platform claude-code
+skern skill uninstall stale-a stale-b --platform claude-code
+```
+
+Each skill's outcome is reported separately in the JSON output's `skills` array, and a `capacity` block reports the platform's installed-skill count after the batch.
 
 ## Platform Status Matrix
 

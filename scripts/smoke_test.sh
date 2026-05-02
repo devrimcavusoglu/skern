@@ -126,6 +126,20 @@ setup_env() {
     PROJECT_DIR="$TMPDIR_ROOT/project"
     mkdir -p "$PROJECT_DIR"
 
+    # On Windows (Git Bash / MSYS / Cygwin), Go's os.UserHomeDir() reads
+    # %USERPROFILE% and ignores $HOME. Mirror HOME into USERPROFILE (translated
+    # to a native Windows path so getenv() returns something Go can resolve)
+    # so the binary writes to the same physical location bash assertions check.
+    case "$OSTYPE" in
+        msys*|cygwin*|win32*)
+            if command -v cygpath >/dev/null 2>&1; then
+                export USERPROFILE="$(cygpath -w "$HOME")"
+            else
+                export USERPROFILE="$HOME"
+            fi
+            ;;
+    esac
+
     # Create platform detection dirs so skern detects them
     mkdir -p "$HOME/.claude"
     mkdir -p "$HOME/.codex"
@@ -333,20 +347,38 @@ test_skill_install_single_platform() {
     $SKERN skill create install-test --description "Install test" >/dev/null 2>&1
     local out
     out="$($SKERN skill install install-test --platform claude-code --json 2>&1)"
-    assert_contains "install returns skill name" "$out" '"skill":"install-test"'
+    assert_contains "install reports platform" "$out" '"platform":"claude-code"'
+    assert_contains "install reports skill name" "$out" '"skill":"install-test"'
+    assert_contains "install reports capacity" "$out" '"capacity":'
     assert_file_exists "SKILL.md installed to claude-code" "$HOME/.claude/skills/install-test/SKILL.md"
     teardown_env
 }
 
-test_skill_install_all_platforms() {
+# Batch install (multiple skills, one platform) — replaces the former
+# "install to all platforms" test, since --platform all was removed in #52 D6.
+test_skill_install_batch() {
     setup_env
-    $SKERN skill create install-all --description "Install all test" >/dev/null 2>&1
+    $SKERN skill create batch-a --description "Batch test a" >/dev/null 2>&1
+    $SKERN skill create batch-b --description "Batch test b" >/dev/null 2>&1
+    $SKERN skill create batch-c --description "Batch test c" >/dev/null 2>&1
     local out
-    out="$($SKERN skill install install-all --platform all --json 2>&1)"
-    assert_contains "install returns skill name" "$out" '"skill":"install-all"'
-    assert_file_exists "installed to claude-code" "$HOME/.claude/skills/install-all/SKILL.md"
-    assert_file_exists "installed to codex-cli" "$HOME/.agents/skills/install-all/SKILL.md"
-    assert_file_exists "installed to opencode" "$HOME/.config/opencode/skills/install-all/SKILL.md"
+    out="$($SKERN skill install batch-a batch-b batch-c --platform claude-code --json 2>&1)"
+    assert_contains "batch install reports first skill"  "$out" '"skill":"batch-a"'
+    assert_contains "batch install reports second skill" "$out" '"skill":"batch-b"'
+    assert_contains "batch install reports third skill"  "$out" '"skill":"batch-c"'
+    assert_file_exists "batch-a installed" "$HOME/.claude/skills/batch-a/SKILL.md"
+    assert_file_exists "batch-b installed" "$HOME/.claude/skills/batch-b/SKILL.md"
+    assert_file_exists "batch-c installed" "$HOME/.claude/skills/batch-c/SKILL.md"
+    teardown_env
+}
+
+# --platform all is rejected per #52 D6.
+test_skill_install_platform_all_rejected() {
+    setup_env
+    $SKERN skill create rejected --description "Test" >/dev/null 2>&1
+    local rc=0
+    $SKERN skill install rejected --platform all >/dev/null 2>&1 || rc=$?
+    assert_exit_code "--platform all is rejected" "2" "$rc"
     teardown_env
 }
 
@@ -356,7 +388,8 @@ test_skill_uninstall() {
     $SKERN skill install uninstall-test --platform claude-code >/dev/null 2>&1
     local out
     out="$($SKERN skill uninstall uninstall-test --platform claude-code --json 2>&1)"
-    assert_contains "uninstall returns skill name" "$out" '"skill":"uninstall-test"'
+    assert_contains "uninstall reports platform" "$out" '"platform":"claude-code"'
+    assert_contains "uninstall reports skill name" "$out" '"skill":"uninstall-test"'
     assert_file_not_exists "SKILL.md removed from platform" "$HOME/.claude/skills/uninstall-test/SKILL.md"
     teardown_env
 }
@@ -384,8 +417,11 @@ test_full_lifecycle() {
     out="$($SKERN skill list --json 2>&1)"
     assert_contains "lifecycle: list count 1" "$out" '"count":1'
 
-    # 5. Install to all platforms
-    out="$($SKERN skill install lifecycle-skill --platform all --json 2>&1)"
+    # 5. Install to every platform (one call per platform — --platform all
+    #    was removed in #52 D6).
+    for plat in claude-code codex-cli opencode; do
+        $SKERN skill install lifecycle-skill --platform "$plat" --json >/dev/null 2>&1
+    done
     assert_file_exists "lifecycle: claude-code installed" "$HOME/.claude/skills/lifecycle-skill/SKILL.md"
     assert_file_exists "lifecycle: codex-cli installed" "$HOME/.agents/skills/lifecycle-skill/SKILL.md"
     assert_file_exists "lifecycle: opencode installed" "$HOME/.config/opencode/skills/lifecycle-skill/SKILL.md"
@@ -447,7 +483,8 @@ run_test "test_platform_status_empty" test_platform_status_empty
 
 # Install / Uninstall
 run_test "test_skill_install_single_platform" test_skill_install_single_platform
-run_test "test_skill_install_all_platforms" test_skill_install_all_platforms
+run_test "test_skill_install_batch" test_skill_install_batch
+run_test "test_skill_install_platform_all_rejected" test_skill_install_platform_all_rejected
 run_test "test_skill_uninstall" test_skill_uninstall
 
 # Full lifecycle

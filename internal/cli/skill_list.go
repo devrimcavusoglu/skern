@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"sort"
+
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/overlap"
 	"github.com/devrimcavusoglu/skern/internal/registry"
@@ -10,8 +12,9 @@ import (
 
 func newSkillListCmd() *cobra.Command {
 	var (
-		scope string
-		tag   string
+		scope         string
+		tag           string
+		withPlatforms bool
 	)
 
 	cmd := &cobra.Command{
@@ -52,6 +55,35 @@ func newSkillListCmd() *cobra.Command {
 				}
 			}
 
+			// When --with-platforms is set, build a per-scope index of installed
+			// skill names per platform once, then look each registry skill up
+			// against the index that matches its scope. Skipping platforms
+			// that aren't detected keeps the output honest.
+			var installedIndex map[skill.Scope]map[string]map[string]bool // scope -> platform -> skill -> true
+			if withPlatforms {
+				det, err := ctx.NewDetector()
+				if err != nil {
+					return err
+				}
+				installedIndex = make(map[skill.Scope]map[string]map[string]bool)
+				for _, p := range det.DetectAll() {
+					for _, sc := range []skill.Scope{skill.ScopeUser, skill.ScopeProject} {
+						names, listErr := p.InstalledSkills(sc)
+						if listErr != nil {
+							continue
+						}
+						if installedIndex[sc] == nil {
+							installedIndex[sc] = make(map[string]map[string]bool)
+						}
+						set := make(map[string]bool, len(names))
+						for _, n := range names {
+							set[n] = true
+						}
+						installedIndex[sc][string(p.Name())] = set
+					}
+				}
+			}
+
 			for _, d := range discovered {
 				if tag != "" && !hasTag(d.Skill.Tags, tag) {
 					continue
@@ -59,6 +91,9 @@ func newSkillListCmd() *cobra.Command {
 				r := toDiscoveredSkillResult(d)
 				if files, err := skill.ListFiles(d.Path); err == nil && len(files) > 0 {
 					r.Files = files
+				}
+				if withPlatforms {
+					r.InstalledOn = lookupInstalledOn(installedIndex[d.Scope], d.Skill.Name)
 				}
 				skillResults = append(skillResults, r)
 			}
@@ -111,6 +146,22 @@ func newSkillListCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&scope, "scope", "all", "skill scope (user, project, or all)")
 	cmd.Flags().StringVar(&tag, "tag", "", "filter skills by tag")
+	cmd.Flags().BoolVar(&withPlatforms, "with-platforms", false, "include the list of detected platforms each skill is installed on")
 
 	return cmd
+}
+
+// lookupInstalledOn returns the sorted list of platform names where the named
+// skill appears in the per-platform installed-skills sets. Returns an empty
+// (non-nil) slice when the skill is in no platform — this lets JSON consumers
+// distinguish "queried, no platforms" from "not queried at all".
+func lookupInstalledOn(byPlatform map[string]map[string]bool, name string) []string {
+	out := []string{}
+	for plat, set := range byPlatform {
+		if set[name] {
+			out = append(out, plat)
+		}
+	}
+	sort.Strings(out)
+	return out
 }

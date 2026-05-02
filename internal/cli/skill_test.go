@@ -901,6 +901,91 @@ func TestSkillList_FilterByTag(t *testing.T) {
 	assert.True(t, names["tool-c"])
 }
 
+// TestSkillList_WithPlatforms verifies that --with-platforms enriches each
+// skill entry with the list of platforms where the skill is currently
+// installed, scoped to the registry skill's scope.
+func TestSkillList_WithPlatforms(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	_, err := runCmd(t, cc, "skill", "create", "wp-installed", "--description", "Test")
+	require.NoError(t, err)
+	_, err = runCmd(t, cc, "skill", "create", "wp-not-installed", "--description", "Test")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "install", "wp-installed", "--platform", "claude-code")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "list", "--scope", "user", "--with-platforms", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+
+	byName := map[string]output.SkillResult{}
+	for _, s := range result.Skills {
+		byName[s.Name] = s
+	}
+
+	assert.Equal(t, []string{"claude-code"}, byName["wp-installed"].InstalledOn)
+	assert.Empty(t, byName["wp-not-installed"].InstalledOn,
+		"uninstalled skill should report empty platform list")
+}
+
+// TestSkillList_WithoutWithPlatforms confirms InstalledOn stays nil/empty
+// when --with-platforms is not requested. JSON consumers rely on this to
+// distinguish "queried, none" from "not queried".
+func TestSkillList_WithoutWithPlatforms(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	_, err := runCmd(t, cc, "skill", "create", "no-flag-skill", "--description", "Test")
+	require.NoError(t, err)
+	_, err = runCmd(t, cc, "skill", "install", "no-flag-skill", "--platform", "claude-code")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "list", "--scope", "user", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Len(t, result.Skills, 1)
+	assert.Empty(t, result.Skills[0].InstalledOn)
+}
+
+// TestSkillUninstall_BatchAndCapacity covers batch uninstall plus the post-op
+// capacity snapshot showing the count drop.
+func TestSkillUninstall_BatchAndCapacity(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	for _, n := range []string{"u-a", "u-b"} {
+		_, err := runCmd(t, cc, "skill", "create", n, "--description", "Test")
+		require.NoError(t, err)
+		_, err = runCmd(t, cc, "skill", "install", n, "--platform", "claude-code")
+		require.NoError(t, err)
+	}
+
+	out, err := runCmd(t, cc, "skill", "uninstall",
+		"u-a", "u-b", "--platform", "claude-code", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillUninstallResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Len(t, result.Skills, 2)
+	for _, s := range result.Skills {
+		assert.True(t, s.Success)
+	}
+	require.NotNil(t, result.Capacity)
+	assert.Equal(t, 0, result.Capacity.Installed)
+}
+
 func TestSkillSearch_FilterByTag(t *testing.T) {
 	cc := testRegistry(t)
 

@@ -277,7 +277,8 @@ func TestSkillDiff_PlatformAll_Rejected(t *testing.T) {
 	_, err = runCmd(t, cc, "skill", "diff", "all-plat",
 		"--platform", "all", "--scope", "user")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "specific platform")
+	// "all" rejection is now centralized in ParsePlatformType (#52 D6).
+	assert.Contains(t, err.Error(), "no longer supported")
 }
 
 func TestSkillDiff_NoArgs(t *testing.T) {

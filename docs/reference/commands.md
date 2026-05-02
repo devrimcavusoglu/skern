@@ -12,8 +12,8 @@ skern skill list [--scope user|project|all]   # List skills in registry
 skern skill show <name>                       # Display skill details
 skern skill validate <name>                   # Validate against Agent Skills spec
 skern skill remove <name>                     # Remove skill from registry
-skern skill install <name> --platform <p>     # Install skill to platform
-skern skill uninstall <name> --platform <p>   # Remove skill from platform
+skern skill install <name>... --platform <p>  # Install one or more skills to platform
+skern skill uninstall <name>... --platform <p> # Remove one or more skills from platform
 skern platform list                           # List detected platforms
 skern platform status                         # Skill x platform installation matrix
 skern completion [bash|zsh|fish]              # Generate shell completions
@@ -119,10 +119,13 @@ skern skill list [--scope user|project|all] [flags]
 |------|-------------|
 | `--scope` | `user`, `project`, or `all` |
 | `--tag` | Filter results to skills with this tag |
+| `--with-platforms` | Include `installed_on` per-skill: the detected platforms where the skill is currently installed at the same scope |
 
 Also runs pairwise overlap detection across all listed skills and appends a "Potential duplicates" section when matches are found (score >= 0.6). In `--json` mode, these appear in the `duplicates` array.
 
 Skills that cannot be parsed are reported as parse warnings rather than silently skipped. In text mode these appear as warning lines; in `--json` mode they appear in the `parse_warnings` array.
+
+When `--with-platforms` is set, the JSON output contains an `installed_on` array on every skill — empty for skills not installed on any detected platform. Without the flag the field is omitted entirely so consumers can distinguish "queried, none" from "not queried".
 
 ## `skern skill show`
 
@@ -152,33 +155,42 @@ skern skill remove <name>
 
 ## `skern skill install`
 
-Install a skill to one or more platforms.
+Install one or more skills to a single platform.
 
 ```sh
-skern skill install <name> --platform <platform>
+skern skill install <name>... --platform <platform>
 ```
+
+Each invocation targets exactly one platform. Agents are expected to specify the platform they are running on; `--platform all` is no longer accepted. To deploy a skill across multiple platforms, loop the call per platform.
+
+Multiple skill names can be passed in a single call. Each skill's outcome is reported as a separate entry in the `skills` array. A failure on one skill does not abort the batch — the command exits non-zero only when *every* install fails.
+
+The response includes a `capacity` block reporting the platform's installed-skill count after the operation, the threshold for that scope, and remaining headroom. Use it to decide whether to evict stale skills before the next install.
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--platform` | `claude-code`, `codex-cli`, `opencode`, or `all` (required) |
+| `--platform` | `claude-code`, `codex-cli`, or `opencode` (required) |
 | `--scope` | `user` or `project` |
 | `--force` | Overwrite existing installation |
+| `--enforce-budget` | Refuse the operation if it would push the platform's installed-skill count past the per-scope threshold |
 
 ## `skern skill uninstall`
 
-Remove a skill from a platform.
+Remove one or more skills from a platform.
 
 ```sh
-skern skill uninstall <name> --platform <platform>
+skern skill uninstall <name>... --platform <platform>
 ```
+
+Mirrors `install` semantics: one platform per call, multiple skills allowed, partial failures are reported per-skill, and the response includes a post-op `capacity` block.
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--platform` | `claude-code`, `codex-cli`, `opencode`, or `all` (required) |
+| `--platform` | `claude-code`, `codex-cli`, or `opencode` (required) |
 | `--scope` | `user` or `project` |
 
 ## `skern platform list`
