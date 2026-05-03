@@ -24,8 +24,8 @@ func newSkillImportCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "import <url>",
-		Short: "Import a skill from a remote URL",
-		Long:  "Import a skill from a GitHub repository directory or gist into the local registry.",
+		Short: "Import a skill from a URL or git repo into skern's registry",
+		Long:  "Import a skill from a GitHub repository directory or gist into skern's registry.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := getContext(cmd)

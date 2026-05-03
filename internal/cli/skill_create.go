@@ -27,7 +27,7 @@ func newSkillCreateCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "create <name>",
-		Short: "Create a new skill",
+		Short: "Create a new skill in skern's registry",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := getContext(cmd)

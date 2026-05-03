@@ -3,7 +3,7 @@
 ## Pass criteria
 
 - [ ] Agent discovers all 3 platforms via `skern platform list`
-- [ ] Agent installs to all platforms (via `--platform all` or individually)
+- [ ] Agent installs to each platform individually (one `--platform <name>` invocation per platform; `--platform all` was removed in v0.2.0)
 - [ ] Agent verifies with `skern platform status`
 - [ ] Status shows deploy-helper installed on claude-code, codex-cli, opencode
 - [ ] Follow-up: agent uninstalls from codex-cli only
@@ -14,7 +14,9 @@
 ```sh
 skern platform list --json
 skern platform status --json
-skern skill install deploy-helper --platform all
+skern skill install deploy-helper --platform claude-code
+skern skill install deploy-helper --platform codex-cli
+skern skill install deploy-helper --platform opencode
 skern platform status --json
 skern skill uninstall deploy-helper --platform codex-cli
 skern platform status --json
