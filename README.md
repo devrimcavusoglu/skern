@@ -38,15 +38,25 @@ skern skill install code-review --platform claude-code
 
 ## Install
 
+**macOS / Linux:**
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.sh | bash
 ```
 
-Or with Go 1.25+:
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.ps1 | iex
+```
+
+**From source** (Go 1.25+):
 
 ```sh
 go install github.com/devrimcavusoglu/skern/cmd/skern@latest
 ```
+
+Full installation guide — including version pinning, custom install paths, manual install, and uninstall — is in [INSTALL.md](./INSTALL.md).
 
 ## Documentation
 

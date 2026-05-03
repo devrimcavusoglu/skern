@@ -5,6 +5,33 @@ All notable changes to skern are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.1] — 2026-05-03
+
+Cross-platform install. No code changes; release pipeline + install UX only.
+
+### Added
+
+- **Windows binaries.** Releases now publish `skern_<version>_windows_amd64.zip`
+  and `skern_<version>_windows_arm64.zip` alongside the existing macOS and Linux
+  tarballs. Triggered by adding `windows` to the goreleaser build matrix and a
+  `format_overrides` rule that ships Windows as zip per convention.
+- **`scripts/install.ps1`** — PowerShell installer mirroring `scripts/install.sh`.
+  Detects amd64/arm64, downloads the matching zip, verifies SHA-256 against the
+  release's `checksums.txt`, extracts to `%LOCALAPPDATA%\skern\bin`, and warns
+  if the install dir is not on `PATH`. Honors `SKERN_INSTALL_DIR` and
+  `SKERN_VERSION` environment variables, same as the Unix script.
+- **`INSTALL.md`** at repo root — single canonical install guide with one
+  command per OS (macOS / Linux / Windows), plus version-pinning, manual
+  install, source build, and uninstall sections. Designed as a clean structured
+  doc that an LLM agent can follow end-to-end.
+
+### Changed
+
+- README install section now shows the three OS one-liners side-by-side and
+  links to `INSTALL.md` for full coverage.
+
+[v0.2.1]: https://github.com/devrimcavusoglu/skern/compare/v0.2.0...v0.2.1
+
 ## [v0.2.0] — 2026-05-03
 
 Dynamic skill loading release. **Contains breaking changes.**
