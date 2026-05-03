@@ -18,8 +18,12 @@ func newSkillUninstallCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "uninstall <name>...",
-		Short: "Uninstall one or more skills from a platform",
+		Short: "Uninstall one or more skills from a platform (registry untouched)",
 		Long: `Uninstall one or more skills from a single platform.
+
+Removes the skill from the platform's skill directory only — the skill remains
+in skern's registry, and other platforms keep their copies. To delete a skill
+from skern entirely, use 'skern skill remove'.
 
 Each invocation targets exactly one platform. Multiple skill names can be
 passed in one call to uninstall them as a batch — useful for evicting a set

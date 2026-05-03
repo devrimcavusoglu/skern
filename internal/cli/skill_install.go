@@ -20,8 +20,13 @@ func newSkillInstallCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install <name>...",
-		Short: "Install one or more skills to a platform",
-		Long: `Install one or more skills to a single platform.
+		Short: "Install one or more registered skills onto a platform",
+		Long: `Install one or more skills from skern's registry onto a single platform.
+
+Each skill must already exist in skern's registry — create it with 'skern skill
+create' or pull it in with 'skern skill import' before installing. Install copies
+the registered skill into the platform's skill directory; the registry copy is
+left untouched.
 
 Each invocation targets exactly one platform — agents are expected to specify
 the platform they are running on. Multiple skill names can be passed in one
@@ -88,7 +93,7 @@ installed-skill count would meet or exceed the per-platform threshold (see
 
 				_, skillDir, getErr := reg.Get(name, scopeVal)
 				if getErr != nil {
-					entry.Error = fmt.Sprintf("not found in %s scope (run 'skern skill list' to see available skills)", scope)
+					entry.Error = fmt.Sprintf("not registered in skern (%s scope) — run 'skern skill create' or 'skern skill import' first, or 'skern skill list' to see available skills", scope)
 					entries = append(entries, entry)
 					continue
 				}

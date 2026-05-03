@@ -178,7 +178,7 @@ func TestSkillInstall_BatchPartialFailure(t *testing.T) {
 	require.Len(t, result.Skills, 2)
 	assert.True(t, result.Skills[0].Success, "real-skill should succeed")
 	assert.False(t, result.Skills[1].Success, "ghost-skill should fail")
-	assert.Contains(t, result.Skills[1].Error, "not found")
+	assert.Contains(t, result.Skills[1].Error, "not registered")
 }
 
 // TestSkillInstall_BatchAllFail verifies a non-zero exit when every skill in

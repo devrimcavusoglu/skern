@@ -13,7 +13,7 @@ func newSkillRemoveCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "remove <name>",
-		Short: "Remove a skill",
+		Short: "Remove a skill from skern's registry (does not affect platform installs)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := getContext(cmd)

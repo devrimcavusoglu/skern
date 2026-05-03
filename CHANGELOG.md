@@ -33,6 +33,18 @@ Dynamic skill loading release. **Contains breaking changes.**
 - Skill creation guidelines documented in `docs/writing-skills.md`, adapted
   from superpowers/writing-skills. ([#74])
 
+### Changed
+
+- `skern skill --help` now groups subcommands into **Registry commands** (where
+  the skill lives in skern itself) and **Platform commands** (where the skill is
+  deployed to a specific platform), making the registry → platform direction
+  explicit. Per-command help strings reinforce the model: `create`/`remove` say
+  "skern's registry," `install` says "registered skills onto a platform," and
+  `uninstall` notes the registry is untouched.
+- The "skill not found" error from `skill install` now reads "not registered in
+  skern" and points users at `skill create` / `skill import` instead of just
+  `skill list`.
+
 ### Fixed
 
 - Version info falls back to `runtime/debug.ReadBuildInfo` when ldflags aren't
