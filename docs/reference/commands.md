@@ -171,7 +171,7 @@ The response includes a `capacity` block reporting the platform's installed-skil
 
 | Flag | Description |
 |------|-------------|
-| `--platform` | `claude-code`, `codex-cli`, or `opencode` (required) |
+| `--platform` | One of: `claude-code`, `codex-cli`, `opencode`, `cursor`, `gemini-cli`, `github-copilot`, `windsurf`, `continue` (required) |
 | `--scope` | `user` or `project` |
 | `--force` | Overwrite existing installation |
 | `--enforce-budget` | Refuse the operation if it would push the platform's installed-skill count past the per-scope threshold |
@@ -190,7 +190,7 @@ Mirrors `install` semantics: one platform per call, multiple skills allowed, par
 
 | Flag | Description |
 |------|-------------|
-| `--platform` | `claude-code`, `codex-cli`, or `opencode` (required) |
+| `--platform` | One of: `claude-code`, `codex-cli`, `opencode`, `cursor`, `gemini-cli`, `github-copilot`, `windsurf`, `continue` (required) |
 | `--scope` | `user` or `project` |
 
 ## `skern platform list`

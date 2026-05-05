@@ -46,7 +46,7 @@ With two arguments, compares two registry skills by name
 	}
 
 	cmd.Flags().StringVar(&scope, "scope", "", "skill scope (user or project)")
-	cmd.Flags().StringVar(&platformFlag, "platform", "", "platform to compare against (claude-code, codex-cli, opencode)")
+	cmd.Flags().StringVar(&platformFlag, "platform", "", "platform to compare against (one of: "+platformNamesList()+")")
 
 	return cmd
 }

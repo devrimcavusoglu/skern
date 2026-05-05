@@ -27,7 +27,7 @@ skern skill uninstall code-review --platform codex-cli
 
 ## Detection
 
-Skern detects Codex CLI by checking for the presence of `.agents/` in the current project or `~/.agents/` at the user level.
+Skern detects Codex CLI by checking for `~/.codex/` (preferred) or `~/.agents/` at the user level. The `.agents/skills/` project directory is shared with several other agents (cursor, gemini-cli, github-copilot) — see [Platform Adapters › Shared project directory](/concepts/platform-adapters#shared-project-directory).
 
 ## How Skills Work in Codex CLI
 

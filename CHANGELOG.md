@@ -5,6 +5,36 @@ All notable changes to skern are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Five new platform adapters: `cursor`, `gemini-cli`, `github-copilot`,
+  `windsurf`, `continue`.** All five accept the same `--platform` flag, route
+  installs to the platform's expected skill directory, and participate in
+  `skern platform list`/`status` matrices. Path conventions follow
+  [vercel-labs/skills](https://github.com/vercel-labs/skills#supported-agents).
+  ([#80])
+- **Declarative platform registry.** Adapters are now defined as one row in
+  `internal/platform/spec.go` — a `Spec` carrying name, user dir, project dir,
+  and home-relative detection paths. A single generic `Adapter` struct
+  implements the `Platform` interface from any spec row, replacing the
+  per-platform Go files (`claude.go`, `codex.go`, `opencode.go`). Adding a
+  platform is a one-line PR. ([#80])
+
+### Changed
+
+- **Platform detection is per-platform, not per-directory.** Several adapters
+  share `.agents/skills/` as their project dir; detection now keys on each
+  adapter's distinct user-level config dir (`~/.cursor`, `~/.gemini`,
+  `~/.copilot`, `~/.codex`, etc.) so `platform list` doesn't false-positive
+  for platforms whose CLI isn't installed.
+- **CLI flag help and error messages enumerate the registered platforms
+  dynamically** — adding a platform updates `--platform` help and the
+  "unknown platform" error text without touching the CLI.
+
+[#80]: https://github.com/devrimcavusoglu/skern/issues/80
+
 ## [v0.2.1] — 2026-05-03
 
 Cross-platform install. No code changes; release pipeline + install UX only.

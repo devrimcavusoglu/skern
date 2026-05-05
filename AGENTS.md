@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
+Skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode, Cursor, Gemini CLI, GitHub Copilot, Windsurf, Continue, and more). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
 
 The project is written in **Go 1.25+** and the current release is **v0.2.0**.
 
@@ -15,7 +15,7 @@ internal/
   skill/                      # Domain logic: Skill struct, manifest parsing, validation, scaffolding
   overlap/                    # Fuzzy name matching and description similarity scoring
   registry/                   # Filesystem CRUD over ~/.skern/skills/ and .skern/skills/
-  platform/                   # Platform adapters (Claude Code, Codex CLI, OpenCode)
+  platform/                   # Platform adapters — declarative spec table + generic Adapter
   output/                     # JSON/text structured output formatting
 scripts/
   install.sh                  # Installer script
@@ -95,7 +95,7 @@ Each milestone gets its own feature branch. All commits for that milestone go on
 - **`cli/`** — Only command wiring, flag parsing, and output. No business logic.
 - **`skill/`** — Domain types and operations. The `Skill` struct, `Author`, `ModifiedByEntry` types, manifest parsing/serialization, validation rules, and scaffolding templates.
 - **`registry/`** — Filesystem operations for skill storage. CRUD and discovery across user/project scopes.
-- **`platform/`** — Each adapter implements the `Platform` interface: `Name()`, `Detect()`, `UserSkillsDir()`, `ProjectSkillsDir()`, `Install()`, `Uninstall()`, `InstalledSkills()`.
+- **`platform/`** — Declarative `Spec` table (`spec.go`) plus a single generic `Adapter` (`adapter.go`) that implements the `Platform` interface (`Name()`, `Detect()`, `UserSkillsDir()`, `ProjectSkillsDir()`, `Install()`, `Uninstall()`, `InstalledSkills()`) from any spec row. Adding a platform = one row in `Specs` plus one `Type` constant; no per-platform Go file.
 - **`overlap/`** — Similarity scoring (Levenshtein distance, keyword overlap). Returns a float64 score in [0, 1].
 - **`output/`** — Handles `--json` and `--quiet` flags. All commands go through this package for consistent formatting.
 
@@ -134,7 +134,7 @@ Each milestone gets its own feature branch. All commits for that milestone go on
 
 3. **Platform adapters are copiers** — Installing a skill to a platform means copying the skill directory to the platform's expected location. Each adapter knows its platform's directory convention.
 
-4. **Platform auto-detection** — Skern detects which platforms are installed by checking for their config directories/binaries (`~/.claude/`, `~/.codex/` or `~/.agents/`, `~/.config/opencode/`). Each `install`/`uninstall` invocation targets exactly one platform (per #52 D6); `--platform all` is not accepted. Agents specify the platform they are running on, and `skill install`/`skill uninstall` accept multiple skill names per call for batch operations.
+4. **Platform auto-detection** — Skern detects which platforms are installed by checking each adapter's home-relative `DetectHome` paths (e.g. `~/.claude/`, `~/.cursor/`, `~/.gemini/`). Detection is per-platform even when several adapters share `.agents/skills/` as their project directory. Each `install`/`uninstall` invocation targets exactly one platform (per #52 D6); `--platform all` is not accepted. Agents specify the platform they are running on, and `skill install`/`skill uninstall` accept multiple skill names per call for batch operations.
 
 5. **JSON output as first-class** — Every command supports `--json` for machine-readable output. Default is human-friendly text. Exit codes are semantic: 0=success, 1=error, 2=validation failure.
 
@@ -237,11 +237,18 @@ Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
 
 ### Platform Paths
 
-| Platform    | User-level                         | Project-level            |
-|-------------|-------------------------------------|--------------------------|
-| Claude Code | `~/.claude/skills/<name>/`         | `.claude/skills/<name>/` |
-| Codex CLI   | `~/.agents/skills/<name>/`         | `.agents/skills/<name>/` |
-| OpenCode    | `~/.config/opencode/skills/<name>/`| `.opencode/skills/<name>/`|
+| Adapter name     | User-level                          | Project-level              |
+|------------------|--------------------------------------|----------------------------|
+| `claude-code`    | `~/.claude/skills/<name>/`          | `.claude/skills/<name>/`   |
+| `codex-cli`      | `~/.agents/skills/<name>/`          | `.agents/skills/<name>/`   |
+| `opencode`       | `~/.config/opencode/skills/<name>/` | `.opencode/skills/<name>/` |
+| `cursor`         | `~/.cursor/skills/<name>/`          | `.agents/skills/<name>/`   |
+| `gemini-cli`     | `~/.gemini/skills/<name>/`          | `.agents/skills/<name>/`   |
+| `github-copilot` | `~/.copilot/skills/<name>/`         | `.agents/skills/<name>/`   |
+| `windsurf`       | `~/.codeium/windsurf/skills/<name>/`| `.windsurf/skills/<name>/` |
+| `continue`       | `~/.continue/skills/<name>/`        | `.continue/skills/<name>/` |
+
+The full list is generated from `internal/platform/spec.go` — append a row there to add a platform.
 
 ### Overlap Detection Thresholds
 

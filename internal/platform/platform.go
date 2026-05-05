@@ -8,11 +8,17 @@ import (
 // Type identifies a supported platform.
 type Type string
 
-// Platform type constants.
+// Platform type constants. Adding a new platform also requires an entry in
+// Specs (see spec.go).
 const (
-	TypeClaudeCode Type = "claude-code"
-	TypeCodexCLI   Type = "codex-cli"
-	TypeOpenCode   Type = "opencode"
+	TypeClaudeCode    Type = "claude-code"
+	TypeCodexCLI      Type = "codex-cli"
+	TypeOpenCode      Type = "opencode"
+	TypeCursor        Type = "cursor"
+	TypeGeminiCLI     Type = "gemini-cli"
+	TypeGitHubCopilot Type = "github-copilot"
+	TypeWindsurf      Type = "windsurf"
+	TypeContinue      Type = "continue"
 )
 
 // Platform defines the interface that each platform adapter must implement.

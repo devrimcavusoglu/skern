@@ -11,17 +11,17 @@ type Detector struct {
 	platforms []Platform
 }
 
-// NewDetector creates a Detector initialized with all known platform adapters using real paths.
+// NewDetector creates a Detector initialized with one Adapter per registered
+// Spec. Adding a platform never requires touching this function.
 func NewDetector() (*Detector, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("determining home directory: %w", err)
 	}
 
-	platforms := []Platform{
-		NewClaudeCode(home, "."),
-		NewCodexCLI(home, "."),
-		NewOpenCode(home, "."),
+	platforms := make([]Platform, 0, len(Specs))
+	for _, s := range Specs {
+		platforms = append(platforms, New(s.Name, home, "."))
 	}
 
 	return &Detector{platforms: platforms}, nil
@@ -64,12 +64,22 @@ func (d *Detector) All() []Platform {
 // running skern is expected to specify its own platform explicitly.
 func ParsePlatformType(s string) (Type, error) {
 	normalized := strings.ToLower(strings.TrimSpace(s))
-	switch Type(normalized) {
-	case TypeClaudeCode, TypeCodexCLI, TypeOpenCode:
+	if normalized == "all" {
+		return "", fmt.Errorf("platform %q is no longer supported; specify a single platform (one of: %s) — agents should target the platform they are running on", s, supportedNamesList())
+	}
+	if SpecFor(Type(normalized)) != nil {
 		return Type(normalized), nil
 	}
-	if normalized == "all" {
-		return "", fmt.Errorf("platform %q is no longer supported; specify a single platform (claude-code, codex-cli, or opencode) — agents should target the platform they are running on", s)
+	return "", fmt.Errorf("unknown platform %q: must be one of %s", s, supportedNamesList())
+}
+
+// supportedNamesList returns a comma-separated list of registered platform
+// names for use in user-facing error messages.
+func supportedNamesList() string {
+	names := SupportedNames()
+	parts := make([]string, len(names))
+	for i, n := range names {
+		parts[i] = string(n)
 	}
-	return "", fmt.Errorf("unknown platform %q: must be one of claude-code, codex-cli, opencode", s)
+	return strings.Join(parts, ", ")
 }
