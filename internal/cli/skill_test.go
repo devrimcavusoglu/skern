@@ -423,87 +423,28 @@ func TestCompletion_Invalid(t *testing.T) {
 
 // --- from-template ---
 
-func TestSkillCreate_FromTemplate_RawBodyFile(t *testing.T) {
+// --from-template only accepts a directory; a file path must error with a
+// message that points the user at the parent directory.
+func TestSkillCreate_FromTemplate_FilePath_Errors(t *testing.T) {
 	cc := testRegistry(t)
 
-	// A non-SKILL.md markdown file with no frontmatter is treated as a
-	// raw body (legacy behavior).
 	tmplDir := t.TempDir()
-	tmplPath := filepath.Join(tmplDir, "template.md")
-	require.NoError(t, os.WriteFile(tmplPath, []byte("## Custom Instructions\n\nDo something custom.\n"), 0o644))
+	tmplPath := filepath.Join(tmplDir, "SKILL.md")
+	require.NoError(t, os.WriteFile(tmplPath, []byte("---\nname: x\ndescription: y\nmetadata:\n  author:\n    name: a\n    type: human\n  version: \"0.1.0\"\n---\nbody"), 0o644))
 
-	out, err := runCmd(t, cc, "skill", "create", "tmpl-skill", "--from-template", tmplPath, "--json")
-	require.NoError(t, err)
-
-	var result output.SkillCreateResult
-	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.Equal(t, "tmpl-skill", result.Name)
-
-	skillMd, err := os.ReadFile(filepath.Join(result.Path, "SKILL.md"))
-	require.NoError(t, err)
-	body := string(skillMd)
-	assert.Contains(t, body, "Custom Instructions")
-	assert.Contains(t, body, "Do something custom")
-	// Raw-body mode produces exactly one frontmatter block (the freshly
-	// generated one) — no stray `---` from a misparsed template.
-	assert.Equal(t, 2, countOccurrences(body, "---\n"), "expected exactly one frontmatter block (open + close)")
+	_, err := runCmd(t, cc, "skill", "create", "tmpl-skill", "--from-template", tmplPath)
+	require.Error(t, err)
+	msg := err.Error()
+	assert.Contains(t, msg, "must point to a skill directory")
+	assert.Contains(t, msg, "pass the parent directory instead")
 }
 
 func TestSkillCreate_FromTemplate_NotFound(t *testing.T) {
 	cc := testRegistry(t)
 
-	_, err := runCmd(t, cc, "skill", "create", "tmpl-fail", "--from-template", "/nonexistent/template.md")
+	_, err := runCmd(t, cc, "skill", "create", "tmpl-fail", "--from-template", "/nonexistent/template-dir")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "reading template")
-}
-
-// Regression for #82: passing a SKILL.md file path as --from-template must
-// preserve the template's frontmatter (description, tags, metadata.version,
-// metadata.author) instead of resetting them to placeholder defaults.
-func TestSkillCreate_FromTemplate_SkillMdFile_PreservesFrontmatter(t *testing.T) {
-	cc := testRegistry(t)
-
-	tmplDir := t.TempDir()
-	tmplPath := filepath.Join(tmplDir, "SKILL.md")
-	manifest := `---
-name: source-template
-description: Use when you need to do the templated thing.
-tags:
-  - testing
-  - templated
-metadata:
-  author:
-    name: alice
-    type: human
-  version: "1.2.3"
----
-
-## Overview
-
-Body of the source template.
-
-## When to Use
-
-- Triggering condition.
-`
-	require.NoError(t, os.WriteFile(tmplPath, []byte(manifest), 0o644))
-
-	out, err := runCmd(t, cc, "skill", "create", "my-templated", "--from-template", tmplPath, "--json")
-	require.NoError(t, err)
-
-	var result output.SkillCreateResult
-	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.Equal(t, "my-templated", result.Name)
-
-	parsed := requireParsedManifest(t, filepath.Join(result.Path, "SKILL.md"))
-	// Name comes from CLI, everything else from the template.
-	assert.Equal(t, "my-templated", parsed.Name)
-	assert.Equal(t, "Use when you need to do the templated thing.", parsed.Description)
-	assert.Equal(t, []string{"testing", "templated"}, parsed.Tags)
-	assert.Equal(t, "1.2.3", parsed.Metadata.Version)
-	assert.Equal(t, "alice", parsed.Metadata.Author.Name)
-	assert.Equal(t, "human", parsed.Metadata.Author.Type)
-	assert.Contains(t, parsed.Body, "Body of the source template.")
 }
 
 // Regression for #83: passing a skill *directory* as --from-template must
@@ -611,17 +552,6 @@ func TestSkillCreate_FromTemplate_DirectoryMissingManifest(t *testing.T) {
 	_, err := runCmd(t, cc, "skill", "create", "my-templated", "--from-template", srcDir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "SKILL.md")
-}
-
-func countOccurrences(s, sub string) int {
-	count := 0
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			count++
-			i += len(sub) - 1
-		}
-	}
-	return count
 }
 
 // --- dedup hints in list ---

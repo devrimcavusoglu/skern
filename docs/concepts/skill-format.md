@@ -80,21 +80,20 @@ skern skill create code-review \
   --author-type human
 ```
 
-Or seed from a template. `--from-template <path>` accepts three forms:
+Or seed from another skill. `--from-template <dir>` requires a **skill directory**
+— a directory containing `SKILL.md` and any optional companion files
+(`references/`, `templates/`, `VENDORED.md`, …). Skern parses the template's
+frontmatter and copies every sibling into the new skill:
 
 ```sh
-# 1. A skill directory: copies SKILL.md and all sibling assets
-#    (references/, templates/, VENDORED.md, ...) into the new skill.
+# Seeds the new skill from an existing skill directory. SKILL.md frontmatter
+# (description, tags, metadata.author, metadata.version) is preserved; all
+# sibling files and subdirectories are copied alongside the new SKILL.md.
 skern skill create code-review --from-template ~/.skern/skills/source-template
-
-# 2. A SKILL.md file: preserves the template's frontmatter (description,
-#    tags, metadata.version, author) on the new skill.
-skern skill create code-review --from-template ./templates/code-review/SKILL.md
-
-# 3. A plain markdown file: contents become the new skill's body verbatim.
-skern skill create code-review --from-template ./body.md
 ```
 
-The CLI `<name>` argument always wins over the template's `name`. Other flags
+A bare file path (e.g., a `SKILL.md` or a markdown body file) is rejected with
+an error pointing you at the parent directory. The CLI `<name>` argument
+always wins over the template's `name`; other flags
 (`--description`, `--tags`, `--author*`, `--version`) override template values
-when explicitly set; otherwise template values are preserved.
+when explicitly set, otherwise the template's values are preserved.

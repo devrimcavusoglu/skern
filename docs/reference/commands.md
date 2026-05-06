@@ -47,21 +47,26 @@ skern skill create <name> [flags]
 | `--tags` | Comma-separated list of tags |
 | `--scope` | `user` or `project` (default: `user`) |
 | `--force` | Bypass overlap block |
-| `--from-template <path>` | Seed from a skill directory, a SKILL.md file, or a plain markdown body file (see below) |
+| `--from-template <dir>` | Seed from a skill directory containing `SKILL.md` and optional companion files (see below) |
 
 Overlap detection runs automatically during creation. See [Overlap Detection](/reference/overlap-detection) for details.
 
-### `--from-template` modes
+### `--from-template`
 
-`--from-template <path>` resolves three ways depending on what `<path>` points to:
+`--from-template <dir>` accepts a **skill directory** — a directory containing
+a `SKILL.md` plus any optional companion files. Skern parses the template's
+frontmatter and recursively copies every sibling file and subdirectory
+(`references/`, `templates/`, `VENDORED.md`, …) into the new skill.
 
-| `<path>` is | Behavior |
-|-------------|----------|
-| A directory containing `SKILL.md` | Parses the template's frontmatter, then copies every sibling file and subdirectory (e.g., `references/`, `templates/`, `VENDORED.md`) into the new skill alongside the freshly written `SKILL.md`. Use this for skills that ship with companion assets. |
-| A `SKILL.md` file (starts with `---`) | Parses the template's frontmatter and body. Companion assets are not copied (point at the directory instead). |
-| Any other markdown file | The file's contents become the new skill's body verbatim. The new skill gets fresh default frontmatter — use this for body-only templates. |
+Anything else is rejected with a clear error:
 
-In the first two modes, the new skill's `name` is taken from the CLI argument and other CLI flags (`--description`, `--tags`, `--author*`, `--version`) override the template values when explicitly set; otherwise the template's values are preserved.
+- `--from-template <file>` → "must point to a skill directory containing a SKILL.md file … pass the parent directory instead"
+- `--from-template <dir-with-no-SKILL.md>` → "directory has no SKILL.md; a skill template must be a directory containing a SKILL.md file"
+
+The new skill's `name` is always taken from the CLI argument. Other CLI
+flags (`--description`, `--tags`, `--author*`, `--version`) override the
+template's values when explicitly set; otherwise the template's values are
+preserved.
 
 ## `skern skill edit`
 

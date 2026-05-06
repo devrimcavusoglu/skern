@@ -150,7 +150,7 @@ func newSkillCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&description, "description", "", "skill description")
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
 	cmd.Flags().BoolVar(&force, "force", false, "bypass overlap detection block")
-	cmd.Flags().StringVar(&fromTemplate, "from-template", "", "template source: a skill directory, a SKILL.md file, or a plain markdown body file")
+	cmd.Flags().StringVar(&fromTemplate, "from-template", "", "path to a skill directory (containing SKILL.md and optional companion files) to seed the new skill from")
 	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags for the skill")
 	cmd.Flags().StringVar(&version, "version", "", "initial version (default: 0.0.1)")
 
@@ -206,17 +206,13 @@ func formatCreateValidationWarnings(issues []skill.ValidationIssue) string {
 	return b.String()
 }
 
-// templateInput captures what `--from-template` resolved to.
-//   - sourceDir: non-empty when the path was a directory; siblings should be
-//     copied into the new skill from this directory after creation.
-//   - parsed:    set when the template carries SKILL.md frontmatter (either a
-//     directory containing SKILL.md, or a SKILL.md file passed directly).
-//   - rawBody:   used only for the legacy "plain markdown file as body" mode,
-//     i.e. a file that does not start with a YAML frontmatter delimiter.
+// templateInput captures the resolved `--from-template` source. The flag
+// only accepts a skill *directory* containing a SKILL.md; sourceDir is
+// always set for use by registry.CopySiblings, and parsed holds the
+// frontmatter parsed from <sourceDir>/SKILL.md.
 type templateInput struct {
 	sourceDir string
 	parsed    *skill.Skill
-	rawBody   string
 }
 
 func loadTemplate(path string) (*templateInput, error) {
@@ -229,31 +225,34 @@ func loadTemplate(path string) (*templateInput, error) {
 		return nil, fmt.Errorf("reading template %q: %w", path, err)
 	}
 
-	if info.IsDir() {
-		manifestPath := filepath.Join(path, skill.ManifestFile)
-		parsed, err := skill.ParseManifest(manifestPath)
-		if err != nil {
-			return nil, fmt.Errorf("reading template SKILL.md from directory %q: %w", path, err)
-		}
-		return &templateInput{sourceDir: path, parsed: parsed}, nil
+	if !info.IsDir() {
+		return nil, fmt.Errorf(
+			"--from-template must point to a skill directory containing a SKILL.md file, "+
+				"but %q is a file; pass the parent directory instead",
+			path,
+		)
 	}
 
-	data, err := os.ReadFile(path)
+	manifestPath := filepath.Join(path, skill.ManifestFile)
+	manifestInfo, err := os.Stat(manifestPath)
 	if err != nil {
-		return nil, fmt.Errorf("reading template %q: %w", path, err)
-	}
-
-	// A SKILL.md file starts with the YAML frontmatter delimiter. Anything
-	// else is treated as a raw body (legacy --from-template behavior).
-	if strings.HasPrefix(string(data), "---\n") || strings.HasPrefix(string(data), "---\r\n") {
-		parsed, err := skill.ParseManifestFromBytes(data)
-		if err != nil {
-			return nil, fmt.Errorf("parsing template manifest %q: %w", path, err)
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf(
+				"--from-template directory %q has no SKILL.md; a skill template must be a directory containing a SKILL.md file",
+				path,
+			)
 		}
-		return &templateInput{parsed: parsed}, nil
+		return nil, fmt.Errorf("reading template SKILL.md from directory %q: %w", path, err)
+	}
+	if manifestInfo.IsDir() {
+		return nil, fmt.Errorf("--from-template directory %q contains a SKILL.md entry that is itself a directory; expected a regular file", path)
 	}
 
-	return &templateInput{rawBody: string(data)}, nil
+	parsed, err := skill.ParseManifest(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("parsing template SKILL.md in directory %q: %w", path, err)
+	}
+	return &templateInput{sourceDir: path, parsed: parsed}, nil
 }
 
 // buildSkillFromTemplate constructs the new Skill, applying CLI flag values on
@@ -267,12 +266,8 @@ func buildSkillFromTemplate(
 	tags []string,
 	cmd *cobra.Command,
 ) *skill.Skill {
-	if tmpl == nil || tmpl.parsed == nil {
-		body := ""
-		if tmpl != nil {
-			body = tmpl.rawBody
-		}
-		s := skill.NewSkillWithBody(name, description, author, authorType, authorPlatform, body)
+	if tmpl == nil {
+		s := skill.NewSkillWithBody(name, description, author, authorType, authorPlatform, "")
 		s.Tags = tags
 		return s
 	}
