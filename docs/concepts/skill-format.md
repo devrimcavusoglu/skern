@@ -80,10 +80,21 @@ skern skill create code-review \
   --author-type human
 ```
 
-Or use a template file for the body:
+Or seed from a template. `--from-template <path>` accepts three forms:
 
 ```sh
-skern skill create code-review \
-  --description "Review PRs for style and correctness" \
-  --from-template ./my-template.md
+# 1. A skill directory: copies SKILL.md and all sibling assets
+#    (references/, templates/, VENDORED.md, ...) into the new skill.
+skern skill create code-review --from-template ~/.skern/skills/source-template
+
+# 2. A SKILL.md file: preserves the template's frontmatter (description,
+#    tags, metadata.version, author) on the new skill.
+skern skill create code-review --from-template ./templates/code-review/SKILL.md
+
+# 3. A plain markdown file: contents become the new skill's body verbatim.
+skern skill create code-review --from-template ./body.md
 ```
+
+The CLI `<name>` argument always wins over the template's `name`. Other flags
+(`--description`, `--tags`, `--author*`, `--version`) override template values
+when explicitly set; otherwise template values are preserved.

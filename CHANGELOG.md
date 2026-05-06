@@ -5,6 +5,20 @@ All notable changes to skern are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`skill create --from-template`** now correctly preserves the template's
+  frontmatter (`description`, `tags`, `metadata.author`, `metadata.version`)
+  instead of resetting it to placeholder defaults (#82). When `--from-template`
+  points at a skill *directory*, sibling assets such as `references/`,
+  `templates/`, and `VENDORED.md` are also copied alongside the new
+  `SKILL.md` (#83). The previous behavior of using a plain markdown file as a
+  raw body is preserved for files that don't begin with a `---` frontmatter
+  delimiter. CLI flags continue to override template values when explicitly
+  set; the `<name>` argument always wins over the template's `name`.
+
 ## [v0.2.1] — 2026-05-03
 
 Cross-platform install. No code changes; release pipeline + install UX only.

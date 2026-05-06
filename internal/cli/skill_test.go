@@ -9,9 +9,17 @@ import (
 
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/registry"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func requireParsedManifest(t *testing.T, path string) *skill.Skill {
+	t.Helper()
+	s, err := skill.ParseManifest(path)
+	require.NoError(t, err, "parsing manifest %s", path)
+	return s
+}
 
 // testRegistry returns a CommandContext with a temp registry.
 func testRegistry(t *testing.T) *CommandContext {
@@ -415,10 +423,11 @@ func TestCompletion_Invalid(t *testing.T) {
 
 // --- from-template ---
 
-func TestSkillCreate_FromTemplate(t *testing.T) {
+func TestSkillCreate_FromTemplate_RawBodyFile(t *testing.T) {
 	cc := testRegistry(t)
 
-	// Write a template file
+	// A non-SKILL.md markdown file with no frontmatter is treated as a
+	// raw body (legacy behavior).
 	tmplDir := t.TempDir()
 	tmplPath := filepath.Join(tmplDir, "template.md")
 	require.NoError(t, os.WriteFile(tmplPath, []byte("## Custom Instructions\n\nDo something custom.\n"), 0o644))
@@ -430,11 +439,14 @@ func TestSkillCreate_FromTemplate(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Equal(t, "tmpl-skill", result.Name)
 
-	// Verify the body was used by reading the created SKILL.md
 	skillMd, err := os.ReadFile(filepath.Join(result.Path, "SKILL.md"))
 	require.NoError(t, err)
-	assert.Contains(t, string(skillMd), "Custom Instructions")
-	assert.Contains(t, string(skillMd), "Do something custom")
+	body := string(skillMd)
+	assert.Contains(t, body, "Custom Instructions")
+	assert.Contains(t, body, "Do something custom")
+	// Raw-body mode produces exactly one frontmatter block (the freshly
+	// generated one) — no stray `---` from a misparsed template.
+	assert.Equal(t, 2, countOccurrences(body, "---\n"), "expected exactly one frontmatter block (open + close)")
 }
 
 func TestSkillCreate_FromTemplate_NotFound(t *testing.T) {
@@ -443,6 +455,173 @@ func TestSkillCreate_FromTemplate_NotFound(t *testing.T) {
 	_, err := runCmd(t, cc, "skill", "create", "tmpl-fail", "--from-template", "/nonexistent/template.md")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "reading template")
+}
+
+// Regression for #82: passing a SKILL.md file path as --from-template must
+// preserve the template's frontmatter (description, tags, metadata.version,
+// metadata.author) instead of resetting them to placeholder defaults.
+func TestSkillCreate_FromTemplate_SkillMdFile_PreservesFrontmatter(t *testing.T) {
+	cc := testRegistry(t)
+
+	tmplDir := t.TempDir()
+	tmplPath := filepath.Join(tmplDir, "SKILL.md")
+	manifest := `---
+name: source-template
+description: Use when you need to do the templated thing.
+tags:
+  - testing
+  - templated
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "1.2.3"
+---
+
+## Overview
+
+Body of the source template.
+
+## When to Use
+
+- Triggering condition.
+`
+	require.NoError(t, os.WriteFile(tmplPath, []byte(manifest), 0o644))
+
+	out, err := runCmd(t, cc, "skill", "create", "my-templated", "--from-template", tmplPath, "--json")
+	require.NoError(t, err)
+
+	var result output.SkillCreateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Equal(t, "my-templated", result.Name)
+
+	parsed := requireParsedManifest(t, filepath.Join(result.Path, "SKILL.md"))
+	// Name comes from CLI, everything else from the template.
+	assert.Equal(t, "my-templated", parsed.Name)
+	assert.Equal(t, "Use when you need to do the templated thing.", parsed.Description)
+	assert.Equal(t, []string{"testing", "templated"}, parsed.Tags)
+	assert.Equal(t, "1.2.3", parsed.Metadata.Version)
+	assert.Equal(t, "alice", parsed.Metadata.Author.Name)
+	assert.Equal(t, "human", parsed.Metadata.Author.Type)
+	assert.Contains(t, parsed.Body, "Body of the source template.")
+}
+
+// Regression for #83: passing a skill *directory* as --from-template must
+// copy sibling assets (references/, templates/, VENDORED.md, ...) into the
+// new skill alongside SKILL.md.
+func TestSkillCreate_FromTemplate_Directory_CopiesSiblings(t *testing.T) {
+	cc := testRegistry(t)
+
+	srcDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "SKILL.md"), []byte(`---
+name: source-template
+description: Use when copying siblings is required.
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+---
+
+## Overview
+
+Source body.
+`), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "references"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "references", "architecture.md"), []byte("# Architecture\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "templates"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "templates", "example.txt"), []byte("Example.\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "VENDORED.md"), []byte("# Vendored\n"), 0o644))
+
+	out, err := runCmd(t, cc, "skill", "create", "my-templated", "--from-template", srcDir, "--json")
+	require.NoError(t, err)
+
+	var result output.SkillCreateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+
+	// Frontmatter from the directory's SKILL.md is preserved (covers #82
+	// in the directory mode too).
+	parsed := requireParsedManifest(t, filepath.Join(result.Path, "SKILL.md"))
+	assert.Equal(t, "my-templated", parsed.Name)
+	assert.Equal(t, "Use when copying siblings is required.", parsed.Description)
+	assert.Equal(t, "0.1.0", parsed.Metadata.Version)
+
+	// Siblings copied verbatim.
+	for _, rel := range []string{"references/architecture.md", "templates/example.txt", "VENDORED.md"} {
+		_, err := os.Stat(filepath.Join(result.Path, rel))
+		assert.NoError(t, err, "expected sibling %q to be copied", rel)
+	}
+
+	// Sibling content is byte-identical to the source.
+	got, err := os.ReadFile(filepath.Join(result.Path, "references", "architecture.md"))
+	require.NoError(t, err)
+	assert.Equal(t, "# Architecture\n", string(got))
+}
+
+// Explicit CLI flags must override template-derived values; unset flags must
+// leave template values intact.
+func TestSkillCreate_FromTemplate_CLIOverridesTemplate(t *testing.T) {
+	cc := testRegistry(t)
+
+	srcDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "SKILL.md"), []byte(`---
+name: source-template
+description: Use when the template description applies.
+tags:
+  - inherited
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+---
+
+## Overview
+body
+`), 0o644))
+
+	out, err := runCmd(t, cc, "skill", "create", "my-templated",
+		"--from-template", srcDir,
+		"--description", "Use when the CLI override applies.",
+		"--tags", "override1,override2",
+		"--json",
+	)
+	require.NoError(t, err)
+
+	var result output.SkillCreateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+
+	parsed := requireParsedManifest(t, filepath.Join(result.Path, "SKILL.md"))
+	assert.Equal(t, "Use when the CLI override applies.", parsed.Description, "CLI --description should win")
+	assert.Equal(t, []string{"override1", "override2"}, parsed.Tags, "CLI --tags should win")
+	// Author was not overridden — template value preserved.
+	assert.Equal(t, "alice", parsed.Metadata.Author.Name)
+	// Version not set on CLI — template value preserved.
+	assert.Equal(t, "0.1.0", parsed.Metadata.Version)
+}
+
+// A directory passed via --from-template that lacks SKILL.md must surface
+// a clear error rather than silently producing a default skill.
+func TestSkillCreate_FromTemplate_DirectoryMissingManifest(t *testing.T) {
+	cc := testRegistry(t)
+
+	srcDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "README.md"), []byte("not a skill\n"), 0o644))
+
+	_, err := runCmd(t, cc, "skill", "create", "my-templated", "--from-template", srcDir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "SKILL.md")
+}
+
+func countOccurrences(s, sub string) int {
+	count := 0
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			count++
+			i += len(sub) - 1
+		}
+	}
+	return count
 }
 
 // --- dedup hints in list ---
