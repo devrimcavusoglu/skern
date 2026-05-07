@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`skern init` can now write a skern usage snippet into agent instruction
+  files** (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`). Off by default;
+  opt in with `--instructions` (or accept the interactive prompt on a TTY).
+  The snippet is wrapped in `<!-- skern:instructions:start -->` /
+  `<!-- skern:instructions:end -->` markers so re-running updates the block
+  in place. Three additional flags shape the output: `--tool-forming-loop`
+  appends a search-before-create workflow section (off by default),
+  `--target <path>` overrides auto-discovery for explicit files, and
+  `--print-instructions` emits the snippet to stdout without writing files.
+  The `InitResult` JSON envelope grows an `instructions` field reporting
+  what was written.
 - **Five new platform adapters: `cursor`, `gemini-cli`, `github-copilot`,
   `windsurf`, `continue`.** All five accept the same `--platform` flag, route
   installs to the platform's expected skill directory, and participate in
