@@ -33,7 +33,7 @@ Skills should not live inside models. They should live in code. Versioned. Compo
 
 ## What's Shipped
 
-The current release is **v0.2.1**. Major capabilities already in place:
+The current release is **v0.3.0**. Major capabilities already in place:
 
 - Eight platform adapters (Claude Code, Codex CLI, OpenCode, Cursor, Gemini CLI, GitHub Copilot, Windsurf, Continue)
 - Cross-platform binaries for macOS, Linux, and Windows

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.0] — 2026-05-07
+
+Platform registry rewrite, five new adapters, agent-instruction snippet
+writer, and a focused breaking change to `--from-template`.
+
+### Breaking changes
+
+- **`skill create --from-template <path>` now requires a skill directory.**
+  A skill is a folder, so `--from-template` accepts only a directory containing
+  a `SKILL.md`. Passing a bare file (a `SKILL.md` or a body-only markdown file)
+  is rejected with a clear error pointing at the parent directory. The
+  previous behavior of treating a non-frontmatter markdown file as a raw body
+  is removed — wrap such bodies in a directory with a `SKILL.md` instead. ([#84])
+
 ### Added
 
 - **`skern init` can now write a skern usage snippet into agent instruction
@@ -19,19 +33,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--target <path>` overrides auto-discovery for explicit files, and
   `--print-instructions` emits the snippet to stdout without writing files.
   The `InitResult` JSON envelope grows an `instructions` field reporting
-  what was written.
+  what was written. ([#87])
 - **Five new platform adapters: `cursor`, `gemini-cli`, `github-copilot`,
   `windsurf`, `continue`.** All five accept the same `--platform` flag, route
   installs to the platform's expected skill directory, and participate in
   `skern platform list`/`status` matrices. Path conventions follow
   [vercel-labs/skills](https://github.com/vercel-labs/skills#supported-agents).
-  ([#80])
+  ([#81])
 - **Declarative platform registry.** Adapters are now defined as one row in
   `internal/platform/spec.go` — a `Spec` carrying name, user dir, project dir,
   and home-relative detection paths. A single generic `Adapter` struct
   implements the `Platform` interface from any spec row, replacing the
   per-platform Go files (`claude.go`, `codex.go`, `opencode.go`). Adding a
-  platform is a one-line PR. ([#80])
+  platform is a one-line PR. ([#81])
+- **Windows added to the CI matrix** — every PR now runs the test suite on
+  Windows in addition to macOS and Linux. ([#86])
+- **`--from-template` preserves template frontmatter and copies sibling
+  assets.** The template's `description`, `tags`, `metadata.author`, and
+  `metadata.version` are preserved on the new skill (#82) and every sibling
+  file or subdirectory (`references/`, `templates/`, `VENDORED.md`, …) is
+  copied alongside the new `SKILL.md` (#83). The CLI `<name>` argument always
+  wins over the template's name; other flags override template values when
+  explicitly set, otherwise template values are preserved.
 
 ### Changed
 
@@ -43,20 +66,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI flag help and error messages enumerate the registered platforms
   dynamically** — adding a platform updates `--platform` help and the
   "unknown platform" error text without touching the CLI.
-- **`skill create --from-template <path>` now requires a skill directory.**
-  A skill is a folder, so `--from-template` accepts only a directory containing
-  a `SKILL.md`. Passing a bare file (a `SKILL.md` or a body-only markdown file)
-  is rejected with a clear error that points at the parent directory. The
-  template's frontmatter (`description`, `tags`, `metadata.author`,
-  `metadata.version`) is preserved on the new skill (#82) and every sibling
-  file or subdirectory (e.g., `references/`, `templates/`, `VENDORED.md`) is
-  copied alongside the new `SKILL.md` (#83). The CLI `<name>` argument always
-  wins over the template's `name`; other flags override template values when
-  explicitly set, otherwise template values are preserved. **Breaking:** the
-  previous behavior of treating a non-frontmatter markdown file as a raw body
-  is removed — wrap such bodies in a directory with a `SKILL.md` instead.
+- **Documentation site comprehensively refreshed** — eight platform pages,
+  reference covers `skill import` / `skill version` / `skill diff`, validation
+  page split into errors/warnings/hints, installation page covers all three
+  OSes, agent-setup leads with `init --instructions`.
 
-[#80]: https://github.com/devrimcavusoglu/skern/issues/80
+[v0.3.0]: https://github.com/devrimcavusoglu/skern/compare/v0.2.1...v0.3.0
+[#81]: https://github.com/devrimcavusoglu/skern/pull/81
+[#84]: https://github.com/devrimcavusoglu/skern/pull/84
+[#86]: https://github.com/devrimcavusoglu/skern/pull/86
+[#87]: https://github.com/devrimcavusoglu/skern/pull/87
 
 ## [v0.2.1] — 2026-05-03
 
