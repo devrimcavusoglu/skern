@@ -2,11 +2,24 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/platform"
 	"github.com/devrimcavusoglu/skern/internal/skill"
 )
+
+// platformNamesList returns a comma-separated list of supported platform names
+// for use in flag help text and error messages. Pulled from the platform spec
+// registry so adding a platform takes one line.
+func platformNamesList() string {
+	names := platform.SupportedNames()
+	parts := make([]string, len(names))
+	for i, n := range names {
+		parts[i] = string(n)
+	}
+	return strings.Join(parts, ", ")
+}
 
 // buildCapacityReport queries a platform for its currently-installed skills
 // at the given scope and returns a CapacityReport ready for inclusion in

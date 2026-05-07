@@ -55,7 +55,7 @@ of stale skills at once.`,
 
 			p := det.Get(platformType)
 			if p == nil {
-				return &ValidationError{Message: fmt.Sprintf("platform %q not recognized; valid platforms: claude-code, codex-cli, opencode", platformFlag)}
+				return &ValidationError{Message: fmt.Sprintf("platform %q not recognized; valid platforms: %s", platformFlag, platformNamesList())}
 			}
 
 			var entries []output.SkillActionEntry
@@ -90,7 +90,7 @@ of stale skills at once.`,
 		},
 	}
 
-	cmd.Flags().StringVar(&platformFlag, "platform", "", "target platform (claude-code, codex-cli, or opencode)")
+	cmd.Flags().StringVar(&platformFlag, "platform", "", "target platform (one of: "+platformNamesList()+")")
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
 	_ = cmd.MarkFlagRequired("platform")
 

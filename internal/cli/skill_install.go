@@ -68,7 +68,7 @@ installed-skill count would meet or exceed the per-platform threshold (see
 
 			p := det.Get(platformType)
 			if p == nil {
-				return &ValidationError{Message: fmt.Sprintf("platform %q not recognized; valid platforms: claude-code, codex-cli, opencode", platformFlag)}
+				return &ValidationError{Message: fmt.Sprintf("platform %q not recognized; valid platforms: %s", platformFlag, platformNamesList())}
 			}
 
 			// Capacity pre-check: if --enforce-budget is set, refuse the entire
@@ -131,7 +131,7 @@ installed-skill count would meet or exceed the per-platform threshold (see
 		},
 	}
 
-	cmd.Flags().StringVar(&platformFlag, "platform", "", "target platform (claude-code, codex-cli, or opencode)")
+	cmd.Flags().StringVar(&platformFlag, "platform", "", "target platform (one of: "+platformNamesList()+")")
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
 	cmd.Flags().BoolVar(&force, "force", false, "overwrite existing installation")
 	cmd.Flags().BoolVar(&enforceBudget, "enforce-budget", false, "refuse to install when at or over capacity")

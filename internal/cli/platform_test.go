@@ -25,9 +25,9 @@ func withTestDetector(t *testing.T, cc *CommandContext, home, project string) {
 
 	cc.NewDetector = func() (*platform.Detector, error) {
 		return platform.NewDetectorWithPlatforms([]platform.Platform{
-			platform.NewClaudeCode(home, project),
-			platform.NewCodexCLI(home, project),
-			platform.NewOpenCode(home, project),
+			platform.New(platform.TypeClaudeCode, home, project),
+			platform.New(platform.TypeCodexCLI, home, project),
+			platform.New(platform.TypeOpenCode, home, project),
 		}), nil
 	}
 }
@@ -427,9 +427,9 @@ func TestPlatformList_PartialDetection(t *testing.T) {
 		NewRegistry: defaultNewRegistry,
 		NewDetector: func() (*platform.Detector, error) {
 			return platform.NewDetectorWithPlatforms([]platform.Platform{
-				platform.NewClaudeCode(home, project),
-				platform.NewCodexCLI(home, project),
-				platform.NewOpenCode(home, project),
+				platform.New(platform.TypeClaudeCode, home, project),
+				platform.New(platform.TypeCodexCLI, home, project),
+				platform.New(platform.TypeOpenCode, home, project),
 			}), nil
 		},
 	}

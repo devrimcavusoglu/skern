@@ -13,29 +13,41 @@ When you run `skern skill install`, the adapter:
 
 ## Supported Platforms
 
+Adapter names match `vercel-labs/skills` agent identifiers wherever possible.
+
 | Platform | Adapter name | Detection |
-|----------|-------------|-----------|
-| Claude Code | `claude-code` | Looks for `.claude/` or `~/.claude/` |
-| Codex CLI | `codex-cli` | Looks for `.agents/` or `~/.agents/` |
-| OpenCode | `opencode` | Looks for `.opencode/` or `~/.config/opencode/` |
+|----------|--------------|-----------|
+| Claude Code | `claude-code` | `~/.claude/` |
+| Codex CLI | `codex-cli` | `~/.codex/` or `~/.agents/` |
+| OpenCode | `opencode` | `~/.config/opencode/` |
+| Cursor | `cursor` | `~/.cursor/` |
+| Gemini CLI | `gemini-cli` | `~/.gemini/` |
+| GitHub Copilot | `github-copilot` | `~/.copilot/` |
+| Windsurf | `windsurf` | `~/.codeium/windsurf/` or `~/.windsurf/` |
+| Continue | `continue` | `~/.continue/` |
+
+See [Supported Platforms](/platforms/) for the full path reference.
 
 ## Installation Paths
 
-Each platform uses different directories for user-level and project-level skills:
-
-| Platform | User-level | Project-level |
-|----------|-----------|---------------|
-| Claude Code | `~/.claude/skills/<name>/` | `.claude/skills/<name>/` |
-| Codex CLI | `~/.agents/skills/<name>/` | `.agents/skills/<name>/` |
-| OpenCode | `~/.config/opencode/skills/<name>/` | `.opencode/skills/<name>/` |
+Each platform uses different directories for user-level and project-level skills. Several platforms share `.agents/skills/` as the project directory — see [Shared project directory](#shared-project-directory) below.
 
 ## Auto-Detection
 
-Skern auto-detects which platforms are installed on your system. Use `skern platform list` to see detected platforms:
+Skern auto-detects which platforms are installed on your system by checking each platform's user-level config directory. Use `skern platform list` to see detected platforms:
 
 ```sh
 skern platform list
 ```
+
+## Shared project directory
+
+`codex-cli`, `cursor`, `gemini-cli`, and `github-copilot` all use `.agents/skills/` as their project-level skills directory. A skill installed there is visible to every agent that reads from it — that is intentional and matches the conventions in `vercel-labs/skills`.
+
+Two consequences:
+
+- **Detection is per-platform**, not per-directory. The presence of `.agents/skills/` does not by itself indicate which agents are installed; skern looks at each platform's distinct user-level config dir (`~/.cursor`, `~/.gemini`, `~/.copilot`, `~/.codex`) to disambiguate.
+- **Capacity is per-directory.** When two platforms share a directory, both adapters see the same installed-skills count. Capacity thresholds protect the directory, not the logical agent — installing 50 skills via `cursor` will register as full capacity for `gemini-cli` too, because the agent will load all of them.
 
 ## One Platform per Invocation
 
@@ -46,7 +58,7 @@ This design supports the [dynamic skill loading](./registry) model: each agent m
 To deploy a skill across several platforms, loop the call:
 
 ```sh
-for p in claude-code codex-cli opencode; do
+for p in claude-code codex-cli opencode cursor gemini-cli; do
   skern skill install code-review --platform "$p"
 done
 ```
@@ -71,3 +83,12 @@ skern platform status
 ```
 
 This shows a matrix of skills and their installation status across all detected platforms.
+
+## Adding a Platform
+
+Adapters are declarative: every supported platform is one row in `Specs` in [`internal/platform/spec.go`](https://github.com/devrimcavusoglu/skern/blob/main/internal/platform/spec.go). Adding a new platform takes:
+
+1. A new `Type` constant in `internal/platform/platform.go`.
+2. A new `Spec` row giving its name, user-level skills dir, project-level skills dir, and one or more home-relative detection paths.
+
+A single generic `Adapter` struct implements every platform's `Platform` interface from the spec, so no platform-specific Go code is required. The table-driven tests in `internal/platform/platform_test.go` cover every registered spec automatically.

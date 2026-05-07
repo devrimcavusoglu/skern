@@ -17,7 +17,7 @@
 
 ---
 
-Skern is a minimal, agent-first CLI for managing [Agent Skills](https://agentskills.io) across **Claude Code**, **Codex CLI**, and **OpenCode**. One `SKILL.md` per skill — portable, validated, and instantly installable to any supported platform.
+Skern is a minimal, agent-first CLI for managing [Agent Skills](https://agentskills.io) across **Claude Code**, **Codex CLI**, **OpenCode**, **Cursor**, **Gemini CLI**, **GitHub Copilot**, **Windsurf**, **Continue**, and more. One `SKILL.md` per skill — portable, validated, and instantly installable to any supported platform.
 
 ## Quick Example
 
@@ -31,7 +31,7 @@ skern skill install code-review --platform claude-code
 
 - **Unified skill lifecycle** — create, validate, search, install, and remove across platforms
 - **Agent Skills spec** — reads and writes `SKILL.md` directly, no proprietary format
-- **Cross-platform** — install to Claude Code, Codex CLI, or OpenCode in one command
+- **Cross-platform** — install to Claude Code, Codex CLI, OpenCode, Cursor, Gemini CLI, GitHub Copilot, Windsurf, Continue, and more
 - **Tool-forming loop** — agents scaffold and reuse skills automatically
 - **Overlap detection** — fuzzy matching prevents duplication
 - **JSON output** — every command supports `--json` for agent-operable workflows
