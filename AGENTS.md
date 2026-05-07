@@ -4,7 +4,7 @@
 
 Skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode, Cursor, Gemini CLI, GitHub Copilot, Windsurf, Continue, and more). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
 
-The project is written in **Go 1.25+** and the current release is **v0.2.0**.
+The project is written in **Go 1.25+** and the current release is **v0.3.0**.
 
 ## Repository Layout
 
@@ -267,7 +267,10 @@ The full list is generated from `internal/platform/spec.go` — append a row the
 
 ## Current Status
 
-Milestones M0–M6 are complete (v0.2.0). M6 shipped dynamic skill loading per #52 — batch install/uninstall, capacity reporting in install/uninstall output, `--enforce-budget` opt-in, `--with-platforms` flag on `skill list`, removal of `--platform all`. The v0.1.x → v0.2.0 transition introduced a **breaking change** to the JSON shape of install/uninstall results (`skills[]` + top-level `platform`/`capacity` instead of `platforms[]`).
+Milestones M0–M7 are complete (v0.3.0).
+
+- **M6** (v0.2.0) — dynamic skill loading per #52: batch install/uninstall, capacity reporting in install/uninstall output, `--enforce-budget` opt-in, `--with-platforms` flag on `skill list`, removal of `--platform all`. The v0.1.x → v0.2.0 transition introduced a breaking change to the JSON shape of install/uninstall results (`skills[]` + top-level `platform`/`capacity` instead of `platforms[]`).
+- **M7** (v0.3.0) — declarative platform registry: per-platform Go files collapsed into a single `Spec` table (`internal/platform/spec.go`) plus a generic `Adapter`. Five new adapters (`cursor`, `gemini-cli`, `github-copilot`, `windsurf`, `continue`) shipped alongside the rewrite. Also in v0.3.0: `skern init --instructions` writes the skern usage snippet into agent instruction files, `--from-template` requires a skill directory (small breaking change), and Windows joins the CI matrix.
 
 ### Future Roadmap
 

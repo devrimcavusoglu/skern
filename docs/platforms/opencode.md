@@ -9,14 +9,16 @@
 | User-level | `~/.config/opencode/skills/<name>/SKILL.md` |
 | Project-level | `.opencode/skills/<name>/SKILL.md` |
 
+OpenCode uses dedicated user and project directories — it does not share `.agents/skills/`.
+
 ## Install a Skill
 
 ```sh
-# Project-level (default)
+# User-level (default scope is user)
 skern skill install code-review --platform opencode
 
-# User-level
-skern skill install code-review --platform opencode --scope user
+# Project-level
+skern skill install code-review --platform opencode --scope project
 ```
 
 ## Uninstall a Skill
@@ -27,7 +29,7 @@ skern skill uninstall code-review --platform opencode
 
 ## Detection
 
-Skern detects OpenCode by checking for the presence of `.opencode/` in the current project or `~/.config/opencode/` at the user level.
+Skern detects OpenCode by the presence of `~/.config/opencode/`.
 
 ## How Skills Work in OpenCode
 

@@ -2,23 +2,57 @@
 
 After installing skern, you can enable the **tool-forming loop** — a pattern where agents search for existing skills before creating new ones, keeping your skill set deduplicated and organized.
 
-## Enable the Loop
+## Recommended: `skern init --instructions`
 
-Add a line to your project's `AGENTS.md` (or `CLAUDE.md`) so that agents know to use skern for skill management:
+The fastest way to make your agent use skern correctly is to let `skern init` write its own usage snippet into your agent's instruction file:
 
 ```sh
-echo 'Use skern to manage skills. Run `skern --help` for usage, `skern skill search <query>` to find existing skills before creating new ones.' >> AGENTS.md
+skern init --instructions
 ```
 
-## How It Works
+This auto-discovers `AGENTS.md`, `CLAUDE.md`, and `.claude/CLAUDE.md` under the current directory and writes a marker-wrapped block:
+
+```markdown
+<!-- skern:instructions:start -->
+## Skern (skill management)
+
+Use `skern` for ALL skill-related tasks — discovery, reading, creation, edits, removal. Run `skern --help` for the full command surface.
+<!-- skern:instructions:end -->
+```
+
+Re-running `skern init --instructions` **updates the block in place** rather than appending a duplicate.
+
+### Add the search-before-create workflow
+
+```sh
+skern init --instructions --tool-forming-loop
+```
+
+This appends a section that tells the agent to:
+
+1. Run `skern skill search <topic>` first.
+2. If a match scores ≥ 0.6, read it via `skern skill show <name>` and follow its body.
+3. Only create a new skill (`skern skill create <name>`) when nothing matches.
+
+### Other ways to drive `init`
+
+| Need | Flag |
+|------|------|
+| Write to a specific file (skips auto-discovery) | `--target ./MY_AGENT.md` (repeatable) |
+| Print the snippet to stdout instead of writing | `--print-instructions` |
+| Run non-interactively (CI, scripts) | Just pass the flags — prompts only fire on a TTY |
+
+When run on a TTY without `--instructions`/`--print-instructions`/`--target`, `skern init` asks whether to write the snippet and whether to include the tool-forming loop. Both default to **No**. Non-interactive runs honor flag values only.
+
+## How the Loop Works
 
 When an agent encounters a recurring task:
 
-1. The agent reads the instruction from `AGENTS.md`
-2. It runs `skern skill search <query>` to check for existing skills
-3. If a matching skill exists, the agent reuses it
-4. If no match is found, the agent creates a new skill with `skern skill create`
-5. The new skill is immediately available for future sessions
+1. The agent reads the snippet from `AGENTS.md`/`CLAUDE.md`.
+2. It runs `skern skill search <query>` to check for existing skills.
+3. If a matching skill exists, the agent reuses it.
+4. If no match, the agent creates a new skill with `skern skill create`.
+5. The new skill is immediately available for future sessions.
 
 ## JSON Mode for Agents
 
@@ -26,24 +60,28 @@ Every skern command supports `--json` for machine-readable output:
 
 ```sh
 skern skill list --json
+skern skill list --with-platforms --json   # adds installed_on per skill
 skern skill search "review" --json
 skern skill show code-review --json
+skern skill install code-review --platform claude-code --json
 ```
 
-This makes skern fully agent-operable — agents can parse responses and make decisions programmatically.
+The `install`/`uninstall` JSON envelope carries a `skills[]` array (one entry per skill) and a top-level `capacity` block (`installed`, `threshold`, `headroom`, `over_budget`). Agents can react to capacity pressure without an extra query.
 
-## Recommended Agent Instructions
+## Manual Setup (Without `init`)
 
-For more comprehensive agent integration, add these to your `AGENTS.md`:
+If you'd rather hand-author the agent instructions, the bare minimum is:
 
 ```markdown
 ## Skill Management
 
-- Use `skern` to manage reusable skills
-- Before creating a new skill, search with `skern skill search <query>`
-- Use `skern skill recommend <query>` to get suggestions before creating
-- Always validate skills after creation: `skern skill validate <name>`
-- Install to your current platform (the one you are running on), e.g. `skern skill install <name> --platform claude-code`
-- Multiple skills can be installed in one call: `skern skill install <a> <b> <c> --platform <p>`
-- Watch the `capacity` block in install/uninstall JSON output to manage your platform's working set; uninstall stale skills before adding new ones when capacity is tight
+- Use `skern` to manage reusable skills.
+- Before creating a new skill, run `skern skill search <query>`.
+- Use `skern skill recommend <query>` to get an explicit reuse-vs-extend-vs-create suggestion.
+- Validate after creation: `skern skill validate <name>`.
+- Install to your current platform, e.g. `skern skill install <name> --platform claude-code`. Each call targets one platform.
+- Multiple skills install in one call: `skern skill install <a> <b> <c> --platform <p>`.
+- Watch the `capacity` block in install/uninstall JSON output. Uninstall stale skills before adding new ones when capacity is tight.
 ```
+
+`skern init --instructions --print-instructions` will print exactly the snippet skern uses if you want to copy/customize it manually.
