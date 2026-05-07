@@ -1,60 +1,74 @@
 # Validation
 
-`skern skill validate <name>` checks skills against the [Agent Skills](https://agentskills.io) specification. Validation also runs automatically during `skern skill create`, issuing warnings for any issues.
+`skern skill validate <name>` checks skills against the [Agent Skills](https://agentskills.io) specification. Validation also runs automatically during `skern skill create` (warnings only — never blocks creation).
 
-## Rules
+## Severity
+
+Validation reports three severities:
+
+| Severity | Prefix (text) | JSON `severity` | Effect |
+|----------|---------------|-----------------|--------|
+| **Error** | `✗` | `"error"` | `valid: false`, exit code `2` |
+| **Warning** | `!` | `"warning"` | Reported, does not affect validity |
+| **Hint** | `~` | `"hint"` | Stylistic suggestion only |
+
+The summary line counts each separately, e.g. `Skill "x" has 1 error(s), 0 warning(s), 2 hint(s)`.
+
+## Errors
 
 ### Name Format
 
-Skill names must match the pattern `[a-z0-9]+(-[a-z0-9]+)*` and be between 1 and 64 characters.
+Skill names must match `[a-z0-9]+(-[a-z0-9]+)*` and be 1–64 characters.
 
-Valid examples: `code-review`, `lint-fix`, `deploy`
-
-Invalid examples: `Code_Review`, `my skill`, `a-very-long-skill-name-that-exceeds-the-sixty-four-character-maximum-limit`
+Valid: `code-review`, `lint-fix`, `deploy`. Invalid: `Code_Review`, `my skill`.
 
 ### Description
 
-- Required — must not be empty
-- Maximum 1024 characters
+Required, non-empty, max 1024 characters.
 
 ### Body
 
-The `SKILL.md` file must have non-empty body content after the YAML frontmatter.
+The `SKILL.md` body (everything after the YAML frontmatter) must not be empty.
 
 ### Allowed Tools
 
-If `allowed-tools` is specified in the frontmatter, no entries may be empty strings.
+If `allowed-tools` is set, no entry may be empty.
 
-### Metadata
+### Author Type
 
-- **Author type** — must be `human` or `agent`
-- **Version** — should follow [semantic versioning](https://semver.org) (e.g., `1.0.0`)
+`metadata.author.type` must be `human` or `agent` if set.
+
+### Version
+
+`metadata.version` must be a valid semver string (`MAJOR.MINOR.PATCH`).
+
+## Warnings
 
 ### Folder Integrity
 
-When a skill body references files (via backtick-enclosed paths like `` `scripts/run.py` `` or markdown links like `[script](scripts/run.py)`), validation checks that those files exist in the skill directory. Missing references produce **warnings**, not errors — the skill remains valid since references may be aspirational or provided at runtime.
+When the body references files (backtick-enclosed paths like `` `scripts/run.py` `` or markdown links like `[script](scripts/run.py)`), validation checks that those files exist in the skill directory. Missing references produce **warnings**, not errors — references may be aspirational or provided at runtime.
 
-## Stylistic Hints
+Inline code spans and URLs are excluded from this check (no false positives from `` `--flag` `` or `https://…`).
 
-In addition to errors and warnings, validation reports **hints** — stylistic suggestions that do not affect validity. Hints use a `~` prefix in text output and appear in the `issues` array with `severity: "hint"` in JSON mode.
+## Hints
 
-Current hint checks:
+Stylistic suggestions adapted from [writing-skills](/writing-skills). They never block creation or validation.
 
-| Check | Trigger |
-|-------|---------|
-| Short body | Body has fewer than 20 words |
-| Vague description | Description has fewer than 3 words |
-| No step markers | Body lacks bullet points, numbered lists, or heading markers |
-
-Hints are counted separately in the validation summary (e.g., `1 error, 0 warnings, 2 hints`).
+| Hint | Trigger |
+|------|---------|
+| Body too short | Body has fewer than 20 words |
+| Description too vague | Description has fewer than 3 words |
+| Missing trigger prefix | Description doesn't start with "Use when", "Use for", "Use to", "Trigger when", or "Apply when" |
+| No step markers | Body lacks bullet points, numbered lists, or "step" markers |
+| Missing recommended sections | Body is missing one or more of `When to Use`, `Core Pattern`, `Quick Reference`, `Common Mistakes` |
 
 ## Parse Warnings
 
-When `skern skill list` encounters a skill directory that cannot be parsed (e.g., malformed YAML frontmatter), it reports a **parse warning** instead of silently skipping the entry. In text mode these appear as `WARNING:` lines; in `--json` mode they appear in the `parse_warnings` array.
+When `skern skill list` encounters a skill directory that cannot be parsed (e.g. malformed YAML frontmatter), it reports a **parse warning** instead of silently skipping the entry. In text mode these appear as `WARNING:` lines; in `--json` mode they populate the `parse_warnings` array.
 
 ## Exit Codes
 
 | Code | Meaning |
 |------|---------|
-| 0 | Skill is valid |
-| 2 | Validation failure |
+| 0 | Skill is valid (warnings/hints OK) |
+| 2 | Validation failure — at least one error |

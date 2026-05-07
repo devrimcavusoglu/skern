@@ -9,14 +9,20 @@
 | User-level | `~/.agents/skills/<name>/SKILL.md` |
 | Project-level | `.agents/skills/<name>/SKILL.md` |
 
+The project-level path is shared with `cursor`, `gemini-cli`, and `github-copilot`. A skill installed there is visible to every agent that reads from `.agents/skills/` — see [Platform Adapters › Shared project directory](/concepts/platform-adapters#shared-project-directory).
+
+::: tip
+The user-level path stays at `~/.agents/skills/` for compatibility with skern's original layout. Detection covers both `~/.codex/` and `~/.agents/`.
+:::
+
 ## Install a Skill
 
 ```sh
-# Project-level (default)
+# User-level (default scope is user)
 skern skill install code-review --platform codex-cli
 
-# User-level
-skern skill install code-review --platform codex-cli --scope user
+# Project-level
+skern skill install code-review --platform codex-cli --scope project
 ```
 
 ## Uninstall a Skill
@@ -27,7 +33,7 @@ skern skill uninstall code-review --platform codex-cli
 
 ## Detection
 
-Skern detects Codex CLI by checking for `~/.codex/` (preferred) or `~/.agents/` at the user level. The `.agents/skills/` project directory is shared with several other agents (cursor, gemini-cli, github-copilot) — see [Platform Adapters › Shared project directory](/concepts/platform-adapters#shared-project-directory).
+Skern detects Codex CLI by the presence of `~/.codex/` (preferred) or `~/.agents/`.
 
 ## How Skills Work in Codex CLI
 

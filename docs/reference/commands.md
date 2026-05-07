@@ -4,31 +4,51 @@
 
 ```
 skern init                                    # Initialize .skern/ in current project
+skern version                                 # Print version, commit, build date
+skern completion [bash|zsh|fish]              # Generate shell completions
+
+# Registry commands (manage skills in skern)
 skern skill create <name>                     # Scaffold a new skill
+skern skill import <url>                      # Import a skill from URL/git/gist
 skern skill edit <name>                       # Edit skill metadata or body
-skern skill search <query>                    # Search skills by name/description
-skern skill recommend <query>                 # Recommend: reuse, extend, or create
+skern skill remove <name>                     # Remove skill from registry
 skern skill list [--scope user|project|all]   # List skills in registry
 skern skill show <name>                       # Display skill details
+skern skill search <query>                    # Search skills by name/description
 skern skill validate <name>                   # Validate against Agent Skills spec
-skern skill remove <name>                     # Remove skill from registry
+skern skill version <name> [--bump LEVEL]     # Show or bump a skill's version
+skern skill diff <name> [name-b]              # Compare two skills (or registry vs platform)
+skern skill recommend <query>                 # Reuse / extend / create suggestion
+
+# Platform commands (deploy skills to platforms)
 skern skill install <name>... --platform <p>  # Install one or more skills to platform
-skern skill uninstall <name>... --platform <p> # Remove one or more skills from platform
+skern skill uninstall <name>... --platform <p># Remove one or more skills from platform
 skern platform list                           # List detected platforms
 skern platform status                         # Skill x platform installation matrix
-skern completion [bash|zsh|fish]              # Generate shell completions
-skern version                                 # Print version info
 ```
+
+`skern skill --help` groups subcommands into **Registry commands** (skills in skern) and **Platform commands** (skills deployed to a platform). The same split is reflected above.
+
+## Global Flags
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output in JSON format. Available on every command. |
+| `--quiet` | Suppress non-essential output. |
+
+Most commands also accept `--scope user|project|all`. Exit codes: `0` success, `1` error, `2` validation failure.
 
 ## `skern init`
 
-Initialize the `.skern/` directory in the current project (creates the project-scoped skill registry). Optionally writes a skern usage snippet into agent instruction files (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`) so the agent uses skern for all skill-related tasks instead of reading platform-native skill directories.
+Initialize the `.skern/` directory in the current project (creates the project-scoped skill registry). Idempotent — safe to re-run.
+
+Optionally writes a skern usage snippet into agent instruction files (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`) so the agent uses skern for all skill-related tasks instead of reading platform-native skill directories.
 
 ```sh
 skern init                                    # creates .skern/ only (default)
-skern init --instructions                     # also writes the usage snippet to discovered agent config files
+skern init --instructions                     # also writes the snippet to discovered agent config files
 skern init --instructions --tool-forming-loop # adds the search-before-create workflow section
-skern init --target ./MY_AGENT.md             # write to a specific file (skips auto-discovery)
+skern init --target ./MY_AGENT.md             # write to a specific file (skips auto-discovery; repeatable)
 skern init --print-instructions               # print the snippet to stdout instead of writing files
 ```
 
@@ -36,18 +56,18 @@ skern init --print-instructions               # print the snippet to stdout inst
 
 | Flag | Description |
 |------|-------------|
-| `--instructions` | Write the skern usage snippet to discovered agent config files (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`). Default: off. |
+| `--instructions` | Write the skern usage snippet to discovered agent config files. Default: off. |
 | `--tool-forming-loop` | Include the tool-forming-loop section (search-before-create workflow). Default: off. |
 | `--target <path>` | Explicit instruction file path. Repeatable. Disables auto-discovery when set. |
 | `--print-instructions` | Print the rendered snippet to stdout instead of writing files. |
 
-The instruction snippet is wrapped in `<!-- skern:instructions:start -->` / `<!-- skern:instructions:end -->` markers, so re-running `skern init --instructions` updates the block in place rather than appending duplicates.
+The instruction snippet is wrapped in `<!-- skern:instructions:start -->` / `<!-- skern:instructions:end -->` markers so re-running `skern init --instructions` updates the block in place rather than appending a duplicate.
 
-When run on a TTY without `--json` or instruction flags, `skern init` prompts the user for both choices (write instructions? include tool-forming loop?). Default to **No** for both. Non-interactive runs (CI, scripts, `--json`) honor flag values only — no prompts.
+When run on a TTY without `--json` or any of the instruction flags, `skern init` prompts for both choices (write instructions? include tool-forming loop?). Default to **No** for both. Non-interactive runs (CI, scripts, `--json`) honor flag values only — no prompts.
 
 ## `skern skill create`
 
-Scaffold a new `SKILL.md` file in the registry.
+Scaffold a new skill in the registry.
 
 ```sh
 skern skill create <name> [flags]
@@ -55,45 +75,65 @@ skern skill create <name> [flags]
 
 **Flags:**
 
-| Flag | Description |
-|------|-------------|
-| `--author` | Author name |
-| `--author-type` | `human` or `agent` |
-| `--author-platform` | Platform name (e.g., `claude-code`) |
-| `--description` | Skill description |
-| `--tags` | Comma-separated list of tags |
-| `--scope` | `user` or `project` (default: `user`) |
-| `--force` | Bypass overlap block |
-| `--from-template <dir>` | Seed from a skill directory containing `SKILL.md` and optional companion files (see below) |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--description` | — | Skill description (start with "Use when…") |
+| `--author` | — | Author name |
+| `--author-type` | `human` | `human` or `agent` |
+| `--author-platform` | — | Platform name (e.g. `claude-code`) — used with `agent` author type |
+| `--tags` | — | Comma-separated list of tags |
+| `--version` | `0.0.1` | Initial semver version |
+| `--scope` | `user` | `user` or `project` |
+| `--force` | `false` | Bypass overlap block |
+| `--from-template <dir>` | — | Seed from a skill directory containing `SKILL.md` plus optional companion files |
 
-Overlap detection runs automatically during creation. See [Overlap Detection](/reference/overlap-detection) for details.
+Overlap detection runs automatically. Validation runs as warnings (does not block). Skill count thresholds emit warnings at >= 20 (project) / >= 50 (user).
 
 ### `--from-template`
 
-`--from-template <dir>` accepts a **skill directory** — a directory containing
-a `SKILL.md` plus any optional companion files. Skern parses the template's
-frontmatter and recursively copies every sibling file and subdirectory
-(`references/`, `templates/`, `VENDORED.md`, …) into the new skill.
+`--from-template <dir>` accepts a **skill directory** — a directory containing a `SKILL.md` plus any optional companion files. Skern parses the template's frontmatter and recursively copies every sibling file and subdirectory (`references/`, `templates/`, `VENDORED.md`, …) into the new skill.
 
-Anything else is rejected with a clear error:
+Anything else is rejected:
 
 - `--from-template <file>` → "must point to a skill directory containing a SKILL.md file … pass the parent directory instead"
 - `--from-template <dir-with-no-SKILL.md>` → "directory has no SKILL.md; a skill template must be a directory containing a SKILL.md file"
 
-The new skill's `name` is always taken from the CLI argument. Other CLI
-flags (`--description`, `--tags`, `--author*`, `--version`) override the
-template's values when explicitly set; otherwise the template's values are
-preserved.
+The new skill's `name` is always taken from the CLI argument. Other CLI flags (`--description`, `--tags`, `--author*`, `--version`) override template values when explicitly set; otherwise the template's values are preserved.
+
+## `skern skill import`
+
+Import a skill from a remote source into the registry.
+
+```sh
+skern skill import <url>
+```
+
+Supports GitHub repository directories and gists:
+
+```sh
+skern skill import https://github.com/owner/repo/tree/main/skills/code-review
+skern skill import https://gist.github.com/<id>
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--scope` | `user` | `user` or `project` |
+| `--name` | — | Override the skill name from the imported manifest |
+| `--force` | `false` | Overwrite if the skill already exists and bypass overlap block |
+
+The skill's directory contents (`SKILL.md` plus siblings discoverable via the source) are fetched and written into the registry. Overlap detection runs against existing skills.
 
 ## `skern skill edit`
 
-Edit a skill's metadata fields or open the body in an editor.
+Edit a skill's metadata fields, or open the body in `$EDITOR` (defaults to `vi`).
 
 ```sh
 skern skill edit <name> [flags]
 ```
 
-When called with field flags, the specified fields are updated directly. When called without field flags, the skill body is opened in `$EDITOR` (defaults to `vi`).
+When called with field flags, the specified fields are updated directly. When called without field flags, the skill body is opened in your editor.
 
 **Flags:**
 
@@ -105,43 +145,25 @@ When called with field flags, the specified fields are updated directly. When ca
 | `--author-type` | `human` or `agent` |
 | `--author-platform` | Platform name |
 | `--version` | New version string |
-| `--modified-by` | Name of modifier (appends to `modified-by` list) |
+| `--modified-by` | Name of modifier (appends to the `modified-by` list) |
 | `--modified-by-type` | `human` or `agent` |
-| `--modified-by-platform` | Platform name for modifier |
+| `--modified-by-platform` | Platform name for the modifier |
 
-## `skern skill search`
+`--modified-by` is **append-only** — every edit can record provenance without overwriting earlier entries.
 
-Search skills by name or description.
+## `skern skill remove`
 
-```sh
-skern skill search <query> [flags]
-```
-
-**Flags:**
-
-| Flag | Description |
-|------|-------------|
-| `--tag` | Filter results to skills with this tag |
-
-## `skern skill recommend`
-
-Get recommendations on whether to reuse, extend, or create a skill.
+Remove a skill from the registry. Does not affect platform installs.
 
 ```sh
-skern skill recommend <query> [flags]
+skern skill remove <name> [--scope user|project]
 ```
 
-**Flags:**
-
-| Flag | Description |
-|------|-------------|
-| `--name` | Agent-suggested skill name |
-| `--threshold` | Minimum relevance score (default: 0.3) |
-| `--scope` | `user`, `project`, or `all` |
+To remove a skill from a platform without removing it from the registry, use `skern skill uninstall`.
 
 ## `skern skill list`
 
-List all skills in the registry.
+List skills in the registry.
 
 ```sh
 skern skill list [--scope user|project|all] [flags]
@@ -149,43 +171,102 @@ skern skill list [--scope user|project|all] [flags]
 
 **Flags:**
 
-| Flag | Description |
-|------|-------------|
-| `--scope` | `user`, `project`, or `all` |
-| `--tag` | Filter results to skills with this tag |
-| `--with-platforms` | Include `installed_on` per-skill: the detected platforms where the skill is currently installed at the same scope |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--scope` | `all` | `user`, `project`, or `all` |
+| `--tag` | — | Filter results to skills with this tag |
+| `--with-platforms` | `false` | Include `installed_on` per skill (the detected platforms where the skill is installed at the same scope) |
 
-Also runs pairwise overlap detection across all listed skills and appends a "Potential duplicates" section when matches are found (score >= 0.6). In `--json` mode, these appear in the `duplicates` array.
+Also runs pairwise overlap detection across all listed skills and appends a "Potential duplicates" section when matches are found (score >= 0.6). In `--json` mode they appear in the `duplicates` array.
 
-Skills that cannot be parsed are reported as parse warnings rather than silently skipped. In text mode these appear as warning lines; in `--json` mode they appear in the `parse_warnings` array.
+Skills that cannot be parsed are reported as parse warnings rather than silently skipped — text mode prints `WARNING:` lines, `--json` mode populates the `parse_warnings` array.
 
-When `--with-platforms` is set, the JSON output contains an `installed_on` array on every skill — empty for skills not installed on any detected platform. Without the flag the field is omitted entirely so consumers can distinguish "queried, none" from "not queried".
+When `--with-platforms` is set the JSON output contains an `installed_on` array on every skill — empty for skills not installed on any detected platform. Without the flag the field is omitted entirely so consumers can distinguish "queried, none" from "not queried".
 
 ## `skern skill show`
 
-Display full details for a skill, including author provenance and modification history.
+Display full details for a skill, including author provenance, modification history, and bundled files.
 
 ```sh
-skern skill show <name>
+skern skill show <name> [--scope user|project]
 ```
+
+## `skern skill search`
+
+Search skills by name or description.
+
+```sh
+skern skill search <query> [--tag <tag>]
+```
+
+## `skern skill recommend`
+
+Get an explicit recommendation: **REUSE** an existing skill, **EXTEND** one, or **CREATE** a new one.
+
+```sh
+skern skill recommend <query> [flags]
+```
+
+Thresholds: score ≥ 0.8 → REUSE; score ≥ 0.5 → EXTEND; below → CREATE.
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--name` | — | Agent-suggested skill name (used in CREATE recommendation) |
+| `--threshold` | `0.3` | Minimum relevance score to include in results |
+| `--scope` | `all` | `user`, `project`, or `all` |
 
 ## `skern skill validate`
 
 Validate a skill against the Agent Skills spec.
 
 ```sh
-skern skill validate <name>
+skern skill validate <name> [--scope user|project]
 ```
 
-See [Validation](/reference/validation) for the full list of checks.
+Reports errors, warnings, and stylistic hints. Exit code is `2` when errors are present. See [Validation](/reference/validation) for the full list of checks.
 
-## `skern skill remove`
+## `skern skill version`
 
-Remove a skill from the registry.
+Show or bump a skill's semver version.
 
 ```sh
-skern skill remove <name>
+skern skill version <name>                       # show current version
+skern skill version <name> --bump patch          # 0.0.1 -> 0.0.2
+skern skill version <name> --bump minor          # 0.0.2 -> 0.1.0
+skern skill version <name> --bump major          # 0.1.0 -> 1.0.0
 ```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--scope` | `user` or `project` |
+| `--bump` | `patch`, `minor`, or `major` |
+
+Without `--bump`, prints the current version. The JSON envelope returns `previous_version` and `bumped: true` after a bump.
+
+## `skern skill diff`
+
+Compare two skills side by side. With one argument, compares a registry skill against its installed copy on a platform. With two arguments, compares two registry skills.
+
+```sh
+# Registry vs installed
+skern skill diff code-review --platform claude-code
+
+# Registry vs registry
+skern skill diff code-review code-review-strict --scope user
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--scope` | `user` or `project` (omit to search both) |
+| `--platform` | Platform to compare against — required when using one argument |
+
+The output reports per-field diffs (description, version, author, …) plus a body diff flag. In `--json` mode, both bodies are returned in full.
 
 ## `skern skill install`
 
@@ -195,45 +276,43 @@ Install one or more skills to a single platform.
 skern skill install <name>... --platform <platform>
 ```
 
-Each invocation targets exactly one platform. Agents are expected to specify the platform they are running on; `--platform all` is no longer accepted. To deploy a skill across multiple platforms, loop the call per platform.
+Each invocation targets exactly one platform — `--platform all` is not accepted. Multiple skill names can be passed in one call. Each skill's outcome is reported in the `skills[]` array; a failure on one skill does not abort the batch — the command exits non-zero only when *every* install fails.
 
-Multiple skill names can be passed in a single call. Each skill's outcome is reported as a separate entry in the `skills` array. A failure on one skill does not abort the batch — the command exits non-zero only when *every* install fails.
-
-The response includes a `capacity` block reporting the platform's installed-skill count after the operation, the threshold for that scope, and remaining headroom. Use it to decide whether to evict stale skills before the next install.
+The response includes a top-level `capacity` block reporting the platform's installed-skill count after the operation, the threshold for that scope, and remaining headroom.
 
 **Flags:**
 
-| Flag | Description |
-|------|-------------|
-| `--platform` | One of: `claude-code`, `codex-cli`, `opencode`, `cursor`, `gemini-cli`, `github-copilot`, `windsurf`, `continue` (required) |
-| `--scope` | `user` or `project` |
-| `--force` | Overwrite existing installation |
-| `--enforce-budget` | Refuse the operation if it would push the platform's installed-skill count past the per-scope threshold |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--platform` | — *(required)* | One of: `claude-code`, `codex-cli`, `opencode`, `cursor`, `gemini-cli`, `github-copilot`, `windsurf`, `continue` |
+| `--scope` | `user` | `user` or `project` |
+| `--force` | `false` | Overwrite existing installation |
+| `--enforce-budget` | `false` | Refuse the operation if it would push the platform's installed-skill count past the per-scope threshold |
 
 ## `skern skill uninstall`
 
-Remove one or more skills from a platform.
+Remove one or more skills from a platform. Mirrors `install` semantics: one platform per call, multiple skills allowed, partial failures reported per-skill, post-op `capacity` block in the response. The registry copy is **not** affected — use `skern skill remove` for that.
 
 ```sh
 skern skill uninstall <name>... --platform <platform>
 ```
 
-Mirrors `install` semantics: one platform per call, multiple skills allowed, partial failures are reported per-skill, and the response includes a post-op `capacity` block.
-
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--platform` | One of: `claude-code`, `codex-cli`, `opencode`, `cursor`, `gemini-cli`, `github-copilot`, `windsurf`, `continue` (required) |
+| `--platform` | Required. Same enumeration as `install`. |
 | `--scope` | `user` or `project` |
 
 ## `skern platform list`
 
-List all detected platforms.
+List all detected platforms, the directories they install to, and whether each was detected on the current host.
 
 ```sh
 skern platform list
 ```
+
+Detection is per-platform: each adapter checks its own user-level config dir (`~/.claude`, `~/.cursor`, `~/.gemini`, `~/.copilot`, `~/.codex`, …) so platforms that share `.agents/skills/` as a project directory are still distinguished correctly.
 
 ## `skern platform status`
 
@@ -255,7 +334,7 @@ skern completion fish
 
 ## `skern version`
 
-Print version, commit, and build date.
+Print version, commit, and build date. Falls back to `runtime/debug.ReadBuildInfo` when ldflags aren't injected (e.g. binaries built via `go install`).
 
 ```sh
 skern version

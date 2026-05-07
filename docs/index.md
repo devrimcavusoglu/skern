@@ -24,8 +24,8 @@ features:
     title: Agent Skills Spec Compliance
     details: Reads and writes SKILL.md files directly following the Agent Skills open standard — no proprietary format.
   - icon: "\U0001F517"
-    title: Platform Adapters
-    details: Install skills to Claude Code, Codex CLI, or OpenCode with a single command.
+    title: Eight Platform Adapters
+    details: Install skills to Claude Code, Codex CLI, OpenCode, Cursor, Gemini CLI, GitHub Copilot, Windsurf, or Continue with a single command.
   - icon: "\U0001F504"
     title: Tool-Forming Loop
     details: Agents can search for existing skills and scaffold new ones, turning recurring needs into reusable capabilities.

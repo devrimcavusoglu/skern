@@ -1,6 +1,6 @@
 # Claude Code
 
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic's AI coding assistant that works in the terminal. It reads skills from the `.claude/skills/` directory.
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic's terminal-based AI coding assistant. It reads skills from the `.claude/skills/` directory.
 
 ## Skill Paths
 
@@ -9,14 +9,16 @@
 | User-level | `~/.claude/skills/<name>/SKILL.md` |
 | Project-level | `.claude/skills/<name>/SKILL.md` |
 
+Claude Code uses dedicated user and project directories — it does not share `.agents/skills/`.
+
 ## Install a Skill
 
 ```sh
-# Project-level (default)
+# User-level (default scope is user)
 skern skill install code-review --platform claude-code
 
-# User-level
-skern skill install code-review --platform claude-code --scope user
+# Project-level
+skern skill install code-review --platform claude-code --scope project
 ```
 
 ## Uninstall a Skill
@@ -27,8 +29,8 @@ skern skill uninstall code-review --platform claude-code
 
 ## Detection
 
-Skern detects Claude Code by checking for the presence of `.claude/` in the current project or `~/.claude/` at the user level.
+Skern detects Claude Code by the presence of `~/.claude/`.
 
 ## How Skills Work in Claude Code
 
-When Claude Code starts a session, it reads all `SKILL.md` files from the skills directories. Skills become available as capabilities that Claude can use during the session. The skill's markdown body serves as instructions that Claude follows when the skill is activated.
+When Claude Code starts a session, it reads `SKILL.md` files from the skills directory. Skills become available as capabilities Claude can use during the session — the skill's markdown body serves as instructions Claude follows when the skill is activated.
