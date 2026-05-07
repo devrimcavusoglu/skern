@@ -4,6 +4,38 @@ package output
 type InitResult struct {
 	Path    string `json:"path"`
 	Created bool   `json:"created"`
+	// Instructions reports the outcome of the optional `skern init`
+	// instruction-snippet step. Nil when the user did not opt in to
+	// writing instructions (the default). Non-nil otherwise — even when
+	// no candidate files were found, so JSON consumers can distinguish
+	// "didn't try" from "tried, found nothing".
+	Instructions *InstructionsResult `json:"instructions,omitempty"`
+}
+
+// InstructionsResult reports what happened when `skern init` wrote (or
+// would have written) the skern usage snippet into agent instruction files.
+type InstructionsResult struct {
+	// ToolForming records whether the rendered snippet included the
+	// opt-in tool-forming-loop section.
+	ToolForming bool `json:"tool_forming"`
+	// Targets is the list of files considered for writing — auto-discovered
+	// project files plus any --target overrides. Always present so consumers
+	// can see what was searched even when nothing was written.
+	Targets []string `json:"targets"`
+	// Writes is one entry per file actually touched (or would have been
+	// touched, in --print-instructions mode where it is empty).
+	Writes []InstructionWriteResult `json:"writes"`
+	// Printed is true when --print-instructions emitted to stdout instead
+	// of writing files.
+	Printed bool `json:"printed"`
+}
+
+// InstructionWriteResult mirrors instructions.WriteResult for the public
+// JSON contract.
+type InstructionWriteResult struct {
+	Path    string `json:"path"`
+	Action  string `json:"action"`
+	Created bool   `json:"created"`
 }
 
 // VersionResult is the JSON envelope for version output.

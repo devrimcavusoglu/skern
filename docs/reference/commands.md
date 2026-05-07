@@ -22,11 +22,28 @@ skern version                                 # Print version info
 
 ## `skern init`
 
-Initialize the `.skern/` directory in the current project. This creates the project-scoped skill registry.
+Initialize the `.skern/` directory in the current project (creates the project-scoped skill registry). Optionally writes a skern usage snippet into agent instruction files (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`) so the agent uses skern for all skill-related tasks instead of reading platform-native skill directories.
 
 ```sh
-skern init
+skern init                                    # creates .skern/ only (default)
+skern init --instructions                     # also writes the usage snippet to discovered agent config files
+skern init --instructions --tool-forming-loop # adds the search-before-create workflow section
+skern init --target ./MY_AGENT.md             # write to a specific file (skips auto-discovery)
+skern init --print-instructions               # print the snippet to stdout instead of writing files
 ```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--instructions` | Write the skern usage snippet to discovered agent config files (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`). Default: off. |
+| `--tool-forming-loop` | Include the tool-forming-loop section (search-before-create workflow). Default: off. |
+| `--target <path>` | Explicit instruction file path. Repeatable. Disables auto-discovery when set. |
+| `--print-instructions` | Print the rendered snippet to stdout instead of writing files. |
+
+The instruction snippet is wrapped in `<!-- skern:instructions:start -->` / `<!-- skern:instructions:end -->` markers, so re-running `skern init --instructions` updates the block in place rather than appending duplicates.
+
+When run on a TTY without `--json` or instruction flags, `skern init` prompts the user for both choices (write instructions? include tool-forming loop?). Default to **No** for both. Non-interactive runs (CI, scripts, `--json`) honor flag values only — no prompts.
 
 ## `skern skill create`
 

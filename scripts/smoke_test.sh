@@ -231,6 +231,39 @@ test_init_json() {
     teardown_env
 }
 
+test_init_instructions_discovers_and_writes() {
+    setup_env
+    # Seed a project-level AGENTS.md so auto-discovery has something to find.
+    echo "# Existing project" > "$PROJECT_DIR/AGENTS.md"
+    local out
+    out="$(cd "$PROJECT_DIR" && $SKERN init --instructions --tool-forming-loop --json 2>&1)"
+    assert_contains "init reports instructions written" "$out" '"action":"appended"'
+    assert_contains "init reports tool_forming true" "$out" '"tool_forming":true'
+    assert_contains "AGENTS.md got skern block" "$(cat "$PROJECT_DIR/AGENTS.md")" "skern:instructions:start"
+    assert_contains "AGENTS.md got tool-forming section" "$(cat "$PROJECT_DIR/AGENTS.md")" "Tool-forming loop"
+    teardown_env
+}
+
+test_init_instructions_default_off() {
+    setup_env
+    echo "# Existing project" > "$PROJECT_DIR/AGENTS.md"
+    local out
+    out="$(cd "$PROJECT_DIR" && $SKERN init --json 2>&1)"
+    assert_not_contains "default JSON init does not include instructions" "$out" '"instructions"'
+    assert_not_contains "AGENTS.md untouched by default" "$(cat "$PROJECT_DIR/AGENTS.md")" "skern:instructions:start"
+    teardown_env
+}
+
+test_init_instructions_print_only() {
+    setup_env
+    echo "# Existing project" > "$PROJECT_DIR/AGENTS.md"
+    local out
+    out="$(cd "$PROJECT_DIR" && $SKERN init --print-instructions 2>&1)"
+    assert_contains "print-instructions emits start marker" "$out" "skern:instructions:start"
+    assert_not_contains "AGENTS.md untouched in print mode" "$(cat "$PROJECT_DIR/AGENTS.md")" "skern:instructions:start"
+    teardown_env
+}
+
 # ============================================================
 # Skill lifecycle — E2E
 # ============================================================
@@ -465,6 +498,9 @@ run_test "test_platform_help" test_platform_help
 # Init
 run_test "test_init_creates_directory" test_init_creates_directory
 run_test "test_init_json" test_init_json
+run_test "test_init_instructions_discovers_and_writes" test_init_instructions_discovers_and_writes
+run_test "test_init_instructions_default_off" test_init_instructions_default_off
+run_test "test_init_instructions_print_only" test_init_instructions_print_only
 
 # Skill CRUD
 run_test "test_skill_create" test_skill_create
