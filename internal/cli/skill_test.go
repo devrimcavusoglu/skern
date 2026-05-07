@@ -9,9 +9,17 @@ import (
 
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/registry"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func requireParsedManifest(t *testing.T, path string) *skill.Skill {
+	t.Helper()
+	s, err := skill.ParseManifest(path)
+	require.NoError(t, err, "parsing manifest %s", path)
+	return s
+}
 
 // testRegistry returns a CommandContext with a temp registry.
 func testRegistry(t *testing.T) *CommandContext {
@@ -415,34 +423,135 @@ func TestCompletion_Invalid(t *testing.T) {
 
 // --- from-template ---
 
-func TestSkillCreate_FromTemplate(t *testing.T) {
+// --from-template only accepts a directory; a file path must error with a
+// message that points the user at the parent directory.
+func TestSkillCreate_FromTemplate_FilePath_Errors(t *testing.T) {
 	cc := testRegistry(t)
 
-	// Write a template file
 	tmplDir := t.TempDir()
-	tmplPath := filepath.Join(tmplDir, "template.md")
-	require.NoError(t, os.WriteFile(tmplPath, []byte("## Custom Instructions\n\nDo something custom.\n"), 0o644))
+	tmplPath := filepath.Join(tmplDir, "SKILL.md")
+	require.NoError(t, os.WriteFile(tmplPath, []byte("---\nname: x\ndescription: y\nmetadata:\n  author:\n    name: a\n    type: human\n  version: \"0.1.0\"\n---\nbody"), 0o644))
 
-	out, err := runCmd(t, cc, "skill", "create", "tmpl-skill", "--from-template", tmplPath, "--json")
-	require.NoError(t, err)
-
-	var result output.SkillCreateResult
-	require.NoError(t, json.Unmarshal([]byte(out), &result))
-	assert.Equal(t, "tmpl-skill", result.Name)
-
-	// Verify the body was used by reading the created SKILL.md
-	skillMd, err := os.ReadFile(filepath.Join(result.Path, "SKILL.md"))
-	require.NoError(t, err)
-	assert.Contains(t, string(skillMd), "Custom Instructions")
-	assert.Contains(t, string(skillMd), "Do something custom")
+	_, err := runCmd(t, cc, "skill", "create", "tmpl-skill", "--from-template", tmplPath)
+	require.Error(t, err)
+	msg := err.Error()
+	assert.Contains(t, msg, "must point to a skill directory")
+	assert.Contains(t, msg, "pass the parent directory instead")
 }
 
 func TestSkillCreate_FromTemplate_NotFound(t *testing.T) {
 	cc := testRegistry(t)
 
-	_, err := runCmd(t, cc, "skill", "create", "tmpl-fail", "--from-template", "/nonexistent/template.md")
+	_, err := runCmd(t, cc, "skill", "create", "tmpl-fail", "--from-template", "/nonexistent/template-dir")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "reading template")
+}
+
+// Regression for #83: passing a skill *directory* as --from-template must
+// copy sibling assets (references/, templates/, VENDORED.md, ...) into the
+// new skill alongside SKILL.md.
+func TestSkillCreate_FromTemplate_Directory_CopiesSiblings(t *testing.T) {
+	cc := testRegistry(t)
+
+	srcDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "SKILL.md"), []byte(`---
+name: source-template
+description: Use when copying siblings is required.
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+---
+
+## Overview
+
+Source body.
+`), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "references"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "references", "architecture.md"), []byte("# Architecture\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "templates"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "templates", "example.txt"), []byte("Example.\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "VENDORED.md"), []byte("# Vendored\n"), 0o644))
+
+	out, err := runCmd(t, cc, "skill", "create", "my-templated", "--from-template", srcDir, "--json")
+	require.NoError(t, err)
+
+	var result output.SkillCreateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+
+	// Frontmatter from the directory's SKILL.md is preserved (covers #82
+	// in the directory mode too).
+	parsed := requireParsedManifest(t, filepath.Join(result.Path, "SKILL.md"))
+	assert.Equal(t, "my-templated", parsed.Name)
+	assert.Equal(t, "Use when copying siblings is required.", parsed.Description)
+	assert.Equal(t, "0.1.0", parsed.Metadata.Version)
+
+	// Siblings copied verbatim.
+	for _, rel := range []string{"references/architecture.md", "templates/example.txt", "VENDORED.md"} {
+		_, err := os.Stat(filepath.Join(result.Path, rel))
+		assert.NoError(t, err, "expected sibling %q to be copied", rel)
+	}
+
+	// Sibling content is byte-identical to the source.
+	got, err := os.ReadFile(filepath.Join(result.Path, "references", "architecture.md"))
+	require.NoError(t, err)
+	assert.Equal(t, "# Architecture\n", string(got))
+}
+
+// Explicit CLI flags must override template-derived values; unset flags must
+// leave template values intact.
+func TestSkillCreate_FromTemplate_CLIOverridesTemplate(t *testing.T) {
+	cc := testRegistry(t)
+
+	srcDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "SKILL.md"), []byte(`---
+name: source-template
+description: Use when the template description applies.
+tags:
+  - inherited
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+---
+
+## Overview
+body
+`), 0o644))
+
+	out, err := runCmd(t, cc, "skill", "create", "my-templated",
+		"--from-template", srcDir,
+		"--description", "Use when the CLI override applies.",
+		"--tags", "override1,override2",
+		"--json",
+	)
+	require.NoError(t, err)
+
+	var result output.SkillCreateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+
+	parsed := requireParsedManifest(t, filepath.Join(result.Path, "SKILL.md"))
+	assert.Equal(t, "Use when the CLI override applies.", parsed.Description, "CLI --description should win")
+	assert.Equal(t, []string{"override1", "override2"}, parsed.Tags, "CLI --tags should win")
+	// Author was not overridden — template value preserved.
+	assert.Equal(t, "alice", parsed.Metadata.Author.Name)
+	// Version not set on CLI — template value preserved.
+	assert.Equal(t, "0.1.0", parsed.Metadata.Version)
+}
+
+// A directory passed via --from-template that lacks SKILL.md must surface
+// a clear error rather than silently producing a default skill.
+func TestSkillCreate_FromTemplate_DirectoryMissingManifest(t *testing.T) {
+	cc := testRegistry(t)
+
+	srcDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "README.md"), []byte("not a skill\n"), 0o644))
+
+	_, err := runCmd(t, cc, "skill", "create", "my-templated", "--from-template", srcDir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "SKILL.md")
 }
 
 // --- dedup hints in list ---

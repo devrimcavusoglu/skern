@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/devrimcavusoglu/skern/internal/output"
@@ -93,18 +94,14 @@ func newSkillCreateCmd() *cobra.Command {
 			// Skill count threshold warnings
 			checkSkillCountWarnings(ctx.Printer, reg, scopeVal)
 
-			// Read template body if --from-template is specified
-			var body string
-			if fromTemplate != "" {
-				data, err := os.ReadFile(fromTemplate)
-				if err != nil {
-					return fmt.Errorf("reading template %q: %w", fromTemplate, err)
-				}
-				body = string(data)
+			// Resolve --from-template (a SKILL.md file, a raw-body markdown
+			// file, or a skill directory containing SKILL.md and siblings).
+			tmpl, err := loadTemplate(fromTemplate)
+			if err != nil {
+				return err
 			}
 
-			s := skill.NewSkillWithBody(name, description, author, authorType, authorPlatform, body)
-			s.Tags = tags
+			s := buildSkillFromTemplate(tmpl, name, description, author, authorType, authorPlatform, tags, cmd)
 
 			if version != "" {
 				if _, err := skill.ParseVersion(version); err != nil {
@@ -125,6 +122,17 @@ func newSkillCreateCmd() *cobra.Command {
 				return err
 			}
 
+			// If the template was a skill directory, copy sibling assets
+			// (references/, templates/, VENDORED.md, ...) alongside the
+			// freshly written SKILL.md. On failure, roll back the partial
+			// skill so the registry doesn't keep a half-populated entry.
+			if tmpl != nil && tmpl.sourceDir != "" {
+				if err := registry.CopySiblings(tmpl.sourceDir, path); err != nil {
+					_ = os.RemoveAll(path)
+					return fmt.Errorf("copying template assets from %q: %w", tmpl.sourceDir, err)
+				}
+			}
+
 			result := output.SkillCreateResult{
 				Name:  name,
 				Scope: scope,
@@ -142,7 +150,7 @@ func newSkillCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&description, "description", "", "skill description")
 	cmd.Flags().StringVar(&scope, "scope", "user", "skill scope (user or project)")
 	cmd.Flags().BoolVar(&force, "force", false, "bypass overlap detection block")
-	cmd.Flags().StringVar(&fromTemplate, "from-template", "", "path to a template file for the skill body")
+	cmd.Flags().StringVar(&fromTemplate, "from-template", "", "path to a skill directory (containing SKILL.md and optional companion files) to seed the new skill from")
 	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags for the skill")
 	cmd.Flags().StringVar(&version, "version", "", "initial version (default: 0.0.1)")
 
@@ -196,4 +204,105 @@ func formatCreateValidationWarnings(issues []skill.ValidationIssue) string {
 		fmt.Fprintf(&b, "%s %s: %s\n", prefix, issue.Field, issue.Message)
 	}
 	return b.String()
+}
+
+// templateInput captures the resolved `--from-template` source. The flag
+// only accepts a skill *directory* containing a SKILL.md; sourceDir is
+// always set for use by registry.CopySiblings, and parsed holds the
+// frontmatter parsed from <sourceDir>/SKILL.md.
+type templateInput struct {
+	sourceDir string
+	parsed    *skill.Skill
+}
+
+func loadTemplate(path string) (*templateInput, error) {
+	if path == "" {
+		return nil, nil
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading template %q: %w", path, err)
+	}
+
+	if !info.IsDir() {
+		return nil, fmt.Errorf(
+			"--from-template must point to a skill directory containing a SKILL.md file, "+
+				"but %q is a file; pass the parent directory instead",
+			path,
+		)
+	}
+
+	manifestPath := filepath.Join(path, skill.ManifestFile)
+	manifestInfo, err := os.Stat(manifestPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf(
+				"--from-template directory %q has no SKILL.md; a skill template must be a directory containing a SKILL.md file",
+				path,
+			)
+		}
+		return nil, fmt.Errorf("reading template SKILL.md from directory %q: %w", path, err)
+	}
+	if manifestInfo.IsDir() {
+		return nil, fmt.Errorf("--from-template directory %q contains a SKILL.md entry that is itself a directory; expected a regular file", path)
+	}
+
+	parsed, err := skill.ParseManifest(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("parsing template SKILL.md in directory %q: %w", path, err)
+	}
+	return &templateInput{sourceDir: path, parsed: parsed}, nil
+}
+
+// buildSkillFromTemplate constructs the new Skill, applying CLI flag values on
+// top of any template-derived defaults. The CLI <name> argument always wins
+// over the template's name. Other flags only override when the user
+// explicitly set them, so an unspecified --description on a SKILL.md template
+// preserves the template's description rather than stamping the placeholder.
+func buildSkillFromTemplate(
+	tmpl *templateInput,
+	name, description, author, authorType, authorPlatform string,
+	tags []string,
+	cmd *cobra.Command,
+) *skill.Skill {
+	if tmpl == nil {
+		s := skill.NewSkillWithBody(name, description, author, authorType, authorPlatform, "")
+		s.Tags = tags
+		return s
+	}
+
+	s := tmpl.parsed
+	s.Name = name
+
+	flags := cmd.Flags()
+	if flags.Changed("description") {
+		s.Description = description
+	}
+	if flags.Changed("author") {
+		s.Metadata.Author.Name = author
+	}
+	if flags.Changed("author-type") {
+		s.Metadata.Author.Type = authorType
+	}
+	if flags.Changed("author-platform") {
+		s.Metadata.Author.Platform = authorPlatform
+	}
+	if flags.Changed("tags") {
+		s.Tags = tags
+	}
+
+	// Fill in fields the template didn't provide so a freshly written
+	// manifest still has sane defaults (matches NewSkillWithBody's behavior).
+	if strings.TrimSpace(s.Description) == "" {
+		s.Description = "Use when TODO: describe the triggering conditions for this skill.\n"
+	}
+	if s.Metadata.Author.Type == "" {
+		s.Metadata.Author.Type = "human"
+	}
+	if s.Metadata.Version == "" {
+		s.Metadata.Version = "0.0.1"
+	}
+
+	return s
 }

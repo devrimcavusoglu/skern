@@ -47,9 +47,26 @@ skern skill create <name> [flags]
 | `--tags` | Comma-separated list of tags |
 | `--scope` | `user` or `project` (default: `user`) |
 | `--force` | Bypass overlap block |
-| `--from-template <path>` | Use file as skill body |
+| `--from-template <dir>` | Seed from a skill directory containing `SKILL.md` and optional companion files (see below) |
 
 Overlap detection runs automatically during creation. See [Overlap Detection](/reference/overlap-detection) for details.
+
+### `--from-template`
+
+`--from-template <dir>` accepts a **skill directory** — a directory containing
+a `SKILL.md` plus any optional companion files. Skern parses the template's
+frontmatter and recursively copies every sibling file and subdirectory
+(`references/`, `templates/`, `VENDORED.md`, …) into the new skill.
+
+Anything else is rejected with a clear error:
+
+- `--from-template <file>` → "must point to a skill directory containing a SKILL.md file … pass the parent directory instead"
+- `--from-template <dir-with-no-SKILL.md>` → "directory has no SKILL.md; a skill template must be a directory containing a SKILL.md file"
+
+The new skill's `name` is always taken from the CLI argument. Other CLI
+flags (`--description`, `--tags`, `--author*`, `--version`) override the
+template's values when explicitly set; otherwise the template's values are
+preserved.
 
 ## `skern skill edit`
 
