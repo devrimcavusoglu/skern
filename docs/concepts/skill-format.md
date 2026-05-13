@@ -46,7 +46,7 @@ The main technique or pattern (before/after for techniques).
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | Yes | Skill name matching `[a-z0-9]+(-[a-z0-9]+)*`, 1-64 chars. Must equal the directory name. |
+| `name` | Yes | Skill name matching `[a-z0-9]+([.-][a-z0-9]+)*`, 1-64 chars. Hyphens and dots are both valid separators (`code-review`, `myorg.bootstrap`). Must equal the directory name. |
 | `description` | Yes | What the skill does — start with "Use when…". Max 1024 chars. |
 | `tags` | No | List of classification tags |
 | `allowed-tools` | No | Tools the skill may use. No empty entries. |

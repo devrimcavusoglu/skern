@@ -19,6 +19,10 @@ func TestValidateName(t *testing.T) {
 		{"long hyphenated", "my-really-long-skill-name", false},
 		{"single char", "a", false},
 		{"max length 64", "a234567890123456789012345678901234567890123456789012345678901234", false},
+		// Dot-namespaced names (per #92): dots are valid segment separators.
+		{"dot-namespaced", "myorg.bootstrap", false},
+		{"dot and hyphen mixed", "codebase-intelligence.scan", false},
+		{"multi-segment dotted", "a.b.c", false},
 		{"empty", "", true},
 		{"too long 65", "a2345678901234567890123456789012345678901234567890123456789012345", true},
 		{"uppercase", "MySkill", true},
@@ -28,7 +32,12 @@ func TestValidateName(t *testing.T) {
 		{"trailing hyphen", "skill-", true},
 		{"double hyphen", "my--skill", true},
 		{"special chars", "skill@name", true},
-		{"dot", "my.skill", true},
+		// Dot-separator placement: same shape rules as hyphen.
+		{"consecutive dots", "myorg..bootstrap", true},
+		{"leading dot", ".bootstrap", true},
+		{"trailing dot", "bootstrap.", true},
+		{"dot then hyphen", "myorg.-foo", true},
+		{"hyphen then dot", "myorg-.foo", true},
 	}
 
 	for _, tt := range tests {

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dot-namespaced skill names are now valid.** `ValidateName` accepts dots as
+  a segment separator in addition to hyphens, so names like `myorg.bootstrap`
+  and `codebase-intelligence.scan` pass validation. The hyphen-only form
+  (`code-review`) remains valid; this is a strict superset of the previous
+  regex, no migration required. Enables installers to preserve their
+  namespace prefix on platforms that derive slash commands from directory
+  names (e.g. GitHub Copilot maps `.copilot/skills/myorg.bootstrap/` to
+  `/myorg.bootstrap`). ([#92])
+
+[#92]: https://github.com/devrimcavusoglu/skern/issues/92
+
 ## [v0.3.0] — 2026-05-07
 
 Platform registry rewrite, five new adapters, agent-instruction snippet
