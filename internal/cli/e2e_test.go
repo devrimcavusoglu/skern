@@ -251,6 +251,49 @@ func TestEndToEnd_MultiSkillWorkflow(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestEndToEnd_DotNamespacedName is a regression test for #92: dot-namespaced
+// skill names (e.g. `myorg.bootstrap`) must survive the full create → validate
+// → install → uninstall → remove lifecycle, with the literal dot preserved in
+// the on-disk directory name in the registry and on installed platforms.
+func TestEndToEnd_DotNamespacedName(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	const skillName = "myorg.bootstrap"
+
+	_, err := runCmd(t, cc, "skill", "create", skillName,
+		"--description", "Use when bootstrapping a myorg project")
+	require.NoError(t, err)
+
+	registryDir := filepath.Join(userDir, skillName)
+	_, err = os.Stat(filepath.Join(registryDir, "SKILL.md"))
+	require.NoError(t, err, "registry directory should contain literal dot in name")
+
+	out, err := runCmd(t, cc, "skill", "validate", skillName, "--json")
+	require.NoError(t, err)
+	var validateResult output.SkillValidateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &validateResult))
+	assert.True(t, validateResult.Valid)
+
+	_, err = runCmd(t, cc, "skill", "install", skillName, "--platform", "claude-code")
+	require.NoError(t, err)
+	installed := filepath.Join(home, ".claude", "skills", skillName, "SKILL.md")
+	_, err = os.Stat(installed)
+	require.NoError(t, err, "installed directory should contain literal dot in name")
+
+	_, err = runCmd(t, cc, "skill", "uninstall", skillName, "--platform", "claude-code")
+	require.NoError(t, err)
+	_, err = os.Stat(installed)
+	assert.True(t, os.IsNotExist(err))
+
+	_, err = runCmd(t, cc, "skill", "remove", skillName)
+	require.NoError(t, err)
+	_, err = os.Stat(registryDir)
+	assert.True(t, os.IsNotExist(err))
+}
+
 // TestEndToEnd_OverlapAndValidation tests the overlap detection and validation
 // flows work correctly across the full lifecycle.
 func TestEndToEnd_OverlapAndValidation(t *testing.T) {
