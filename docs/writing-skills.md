@@ -56,7 +56,7 @@ description: |
 - Prefer verb-first active voice: `creating-skills` not `skill-creation`
 - Be specific: `condition-based-waiting` not `async-test-helpers`
 
-Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
+Names must match `^[a-z0-9]+([.-][a-z0-9]+)*$` and be 1-64 characters. Hyphens are the conventional separator (`code-review`); dots are also accepted for namespace-style names used by skill installers (`myorg.bootstrap`).
 
 ## Recommended Body Structure
 

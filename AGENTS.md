@@ -226,7 +226,7 @@ Key points:
 
 ### Skill Name Validation
 
-Names must match `^[a-z0-9]+(-[a-z0-9]+)*$` and be 1-64 characters.
+Names must match `^[a-z0-9]+([.-][a-z0-9]+)*$` and be 1-64 characters. Dots and hyphens are both valid segment separators; dots enable namespace-style names (e.g. `myorg.bootstrap`).
 
 ### Registry Paths
 

@@ -18,9 +18,9 @@ The summary line counts each separately, e.g. `Skill "x" has 1 error(s), 0 warni
 
 ### Name Format
 
-Skill names must match `[a-z0-9]+(-[a-z0-9]+)*` and be 1–64 characters.
+Skill names must match `[a-z0-9]+([.-][a-z0-9]+)*` and be 1–64 characters. Lowercase alphanumeric segments are joined by hyphens or dots; dots enable namespace-style names used by skill installers.
 
-Valid: `code-review`, `lint-fix`, `deploy`. Invalid: `Code_Review`, `my skill`.
+Valid: `code-review`, `lint-fix`, `deploy`, `myorg.bootstrap`, `codebase-intelligence.scan`. Invalid: `Code_Review`, `my skill`, `.bootstrap`, `myorg..bootstrap`.
 
 ### Description
 

@@ -18,8 +18,11 @@ const (
 	ScopeProject Scope = "project"
 )
 
-// nameRegex validates skill names: lowercase alphanumeric with hyphens, 1-64 chars.
-var nameRegex = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+// nameRegex validates skill names: lowercase alphanumeric segments joined by
+// hyphens or dots as separators, 1-64 chars. Dots enable namespace-style names
+// (e.g. "myorg.bootstrap") so installers can preserve their prefix across
+// platforms that map directory names to slash commands.
+var nameRegex = regexp.MustCompile(`^[a-z0-9]+([.-][a-z0-9]+)*$`)
 
 // Author represents the creator of a skill.
 type Author struct {
@@ -62,7 +65,7 @@ func ValidateName(name string) error {
 		return fmt.Errorf("skill name cannot exceed 64 characters")
 	}
 	if !nameRegex.MatchString(name) {
-		return fmt.Errorf("skill name %q is invalid: must match [a-z0-9]+(-[a-z0-9]+)* (lowercase alphanumeric with hyphens)", name)
+		return fmt.Errorf("skill name %q is invalid: must match [a-z0-9]+([.-][a-z0-9]+)* (lowercase alphanumeric segments joined by hyphens or dots)", name)
 	}
 	return nil
 }
