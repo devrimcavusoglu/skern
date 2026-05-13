@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.1] — 2026-05-13
+
+Patch release: widen skill-name validation to accept dot-namespaced names.
+Strict superset of the v0.3.0 regex — every previously valid name remains
+valid, no migration required.
+
 ### Added
 
 - **Dot-namespaced skill names are now valid.** `ValidateName` accepts dots as
@@ -16,9 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   regex, no migration required. Enables installers to preserve their
   namespace prefix on platforms that derive slash commands from directory
   names (e.g. GitHub Copilot maps `.copilot/skills/myorg.bootstrap/` to
-  `/myorg.bootstrap`). ([#92])
+  `/myorg.bootstrap`). ([#92], [#93])
 
 [#92]: https://github.com/devrimcavusoglu/skern/issues/92
+[#93]: https://github.com/devrimcavusoglu/skern/pull/93
 
 ## [v0.3.0] — 2026-05-07
 

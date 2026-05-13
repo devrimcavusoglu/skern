@@ -29,11 +29,11 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 Set `SKERN_VERSION` before running the installer:
 
 ```sh
-SKERN_VERSION=v0.3.0 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.sh | bash
+SKERN_VERSION=v0.3.1 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.sh | bash
 ```
 
 ```powershell
-$env:SKERN_VERSION = 'v0.3.0'; irm https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.ps1 | iex
+$env:SKERN_VERSION = 'v0.3.1'; irm https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.ps1 | iex
 ```
 
 ## Custom Install Directory

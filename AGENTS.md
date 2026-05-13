@@ -4,7 +4,7 @@
 
 Skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode, Cursor, Gemini CLI, GitHub Copilot, Windsurf, Continue, and more). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
 
-The project is written in **Go 1.25+** and the current release is **v0.3.0**.
+The project is written in **Go 1.25+** and the current release is **v0.3.1**.
 
 ## Repository Layout
 
