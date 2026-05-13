@@ -5,6 +5,15 @@ on:
     tags:
       - "v*"
 
+# Serialize runs for the same tag. GitHub occasionally re-delivers tag-push
+# webhooks, producing two parallel "Release" workflow runs (observed on v0.3.1).
+# Without serialization both runs race on the GitHub release publish step and
+# the loser fails with `422 already_exists` on every asset upload. We do NOT
+# cancel-in-progress because a real release publish must not be interrupted.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -20,7 +29,23 @@ jobs:
         with:
           go-version: "1.25"
 
+      # Idempotency guard: if a release already exists for this tag (i.e. an
+      # earlier run for the same tag already published artifacts), skip
+      # goreleaser instead of trying to re-upload assets and failing with 422.
+      - name: Check whether release already exists
+        id: precheck
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; skipping goreleaser."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run GoReleaser
+        if: steps.precheck.outputs.skip != 'true'
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
