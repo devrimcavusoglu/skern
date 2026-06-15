@@ -1010,6 +1010,217 @@ func TestSkillList_FilterByTag(t *testing.T) {
 	assert.True(t, names["tool-c"])
 }
 
+// --- categorical-tag filter (#96) ---
+
+func TestParseCategoryFilters(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     []string
+		want    map[string][]string
+		wantErr bool
+	}{
+		{name: "empty", raw: nil, want: map[string][]string{}},
+		{name: "single", raw: []string{"lang:python"}, want: map[string][]string{"lang": {"python"}}},
+		{
+			name: "comma list folds into one namespace",
+			raw:  []string{"lang:python,go"},
+			want: map[string][]string{"lang": {"python", "go"}},
+		},
+		{
+			name: "repeated same namespace accumulates",
+			raw:  []string{"lang:python", "lang:go"},
+			want: map[string][]string{"lang": {"python", "go"}},
+		},
+		{
+			name: "distinct namespaces",
+			raw:  []string{"lang:python", "topic:testing"},
+			want: map[string][]string{"lang": {"python"}, "topic": {"testing"}},
+		},
+		{
+			name: "lowercased",
+			raw:  []string{"Lang:Python"},
+			want: map[string][]string{"lang": {"python"}},
+		},
+		{name: "no colon", raw: []string{"python"}, wantErr: true},
+		{name: "empty namespace", raw: []string{":python"}, wantErr: true},
+		{name: "empty value", raw: []string{"lang:"}, wantErr: true},
+		{name: "empty value in comma list", raw: []string{"lang:python,"}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseCategoryFilters(tt.raw)
+			if tt.wantErr {
+				require.Error(t, err)
+				var ve *ValidationError
+				assert.ErrorAs(t, err, &ve, "malformed --category must be a ValidationError (exit code 2)")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestMatchesCategories(t *testing.T) {
+	tests := []struct {
+		name            string
+		tags            []string
+		filters         map[string][]string
+		includeUntagged bool
+		want            bool
+	}{
+		{name: "empty filter matches everything", tags: []string{"lang:go"}, filters: map[string][]string{}, want: true},
+		{name: "single match", tags: []string{"lang:python"}, filters: map[string][]string{"lang": {"python"}}, want: true},
+		{name: "single miss", tags: []string{"lang:go"}, filters: map[string][]string{"lang": {"python"}}, want: false},
+		{
+			name:    "OR within category",
+			tags:    []string{"lang:go"},
+			filters: map[string][]string{"lang": {"python", "go"}},
+			want:    true,
+		},
+		{
+			name:    "AND across categories satisfied",
+			tags:    []string{"lang:python", "topic:testing"},
+			filters: map[string][]string{"lang": {"python"}, "topic": {"testing"}},
+			want:    true,
+		},
+		{
+			name:    "AND across categories one missing value fails",
+			tags:    []string{"lang:python", "topic:docs"},
+			filters: map[string][]string{"lang": {"python"}, "topic": {"testing"}},
+			want:    false,
+		},
+		{
+			name:    "category absent fails by default",
+			tags:    []string{"lang:python"},
+			filters: map[string][]string{"topic": {"testing"}},
+			want:    false,
+		},
+		{
+			name:            "category absent passes with includeUntagged",
+			tags:            []string{"lang:python"},
+			filters:         map[string][]string{"topic": {"testing"}},
+			includeUntagged: true,
+			want:            true,
+		},
+		{
+			name:            "includeUntagged still requires a present category to match",
+			tags:            []string{"lang:go", "topic:docs"},
+			filters:         map[string][]string{"lang": {"python"}, "topic": {"docs"}},
+			includeUntagged: true,
+			want:            false,
+		},
+		{
+			name:    "zero tags fails by default",
+			tags:    nil,
+			filters: map[string][]string{"lang": {"python"}},
+			want:    false,
+		},
+		{
+			name:            "zero tags passes with includeUntagged",
+			tags:            nil,
+			filters:         map[string][]string{"lang": {"python"}},
+			includeUntagged: true,
+			want:            true,
+		},
+		{
+			name:    "flat tag is not categorical",
+			tags:    []string{"python", "lang:go"},
+			filters: map[string][]string{"lang": {"python"}},
+			want:    false,
+		},
+		{
+			name:    "case-insensitive match",
+			tags:    []string{"Lang:Python"},
+			filters: map[string][]string{"lang": {"python"}},
+			want:    true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, matchesCategories(tt.tags, tt.filters, tt.includeUntagged))
+		})
+	}
+}
+
+// TestSkillList_FilterByCategory covers the --json contract for the categorical
+// filter end to end: OR within a category, AND across categories, and the
+// strict-by-default untagged handling.
+func TestSkillList_FilterByCategory(t *testing.T) {
+	cc := testRegistry(t)
+
+	mk := func(name, desc, tags string) {
+		t.Helper()
+		_, err := runCmd(t, cc, "skill", "create", name, "--description", desc, "--tags", tags)
+		require.NoError(t, err)
+	}
+	mk("py-test", "Python testing", "lang:python,topic:testing")
+	mk("py-docs", "Python docs", "lang:python,topic:docs")
+	mk("go-test", "Go testing", "lang:go,topic:testing")
+	mk("untyped", "No categories", "misc")
+
+	listNames := func(t *testing.T, args ...string) map[string]bool {
+		t.Helper()
+		out, err := runCmd(t, cc, append([]string{"skill", "list"}, args...)...)
+		require.NoError(t, err)
+		var result output.SkillListResult
+		require.NoError(t, json.Unmarshal([]byte(out), &result))
+		assert.Equal(t, len(result.Skills), result.Count)
+		names := map[string]bool{}
+		for _, s := range result.Skills {
+			names[s.Name] = true
+		}
+		return names
+	}
+
+	// Single category value.
+	got := listNames(t, "--category", "lang:python", "--json")
+	assert.Equal(t, map[string]bool{"py-test": true, "py-docs": true}, got)
+
+	// OR within a category.
+	got = listNames(t, "--category", "lang:python,go", "--json")
+	assert.Equal(t, map[string]bool{"py-test": true, "py-docs": true, "go-test": true}, got)
+
+	// AND across categories.
+	got = listNames(t, "--category", "lang:python", "--category", "topic:testing", "--json")
+	assert.Equal(t, map[string]bool{"py-test": true}, got)
+
+	// Strict by default: a skill with no tag in the category is excluded.
+	got = listNames(t, "--category", "topic:testing", "--json")
+	assert.Equal(t, map[string]bool{"py-test": true, "go-test": true}, got)
+
+	// --include-untagged: category-absent skills now match that category.
+	got = listNames(t, "--category", "topic:testing", "--include-untagged", "--json")
+	assert.Equal(t, map[string]bool{"py-test": true, "go-test": true, "untyped": true}, got)
+}
+
+func TestSkillList_FilterByCategory_Invalid(t *testing.T) {
+	cc := testRegistry(t)
+	_, err := runCmd(t, cc, "skill", "create", "x", "--description", "X", "--tags", "lang:go")
+	require.NoError(t, err)
+
+	_, err = runCmd(t, cc, "skill", "list", "--category", "python", "--json")
+	require.Error(t, err)
+	var ve *ValidationError
+	assert.ErrorAs(t, err, &ve)
+}
+
+// TestSkillList_TagAndCategory confirms --tag and --category compose (AND).
+func TestSkillList_TagAndCategory(t *testing.T) {
+	cc := testRegistry(t)
+	_, err := runCmd(t, cc, "skill", "create", "a", "--description", "A", "--tags", "featured,lang:go")
+	require.NoError(t, err)
+	_, err = runCmd(t, cc, "skill", "create", "b", "--description", "B", "--tags", "lang:go")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "list", "--tag", "featured", "--category", "lang:go", "--json")
+	require.NoError(t, err)
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Equal(t, 1, result.Count)
+	assert.Equal(t, "a", result.Skills[0].Name)
+}
+
 // TestSkillList_WithPlatforms verifies that --with-platforms enriches each
 // skill entry with the list of platforms where the skill is currently
 // installed, scoped to the registry skill's scope.

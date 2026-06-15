@@ -184,6 +184,92 @@ func hasTag(tags []string, tag string) bool {
 	return false
 }
 
+// parseCategoryFilters converts repeated --category flags into a namespace ->
+// requested-values map. Each flag value has the form "category:value" and may
+// carry a comma-separated value list ("lang:python,go"). Namespaces and values
+// are lowercased so matching is case-insensitive, consistent with hasTag.
+//
+// Malformed input is a ValidationError (exit code 2): a value with no colon,
+// an empty category name, or an empty value. Flat tags (no colon) are a
+// different surface — they belong to --tag, not --category.
+func parseCategoryFilters(raw []string) (map[string][]string, error) {
+	filters := map[string][]string{}
+	for _, entry := range raw {
+		ns, valStr, found := strings.Cut(entry, ":")
+		if !found {
+			return nil, &ValidationError{Message: fmt.Sprintf("invalid --category %q: expected format \"category:value\"", entry)}
+		}
+		ns = strings.ToLower(strings.TrimSpace(ns))
+		if ns == "" {
+			return nil, &ValidationError{Message: fmt.Sprintf("invalid --category %q: category name must not be empty", entry)}
+		}
+		for _, v := range strings.Split(valStr, ",") {
+			v = strings.ToLower(strings.TrimSpace(v))
+			if v == "" {
+				return nil, &ValidationError{Message: fmt.Sprintf("invalid --category %q: value must not be empty", entry)}
+			}
+			filters[ns] = append(filters[ns], v)
+		}
+	}
+	return filters, nil
+}
+
+// matchesCategories reports whether a skill's tags satisfy the requested
+// category filters. Semantics: OR within a category (any requested value
+// matches), AND across categories (every requested category must be satisfied).
+//
+// A skill is "category-absent" for a namespace when none of its tags carry that
+// namespace. By default an absent category fails the match (strict). When
+// includeUntagged is set, an absent category is treated as "applies to all" and
+// passes — but a category the skill *does* declare must still match a requested
+// value. An empty filter set matches everything.
+func matchesCategories(tags []string, filters map[string][]string, includeUntagged bool) bool {
+	if len(filters) == 0 {
+		return true
+	}
+
+	// Index the skill's categorical tags as namespace -> set of values.
+	// Flat tags (no colon) and malformed tags (empty namespace/value) are
+	// not categorical and are ignored here.
+	skillCats := map[string]map[string]bool{}
+	for _, t := range tags {
+		ns, val, found := strings.Cut(t, ":")
+		if !found {
+			continue
+		}
+		ns = strings.ToLower(strings.TrimSpace(ns))
+		val = strings.ToLower(strings.TrimSpace(val))
+		if ns == "" || val == "" {
+			continue
+		}
+		if skillCats[ns] == nil {
+			skillCats[ns] = map[string]bool{}
+		}
+		skillCats[ns][val] = true
+	}
+
+	for ns, wanted := range filters {
+		have, present := skillCats[ns]
+		if !present {
+			if includeUntagged {
+				continue
+			}
+			return false
+		}
+		matched := false
+		for _, w := range wanted {
+			if have[w] {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	return true
+}
+
 // resolveSkill finds a skill by name, searching the specified scope or both scopes.
 func resolveSkill(reg *registry.Registry, name, scopeStr string) (*skill.Skill, string, skill.Scope, error) {
 	if scopeStr != "" {
