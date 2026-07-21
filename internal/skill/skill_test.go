@@ -51,3 +51,41 @@ func TestValidateName(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateTag(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"single word", "python", false},
+		{"hyphenated", "this-is-a-tag", false},
+		{"numbers", "web3", false},
+		{"uppercase allowed (matching is case-insensitive)", "Featured", false},
+		{"categorical", "lang:python", false},
+		{"categorical hyphenated both sides", "code-topic:code-review", false},
+		{"categorical uppercase", "Lang:Python", false},
+		{"empty", "", true},
+		{"underscore", "my_tag", true},
+		{"space", "my tag", true},
+		{"special chars", "c++", true},
+		{"leading hyphen", "-tag", true},
+		{"trailing hyphen", "tag-", true},
+		{"double hyphen", "my--tag", true},
+		{"two colons", "a:b:c", true},
+		{"empty category", ":python", true},
+		{"empty value", "lang:", true},
+		{"bare colon", ":", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateTag(tt.input)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

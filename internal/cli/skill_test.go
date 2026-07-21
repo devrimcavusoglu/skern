@@ -1250,6 +1250,35 @@ func TestSkillList_TagAndCategory(t *testing.T) {
 	assert.Equal(t, "a", result.Skills[0].Name)
 }
 
+// TestSkillCreate_InvalidTag enforces the tag charset at the create boundary:
+// alphanumeric segments joined by hyphens, at most one category:value colon.
+func TestSkillCreate_InvalidTag(t *testing.T) {
+	cc := testRegistry(t)
+	for _, bad := range []string{"my_tag", "my tag", "a:b:c", "-tag", "tag-", "c++"} {
+		_, err := runCmd(t, cc, "skill", "create", "x", "--description", "X", "--tags", bad)
+		require.Error(t, err, "tag %q should be rejected", bad)
+		var ve *ValidationError
+		assert.ErrorAs(t, err, &ve, "invalid tag must be a ValidationError (exit code 2)")
+	}
+}
+
+// TestSkillList_HyphenatedTags confirms hyphenated tags work end to end through
+// both filters, and that space after a comma in --tags is normalized away.
+func TestSkillList_HyphenatedTags(t *testing.T) {
+	cc := testRegistry(t)
+	_, err := runCmd(t, cc, "skill", "create", "review-helper", "--description", "Review helper",
+		"--tags", "topic:code-review, this-is-another")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "list", "--category", "topic:code-review", "--tag", "this-is-another", "--json")
+	require.NoError(t, err)
+	var result output.SkillListResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Equal(t, 1, result.Count)
+	assert.Equal(t, "review-helper", result.Skills[0].Name)
+	assert.Equal(t, []string{"topic:code-review", "this-is-another"}, result.Skills[0].Tags)
+}
+
 // TestSkillList_WithPlatforms verifies that --with-platforms enriches each
 // skill entry with the list of platforms where the skill is currently
 // installed, scoped to the registry skill's scope.
