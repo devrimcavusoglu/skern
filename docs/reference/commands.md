@@ -81,7 +81,7 @@ skern skill create <name> [flags]
 | `--author` | — | Author name |
 | `--author-type` | `human` | `human` or `agent` |
 | `--author-platform` | — | Platform name (e.g. `claude-code`) — used with `agent` author type |
-| `--tags` | — | Comma-separated list of tags. Each tag is alphanumeric segments joined by hyphens, optionally namespaced as `category:value` (single colon); anything else exits with code 2 |
+| `--tags` | — | Comma-separated list of tags. Each tag is lowercase alphanumeric segments joined by hyphens, optionally namespaced as `category:value` (single colon); anything else exits with code 2 |
 | `--version` | `0.0.1` | Initial semver version |
 | `--scope` | `user` | `user` or `project` |
 | `--force` | `false` | Bypass overlap block |

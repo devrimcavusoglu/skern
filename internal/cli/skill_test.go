@@ -1136,6 +1136,8 @@ func TestMatchesCategories(t *testing.T) {
 			want:    false,
 		},
 		{
+			// New tags are validated lowercase, but the matcher stays
+			// case-insensitive so hand-edited frontmatter still matches.
 			name:    "case-insensitive match",
 			tags:    []string{"Lang:Python"},
 			filters: map[string][]string{"lang": {"python"}},
@@ -1150,7 +1152,9 @@ func TestMatchesCategories(t *testing.T) {
 }
 
 // hasTag and matchesCategories share one normalization convention:
-// case-insensitive, surrounding whitespace ignored on stored tags.
+// case-insensitive, surrounding whitespace ignored on stored tags. Stored tags
+// are validated lowercase on write, so this covers hand-edited frontmatter and
+// lets a query be typed in any case.
 func TestHasTag_TrimAndCase(t *testing.T) {
 	assert.True(t, hasTag([]string{" Featured "}, "featured"))
 	assert.True(t, hasTag([]string{"featured"}, " FEATURED "))
@@ -1251,10 +1255,11 @@ func TestSkillList_TagAndCategory(t *testing.T) {
 }
 
 // TestSkillCreate_InvalidTag enforces the tag charset at the create boundary:
-// alphanumeric segments joined by hyphens, at most one category:value colon.
+// lowercase alphanumeric segments joined by hyphens, at most one
+// category:value colon.
 func TestSkillCreate_InvalidTag(t *testing.T) {
 	cc := testRegistry(t)
-	for _, bad := range []string{"my_tag", "my tag", "a:b:c", "-tag", "tag-", "c++"} {
+	for _, bad := range []string{"my_tag", "my tag", "a:b:c", "-tag", "tag-", "c++", "Featured", "lang:Python"} {
 		_, err := runCmd(t, cc, "skill", "create", "x", "--description", "X", "--tags", bad)
 		require.Error(t, err, "tag %q should be rejected", bad)
 		var ve *ValidationError

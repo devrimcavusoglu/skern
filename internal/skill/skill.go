@@ -57,13 +57,16 @@ type Skill struct {
 	Body         string   `yaml:"-" json:"-"`
 }
 
-// tagPartRegex validates one side of a tag: alphanumeric segments joined by
-// hyphens. Uppercase is allowed because tag matching is case-insensitive.
-var tagPartRegex = regexp.MustCompile(`^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$`)
+// tagPartRegex validates one side of a tag: lowercase alphanumeric segments
+// joined by hyphens, matching the shape rule nameRegex applies to names.
+var tagPartRegex = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 // ValidateTag checks that a tag is either a flat tag ("code-review") or a
-// categorical tag ("lang:python", "topic:ci-cd"): alphanumeric segments joined
-// by hyphens, with at most one colon separating category and value.
+// categorical tag ("lang:python", "topic:ci-cd"): lowercase alphanumeric
+// segments joined by hyphens, with at most one colon separating category and
+// value. Uppercase is rejected so stored tags have a single canonical form;
+// the tag *filters* remain case-insensitive, so a query may be typed in any
+// case and skills with legacy hand-edited uppercase tags still match.
 func ValidateTag(tag string) error {
 	parts := strings.Split(tag, ":")
 	if len(parts) > 2 {
@@ -71,7 +74,7 @@ func ValidateTag(tag string) error {
 	}
 	for _, p := range parts {
 		if !tagPartRegex.MatchString(p) {
-			return fmt.Errorf("tag %q is invalid: tags may only contain alphanumeric characters and hyphens (segments joined by hyphens, optionally as \"category:value\")", tag)
+			return fmt.Errorf("tag %q is invalid: tags must be lowercase alphanumeric segments joined by hyphens, optionally as \"category:value\"", tag)
 		}
 	}
 	return nil
