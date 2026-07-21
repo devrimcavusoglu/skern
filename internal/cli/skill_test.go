@@ -1041,8 +1041,14 @@ func TestParseCategoryFilters(t *testing.T) {
 			raw:  []string{"Lang:Python"},
 			want: map[string][]string{"lang": {"python"}},
 		},
+		{
+			name: "duplicate values deduped",
+			raw:  []string{"lang:python,python", "lang:Python"},
+			want: map[string][]string{"lang": {"python"}},
+		},
 		{name: "no colon", raw: []string{"python"}, wantErr: true},
 		{name: "empty namespace", raw: []string{":python"}, wantErr: true},
+		{name: "comma in category name", raw: []string{",lang:python"}, wantErr: true},
 		{name: "empty value", raw: []string{"lang:"}, wantErr: true},
 		{name: "empty value in comma list", raw: []string{"lang:python,"}, wantErr: true},
 	}
@@ -1143,6 +1149,14 @@ func TestMatchesCategories(t *testing.T) {
 	}
 }
 
+// hasTag and matchesCategories share one normalization convention:
+// case-insensitive, surrounding whitespace ignored on stored tags.
+func TestHasTag_TrimAndCase(t *testing.T) {
+	assert.True(t, hasTag([]string{" Featured "}, "featured"))
+	assert.True(t, hasTag([]string{"featured"}, " FEATURED "))
+	assert.False(t, hasTag([]string{"feat"}, "featured"))
+}
+
 // TestSkillList_FilterByCategory covers the --json contract for the categorical
 // filter end to end: OR within a category, AND across categories, and the
 // strict-by-default untagged handling.
@@ -1192,6 +1206,21 @@ func TestSkillList_FilterByCategory(t *testing.T) {
 	// --include-untagged: category-absent skills now match that category.
 	got = listNames(t, "--category", "topic:testing", "--include-untagged", "--json")
 	assert.Equal(t, map[string]bool{"py-test": true, "go-test": true, "untyped": true}, got)
+}
+
+// TestSkillList_FilterByCategory_TextOutput drives the text (non-JSON)
+// rendering path with a category filter.
+func TestSkillList_FilterByCategory_TextOutput(t *testing.T) {
+	cc := testRegistry(t)
+	_, err := runCmd(t, cc, "skill", "create", "py-skill", "--description", "Python skill", "--tags", "lang:python")
+	require.NoError(t, err)
+	_, err = runCmd(t, cc, "skill", "create", "go-skill", "--description", "Go skill", "--tags", "lang:go")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "list", "--category", "lang:python")
+	require.NoError(t, err)
+	assert.Contains(t, out, "py-skill")
+	assert.NotContains(t, out, "go-skill")
 }
 
 func TestSkillList_FilterByCategory_Invalid(t *testing.T) {

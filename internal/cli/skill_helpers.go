@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/devrimcavusoglu/skern/internal/output"
@@ -173,11 +174,13 @@ func formatSearchResults(query string, results []output.SkillResult) string {
 	return b.String()
 }
 
-// hasTag checks if a tag list contains the given tag (case-insensitive).
+// hasTag checks if a tag list contains the given tag (case-insensitive,
+// ignoring surrounding whitespace — the same normalization matchesCategories
+// applies to stored tags).
 func hasTag(tags []string, tag string) bool {
-	t := strings.ToLower(tag)
+	t := strings.ToLower(strings.TrimSpace(tag))
 	for _, v := range tags {
-		if strings.ToLower(v) == t {
+		if strings.ToLower(strings.TrimSpace(v)) == t {
 			return true
 		}
 	}
@@ -190,8 +193,10 @@ func hasTag(tags []string, tag string) bool {
 // are lowercased so matching is case-insensitive, consistent with hasTag.
 //
 // Malformed input is a ValidationError (exit code 2): a value with no colon,
-// an empty category name, or an empty value. Flat tags (no colon) are a
-// different surface — they belong to --tag, not --category.
+// an empty category name, a category name containing a comma (comma-separated
+// value lists go after the colon), or an empty value. Flat tags (no colon) are
+// a different surface — they belong to --tag, not --category. Duplicate values
+// within a namespace are deduplicated.
 func parseCategoryFilters(raw []string) (map[string][]string, error) {
 	filters := map[string][]string{}
 	for _, entry := range raw {
@@ -203,12 +208,17 @@ func parseCategoryFilters(raw []string) (map[string][]string, error) {
 		if ns == "" {
 			return nil, &ValidationError{Message: fmt.Sprintf("invalid --category %q: category name must not be empty", entry)}
 		}
+		if strings.Contains(ns, ",") {
+			return nil, &ValidationError{Message: fmt.Sprintf("invalid --category %q: category name must not contain a comma (a comma-separated value list goes after the colon)", entry)}
+		}
 		for _, v := range strings.Split(valStr, ",") {
 			v = strings.ToLower(strings.TrimSpace(v))
 			if v == "" {
 				return nil, &ValidationError{Message: fmt.Sprintf("invalid --category %q: value must not be empty", entry)}
 			}
-			filters[ns] = append(filters[ns], v)
+			if !slices.Contains(filters[ns], v) {
+				filters[ns] = append(filters[ns], v)
+			}
 		}
 	}
 	return filters, nil
