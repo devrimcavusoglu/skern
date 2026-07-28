@@ -12,9 +12,11 @@ import (
 
 func newSkillListCmd() *cobra.Command {
 	var (
-		scope         string
-		tag           string
-		withPlatforms bool
+		scope           string
+		tag             string
+		categories      []string
+		includeUntagged bool
+		withPlatforms   bool
 	)
 
 	cmd := &cobra.Command{
@@ -24,6 +26,11 @@ func newSkillListCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := getContext(cmd)
 			reg, err := ctx.NewRegistry()
+			if err != nil {
+				return err
+			}
+
+			categoryFilters, err := parseCategoryFilters(categories)
 			if err != nil {
 				return err
 			}
@@ -88,6 +95,9 @@ func newSkillListCmd() *cobra.Command {
 				if tag != "" && !hasTag(d.Skill.Tags, tag) {
 					continue
 				}
+				if !matchesCategories(d.Skill.Tags, categoryFilters, includeUntagged) {
+					continue
+				}
 				r := toDiscoveredSkillResult(d)
 				if files, err := skill.ListFiles(d.Path); err == nil && len(files) > 0 {
 					r.Files = files
@@ -146,6 +156,8 @@ func newSkillListCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&scope, "scope", "all", "skill scope (user, project, or all)")
 	cmd.Flags().StringVar(&tag, "tag", "", "filter skills by tag")
+	cmd.Flags().StringArrayVar(&categories, "category", nil, "filter by namespaced tag \"category:value\" (repeatable; comma-lists values; OR within a category, AND across categories)")
+	cmd.Flags().BoolVar(&includeUntagged, "include-untagged", false, "treat a skill with no tag in a requested category as matching that category")
 	cmd.Flags().BoolVar(&withPlatforms, "with-platforms", false, "include the list of detected platforms each skill is installed on")
 
 	return cmd

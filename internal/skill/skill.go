@@ -4,6 +4,7 @@ package skill
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 // Scope represents where a skill is stored.
@@ -54,6 +55,29 @@ type Skill struct {
 	AllowedTools []string `yaml:"allowed-tools,omitempty" json:"allowed_tools,omitempty"`
 	Metadata     Metadata `yaml:"metadata" json:"metadata"`
 	Body         string   `yaml:"-" json:"-"`
+}
+
+// tagPartRegex validates one side of a tag: lowercase alphanumeric segments
+// joined by hyphens, matching the shape rule nameRegex applies to names.
+var tagPartRegex = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// ValidateTag checks that a tag is either a flat tag ("code-review") or a
+// categorical tag ("lang:python", "topic:ci-cd"): lowercase alphanumeric
+// segments joined by hyphens, with at most one colon separating category and
+// value. Uppercase is rejected so stored tags have a single canonical form;
+// the tag *filters* remain case-insensitive, so a query may be typed in any
+// case and skills with legacy hand-edited uppercase tags still match.
+func ValidateTag(tag string) error {
+	parts := strings.Split(tag, ":")
+	if len(parts) > 2 {
+		return fmt.Errorf("tag %q is invalid: at most one \":\" (separating category and value) is allowed", tag)
+	}
+	for _, p := range parts {
+		if !tagPartRegex.MatchString(p) {
+			return fmt.Errorf("tag %q is invalid: tags must be lowercase alphanumeric segments joined by hyphens, optionally as \"category:value\"", tag)
+		}
+	}
+	return nil
 }
 
 // ValidateName checks that a skill name matches the required pattern.

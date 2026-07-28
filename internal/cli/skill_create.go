@@ -38,6 +38,15 @@ func newSkillCreateCmd() *cobra.Command {
 				return &ValidationError{Message: err.Error()}
 			}
 
+			// Normalize --tags (tolerate space after commas) and enforce the
+			// tag charset up front, like the name check above.
+			for i, tg := range tags {
+				tags[i] = strings.TrimSpace(tg)
+				if err := skill.ValidateTag(tags[i]); err != nil {
+					return &ValidationError{Message: err.Error()}
+				}
+			}
+
 			scopeVal, err := parseScope(scope)
 			if err != nil {
 				return err

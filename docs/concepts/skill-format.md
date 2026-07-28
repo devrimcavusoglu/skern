@@ -48,7 +48,7 @@ The main technique or pattern (before/after for techniques).
 |-------|----------|-------------|
 | `name` | Yes | Skill name matching `[a-z0-9]+([.-][a-z0-9]+)*`, 1-64 chars. Hyphens and dots are both valid separators (`code-review`, `myorg.bootstrap`). Must equal the directory name. |
 | `description` | Yes | What the skill does — start with "Use when…". Max 1024 chars. |
-| `tags` | No | List of classification tags |
+| `tags` | No | List of classification tags. Lowercase alphanumeric segments joined by hyphens (`code-review`), optionally namespaced as `category:value` with a single colon (`lang:python`, `topic:ci-cd`). Filter matching is case-insensitive. |
 | `allowed-tools` | No | Tools the skill may use. No empty entries. |
 | `metadata.author.name` | No | Author name |
 | `metadata.author.type` | No | `human` or `agent` |

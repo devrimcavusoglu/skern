@@ -81,7 +81,7 @@ skern skill create <name> [flags]
 | `--author` | — | Author name |
 | `--author-type` | `human` | `human` or `agent` |
 | `--author-platform` | — | Platform name (e.g. `claude-code`) — used with `agent` author type |
-| `--tags` | — | Comma-separated list of tags |
+| `--tags` | — | Comma-separated list of tags. Each tag is lowercase alphanumeric segments joined by hyphens, optionally namespaced as `category:value` (single colon); anything else exits with code 2 |
 | `--version` | `0.0.1` | Initial semver version |
 | `--scope` | `user` | `user` or `project` |
 | `--force` | `false` | Bypass overlap block |
@@ -174,8 +174,19 @@ skern skill list [--scope user|project|all] [flags]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--scope` | `all` | `user`, `project`, or `all` |
-| `--tag` | — | Filter results to skills with this tag |
+| `--tag` | — | Filter results to skills with this flat tag (exact, case-insensitive) |
+| `--category` | — | Filter by a namespaced `category:value` tag (repeatable) |
+| `--include-untagged` | `false` | Treat a skill with no tag in a requested category as matching that category |
 | `--with-platforms` | `false` | Include `installed_on` per skill (the detected platforms where the skill is installed at the same scope) |
+
+### Categorical-tag filtering (`--category`)
+
+`--category` narrows the list by structured `category:value` tags (e.g. `lang:python`, `topic:testing`). It is fully category-agnostic — the namespace is whatever precedes the first `:`; skern never enumerates known categories. Flat tags with no colon are not categorical and are matched by `--tag` instead.
+
+- **Repeatable, with comma-lists:** `--category lang:python --category lang:go` and `--category lang:python,go` are equivalent.
+- **OR within a category, AND across categories:** `--category lang:python,go --category topic:testing` matches skills tagged (`lang:python` **or** `lang:go`) **and** `topic:testing`.
+- **Strict by default:** a skill that carries no tag in a requested category is excluded. Pass `--include-untagged` to treat a category-absent skill as applying to all values of that category. A category the skill *does* declare must still match a requested value even with `--include-untagged`.
+- Matching is case-insensitive. `--tag` and `--category` compose with AND. Malformed input (`--category value` with no colon, an empty or comma-containing category name, or an empty value) exits with code 2.
 
 Also runs pairwise overlap detection across all listed skills and appends a "Potential duplicates" section when matches are found (score >= 0.6). In `--json` mode they appear in the `duplicates` array.
 

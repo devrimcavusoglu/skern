@@ -37,6 +37,7 @@ func Validate(s *Skill) []ValidationIssue {
 	issues = append(issues, validateName(s.Name)...)
 	issues = append(issues, validateDescription(s.Description)...)
 	issues = append(issues, validateBody(s.Body)...)
+	issues = append(issues, validateTags(s.Tags)...)
 	issues = append(issues, validateAllowedTools(s.AllowedTools)...)
 	issues = append(issues, validateMetadata(s.Metadata)...)
 	issues = append(issues, lintStyle(s)...)
@@ -98,6 +99,22 @@ func validateBody(body string) []ValidationIssue {
 		}}
 	}
 	return nil
+}
+
+// validateTags checks each tag against the tag charset rule. Surrounding
+// whitespace is tolerated (the tag filters trim it too).
+func validateTags(tags []string) []ValidationIssue {
+	var issues []ValidationIssue
+	for i, tag := range tags {
+		if err := ValidateTag(strings.TrimSpace(tag)); err != nil {
+			issues = append(issues, ValidationIssue{
+				Field:    "tags",
+				Severity: SeverityError,
+				Message:  fmt.Sprintf("tags[%d]: %s", i, err),
+			})
+		}
+	}
+	return issues
 }
 
 func validateAllowedTools(tools []string) []ValidationIssue {
