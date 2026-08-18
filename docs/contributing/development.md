@@ -1,5 +1,11 @@
 # Development
 
+This page covers contributor setup: building, testing, linting, and where files
+live. Coding conventions, architecture, and design decisions are documented in
+[AGENTS.md](https://github.com/devrimcavusoglu/skern/blob/main/AGENTS.md) in the
+repo root — that file is canonical for both agents and humans, and is not
+restated here.
+
 ## Build
 
 ```sh
@@ -61,11 +67,13 @@ docs/                          # VitePress documentation site
 
 ## Conventions
 
+Coding conventions — package responsibilities, Go style, error handling, CLI
+output, and testing patterns — are documented in
+[AGENTS.md](https://github.com/devrimcavusoglu/skern/blob/main/AGENTS.md#code-conventions).
+Two that shape where you'll be editing:
+
 - `cli/` is wiring, flag parsing, and output. Business logic lives in `skill/`, `registry/`, `platform/`, `overlap/`.
 - Adding a new platform = one row in `internal/platform/spec.go` plus one `Type` constant. No per-platform Go file.
-- Errors are wrapped with `fmt.Errorf("context: %w", err)`.
-- Exit codes: `0` success, `1` error, `2` validation failure.
-- The `cli/` package uses injectable `NewRegistry` / `NewDetector` on `CommandContext` for test isolation.
 
 ## Dependencies
 
@@ -87,10 +95,10 @@ gh issue view <number>                     # View issue details
 
 ## Branching
 
-Work is organized by milestone using feature branches:
+Work is issue-driven. Branch from `main`, merge back by pull request.
 
-- **Branch naming**: `feature/m<N>-<slug>` (e.g. `feature/m7-platform-registry`)
-- **Created from**: `main`
-- **Merged via**: pull request to `main`
+- **Branch naming**: `<type>/<slug>` where type is `feature`, `fix`, `chore`, `docs`, or `release` — e.g. `feature/category-tag-filter`, `fix/release-duplicate-trigger`, `release/v0.3.1`
+- **Commits**: concise imperative subject, referencing issues as `#<number>`
+- **User-facing changes**: add a `CHANGELOG.md` `[Unreleased]` entry in the same PR
 
 See [AGENTS.md](https://github.com/devrimcavusoglu/skern/blob/main/AGENTS.md) in the repo root for the complete development guide.
