@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with at most one colon separating category from value. Tag *filters* remain
   case-insensitive, so legacy hand-edited uppercase tags still match.
   ([#96], [#98])
+- **`skern init --no-instructions`** — an explicit opt-out from the
+  instruction-snippet prompt for installers and CI. Writes nothing, never
+  prompts, and is rejected (exit 2) when combined with `--instructions`,
+  `--print-instructions`, `--target`, or `--tool-forming-loop`. The
+  non-interactive contract is now documented: when stdin is not a TTY or
+  `--json` is set, `init` never prompts and both questions resolve to "no".
+  ([#104])
 
 ### Changed
 
@@ -64,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#97]: https://github.com/devrimcavusoglu/skern/pull/97
 [#98]: https://github.com/devrimcavusoglu/skern/pull/98
 [#100]: https://github.com/devrimcavusoglu/skern/issues/100
+[#104]: https://github.com/devrimcavusoglu/skern/issues/104
 
 ## [v0.3.1] — 2026-05-13
 

@@ -16,6 +16,7 @@ import (
 func newInitCmd() *cobra.Command {
 	var (
 		writeInstr  bool
+		noInstr     bool
 		toolForming bool
 		printInstr  bool
 		targetPaths []string
@@ -30,11 +31,19 @@ Optionally writes a skern usage snippet into agent instruction files
 all skill-related tasks.
 
 Idempotent — safe to run multiple times. The instruction snippet is
-wrapped in start/end markers so re-running updates the block in place.`,
+wrapped in start/end markers so re-running updates the block in place.
+
+Interactivity: when no instruction flag is given, init asks whether to write
+the snippet only if stdin is a terminal and --json is not set. When stdin is
+not a TTY (installers, CI, piped input) or --json is set, skern never prompts
+and never blocks on input — the answer defaults to "no". Pass
+--no-instructions to state that opt-out explicitly instead of relying on the
+non-TTY default, or --instructions to opt in.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runInit(cmd, runInitOpts{
 				writeInstr:  writeInstr,
+				noInstr:     noInstr,
 				toolForming: toolForming,
 				printInstr:  printInstr,
 				targetPaths: targetPaths,
@@ -44,6 +53,8 @@ wrapped in start/end markers so re-running updates the block in place.`,
 
 	cmd.Flags().BoolVar(&writeInstr, "instructions", false,
 		"write the skern usage snippet to agent instruction files (AGENTS.md, CLAUDE.md, .claude/CLAUDE.md by default)")
+	cmd.Flags().BoolVar(&noInstr, "no-instructions", false,
+		"do not write or offer the instruction snippet; never prompts (explicit opt-out for installers and CI)")
 	cmd.Flags().BoolVar(&toolForming, "tool-forming-loop", false,
 		"include the tool-forming-loop section in the instruction snippet (search-before-create workflow)")
 	cmd.Flags().BoolVar(&printInstr, "print-instructions", false,
@@ -56,6 +67,7 @@ wrapped in start/end markers so re-running updates the block in place.`,
 
 type runInitOpts struct {
 	writeInstr  bool
+	noInstr     bool
 	toolForming bool
 	printInstr  bool
 	targetPaths []string
@@ -141,11 +153,25 @@ func handleInstructions(cmd *cobra.Command, cc *CommandContext, opts runInitOpts
 func resolveInstructionChoices(cmd *cobra.Command, cc *CommandContext, opts runInitOpts) (bool, bool, error) {
 	flags := cmd.Flags()
 
+	// Explicit opt-out (#104): nothing is written and neither prompt runs,
+	// regardless of TTY state. Combining it with an opt-in flag is a
+	// contradiction, reported as a validation error (exit 2).
+	if opts.noInstr {
+		for _, name := range []string{"instructions", "print-instructions", "target", "tool-forming-loop"} {
+			if flags.Changed(name) {
+				return false, false, &ValidationError{Message: fmt.Sprintf("--no-instructions cannot be combined with --%s", name)}
+			}
+		}
+		return false, false, nil
+	}
+
 	wantInstr := opts.writeInstr || opts.printInstr || len(opts.targetPaths) > 0
 	wantToolForming := opts.toolForming
 
 	// Skip prompting when JSON mode (machine-driven) or when stdin is not a
-	// terminal (CI, scripts, redirected input, tests).
+	// terminal (CI, scripts, redirected input, tests). This is the documented
+	// non-interactive contract: without a TTY skern never blocks on input and
+	// both questions resolve to their default, "no".
 	in := cmd.InOrStdin()
 	canPrompt := !cc.Printer.IsJSON() && isTerminal(in)
 

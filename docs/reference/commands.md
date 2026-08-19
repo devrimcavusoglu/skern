@@ -50,6 +50,7 @@ skern init --instructions                     # also writes the snippet to disco
 skern init --instructions --tool-forming-loop # adds the search-before-create workflow section
 skern init --target ./MY_AGENT.md             # write to a specific file (skips auto-discovery; repeatable)
 skern init --print-instructions               # print the snippet to stdout instead of writing files
+skern init --no-instructions                  # explicit opt-out: never writes, never prompts (installers, CI)
 ```
 
 **Flags:**
@@ -57,13 +58,14 @@ skern init --print-instructions               # print the snippet to stdout inst
 | Flag | Description |
 |------|-------------|
 | `--instructions` | Write the skern usage snippet to discovered agent config files. Default: off. |
+| `--no-instructions` | Explicit opt-out: do not write or offer the snippet, and never prompt. Mutually exclusive with `--instructions`, `--print-instructions`, `--target`, and `--tool-forming-loop` (exit 2 if combined). |
 | `--tool-forming-loop` | Include the tool-forming-loop section (search-before-create workflow). Default: off. |
 | `--target <path>` | Explicit instruction file path. Repeatable. Disables auto-discovery when set. |
 | `--print-instructions` | Print the rendered snippet to stdout instead of writing files. |
 
 The instruction snippet is wrapped in `<!-- skern:instructions:start -->` / `<!-- skern:instructions:end -->` markers so re-running `skern init --instructions` updates the block in place rather than appending a duplicate.
 
-When run on a TTY without `--json` or any of the instruction flags, `skern init` prompts for both choices (write instructions? include tool-forming loop?). Default to **No** for both. Non-interactive runs (CI, scripts, `--json`) honor flag values only — no prompts.
+**Interactivity contract.** When run on a TTY without `--json` or any of the instruction flags, `skern init` prompts for both choices (write instructions? include tool-forming loop?). Both default to **No**. When stdin is **not** a TTY (installers, CI, piped or redirected input) or `--json` is set, skern never prompts and never blocks on input — both answers resolve to **No** and only flag values are honored. This is a documented guarantee, not an accident of the prompt's default. Automated callers should still pass `--no-instructions` (or `--instructions`) so their intent is explicit rather than inferred from stdin.
 
 ## `skern skill create`
 
