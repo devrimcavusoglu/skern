@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/devrimcavusoglu/skern/internal/output"
@@ -185,6 +186,12 @@ func compareSkills(a *skill.Skill, nameA, sourceA string, b *skill.Skill, nameB,
 		fields = append(fields, output.FieldDiff{Field: "modified-by", Left: modA, Right: modB})
 	}
 
+	// Unmodeled keys round-trip through skern (see skill.Skill.Extra), so
+	// they are part of what an install or edit can change — diff them too.
+	fields = append(fields, extraDiffs("", a.Extra, b.Extra)...)
+	fields = append(fields, extraDiffs("metadata.", a.Metadata.Extra, b.Metadata.Extra)...)
+	fields = append(fields, extraDiffs("author.", a.Metadata.Author.Extra, b.Metadata.Author.Extra)...)
+
 	bodyDiff := a.Body != b.Body
 
 	result := output.SkillDiffResult{
@@ -241,6 +248,48 @@ func displayValue(v string) string {
 		return "(empty)"
 	}
 	return v
+}
+
+// extraDiffs compares two unmodeled-key maps and returns one FieldDiff per key
+// whose rendered value differs. A key absent on one side renders as empty; an
+// explicit `key: null` renders as "null" so it is distinguishable from absent.
+// Values are compared via their YAML rendering rather than reflect.DeepEqual,
+// which would treat int vs int64 or map[string]any vs map[any]any as
+// different even when the YAML is identical. Keys are emitted in sorted order.
+func extraDiffs(prefix string, a, b map[string]any) []output.FieldDiff {
+	keys := map[string]bool{}
+	for k := range a {
+		keys[k] = true
+	}
+	for k := range b {
+		keys[k] = true
+	}
+	sorted := make([]string, 0, len(keys))
+	for k := range keys {
+		sorted = append(sorted, k)
+	}
+	sort.Strings(sorted)
+
+	render := func(m map[string]any, k string) string {
+		v, present := m[k]
+		if !present {
+			return ""
+		}
+		if v == nil {
+			return "null"
+		}
+		return skill.RenderExtraValue(v)
+	}
+
+	var fields []output.FieldDiff
+	for _, k := range sorted {
+		left := render(a, k)
+		right := render(b, k)
+		if left != right {
+			fields = append(fields, output.FieldDiff{Field: prefix + k, Left: left, Right: right})
+		}
+	}
+	return fields
 }
 
 // formatModifiedBy serializes a modified-by list into a comparable string.

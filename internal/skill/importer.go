@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 // maxDownloadSize caps the size of any single fetched payload (API JSON or
@@ -295,31 +293,4 @@ func downloadFile(client HTTPClient, fileURL string) ([]byte, error) {
 		return nil, fmt.Errorf("file %s exceeds maximum download size of %d bytes", fileURL, maxDownloadSize)
 	}
 	return data, nil
-}
-
-// ParseManifestFromBytes parses a SKILL.md from raw bytes (for imported content).
-func ParseManifestFromBytes(data []byte) (*Skill, error) {
-	content := string(data)
-	if len(strings.TrimSpace(content)) == 0 {
-		return nil, fmt.Errorf("manifest file is empty")
-	}
-
-	fm, body, err := splitFrontmatter(content)
-	if err != nil {
-		return nil, err
-	}
-
-	var f frontmatter
-	if err := yaml.Unmarshal([]byte(fm), &f); err != nil {
-		return nil, fmt.Errorf("parsing YAML frontmatter: %w", err)
-	}
-
-	return &Skill{
-		Name:         f.Name,
-		Description:  f.Description,
-		Tags:         f.Tags,
-		AllowedTools: f.AllowedTools,
-		Metadata:     f.Metadata,
-		Body:         body,
-	}, nil
 }

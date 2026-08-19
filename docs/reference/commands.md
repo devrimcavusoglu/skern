@@ -100,6 +100,8 @@ Anything else is rejected:
 
 The new skill's `name` is always taken from the CLI argument. Other CLI flags (`--description`, `--tags`, `--author*`, `--version`) override template values when explicitly set; otherwise the template's values are preserved.
 
+Frontmatter keys skern does not model (`compatibility`, `handoffs`, `metadata.phases`, …) are preserved verbatim in the new skill — see [Skill Format › Unrecognized keys pass through](/concepts/skill-format#unrecognized-keys-pass-through).
+
 ## `skern skill import`
 
 Import a skill from a remote source into the registry.
@@ -277,7 +279,7 @@ skern skill diff code-review code-review-strict --scope user
 | `--scope` | `user` or `project` (omit to search both) |
 | `--platform` | Platform to compare against — required when using one argument |
 
-The output reports per-field diffs (description, version, author, …) plus a body diff flag. In `--json` mode, both bodies are returned in full.
+The output reports per-field diffs (description, version, author, …, plus any unmodeled frontmatter key that differs, reported under its own name) and a body diff flag. In `--json` mode, both bodies are returned in full.
 
 ## `skern skill install`
 

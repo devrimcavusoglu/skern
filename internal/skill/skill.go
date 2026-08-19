@@ -25,36 +25,53 @@ const (
 // platforms that map directory names to slash commands.
 var nameRegex = regexp.MustCompile(`^[a-z0-9]+([.-][a-z0-9]+)*$`)
 
-// Author represents the creator of a skill.
+// Author represents the creator of a skill. Extra carries any unmodeled key
+// nested under metadata.author (see Metadata.Extra).
 type Author struct {
-	Name     string `yaml:"name" json:"name"`
-	Type     string `yaml:"type" json:"type"`
-	Platform string `yaml:"platform,omitempty" json:"platform,omitempty"`
+	Name     string         `yaml:"name" json:"name"`
+	Type     string         `yaml:"type" json:"type"`
+	Platform string         `yaml:"platform,omitempty" json:"platform,omitempty"`
+	Extra    map[string]any `yaml:",inline" json:"-"`
 }
 
-// ModifiedByEntry records a modification to a skill.
+// ModifiedByEntry records a modification to a skill. Extra carries any
+// unmodeled key nested in a metadata.modified-by entry (see Metadata.Extra).
 type ModifiedByEntry struct {
-	Name     string `yaml:"name" json:"name"`
-	Type     string `yaml:"type" json:"type"`
-	Platform string `yaml:"platform,omitempty" json:"platform,omitempty"`
-	Date     string `yaml:"date" json:"date"`
+	Name     string         `yaml:"name" json:"name"`
+	Type     string         `yaml:"type" json:"type"`
+	Platform string         `yaml:"platform,omitempty" json:"platform,omitempty"`
+	Date     string         `yaml:"date" json:"date"`
+	Extra    map[string]any `yaml:",inline" json:"-"`
 }
 
 // Metadata holds provenance information for a skill.
+//
+// Extra carries every metadata.* key skern does not model (for example a
+// consumer's own `phases` or `tags` list). Keys land here on parse and are
+// written back by WriteManifest, so an extended skill contract survives a
+// round trip through skern. The map is nil when a manifest has no such keys.
+// Author and ModifiedByEntry carry their own Extra for keys nested one level
+// deeper, so no key anywhere under metadata is dropped.
 type Metadata struct {
 	Author     Author            `yaml:"author" json:"author"`
 	Version    string            `yaml:"version" json:"version"`
 	ModifiedBy []ModifiedByEntry `yaml:"modified-by,omitempty" json:"modified_by,omitempty"`
+	Extra      map[string]any    `yaml:",inline" json:"-"`
 }
 
 // Skill represents an Agent Skill with frontmatter and body content.
+//
+// Extra carries every top-level frontmatter key skern does not model
+// (`compatibility`, `license`, `handoffs`, …). See Metadata.Extra for the
+// round-trip guarantee; the same applies here.
 type Skill struct {
-	Name         string   `yaml:"name" json:"name"`
-	Description  string   `yaml:"description" json:"description"`
-	Tags         []string `yaml:"tags,omitempty" json:"tags,omitempty"`
-	AllowedTools []string `yaml:"allowed-tools,omitempty" json:"allowed_tools,omitempty"`
-	Metadata     Metadata `yaml:"metadata" json:"metadata"`
-	Body         string   `yaml:"-" json:"-"`
+	Name         string         `yaml:"name" json:"name"`
+	Description  string         `yaml:"description" json:"description"`
+	Tags         []string       `yaml:"tags,omitempty" json:"tags,omitempty"`
+	AllowedTools []string       `yaml:"allowed-tools,omitempty" json:"allowed_tools,omitempty"`
+	Metadata     Metadata       `yaml:"metadata" json:"metadata"`
+	Extra        map[string]any `yaml:",inline" json:"-"`
+	Body         string         `yaml:"-" json:"-"`
 }
 
 // tagPartRegex validates one side of a tag: lowercase alphanumeric segments

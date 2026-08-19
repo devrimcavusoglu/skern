@@ -3,6 +3,8 @@ package skill
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -261,4 +263,195 @@ Body.
 	require.NoError(t, err)
 
 	assert.Nil(t, s.Tags)
+}
+
+// The template from issue #100: unmodeled top-level keys (compatibility,
+// handoffs), an unmodeled metadata.* key (phases), and metadata.tags (distinct
+// from top-level tags) must all survive parse → write → parse.
+const extraKeysManifest = `---
+name: demo.plan
+description: top level tags round trip check
+tags: [workflow, planning]
+compatibility: "requires a project checkout"
+metadata:
+  version: "2.0.0"
+  phases: [plan]
+  tags: [meta-only]
+  author:
+    name: alice
+    type: human
+    email: alice@example.com
+  modified-by:
+    - name: bob
+      type: human
+      date: "2026-01-01T00:00:00Z"
+      reason: typo fix
+handoffs:
+  - label: Review
+    agent: demo.review
+---
+
+Body.
+`
+
+func TestParseManifest_ExtraKeysCaptured(t *testing.T) {
+	s, err := ParseManifestFromBytes([]byte(extraKeysManifest))
+	require.NoError(t, err)
+
+	// Modeled keys still land in their fields, never in Extra.
+	assert.Equal(t, "demo.plan", s.Name)
+	assert.Equal(t, []string{"workflow", "planning"}, s.Tags)
+	assert.Equal(t, "2.0.0", s.Metadata.Version)
+	assert.NotContains(t, s.Extra, "name")
+	assert.NotContains(t, s.Extra, "tags")
+	assert.NotContains(t, s.Extra, "metadata")
+	assert.NotContains(t, s.Metadata.Extra, "version")
+
+	assert.Equal(t, "requires a project checkout", s.Extra["compatibility"])
+	handoffs, ok := s.Extra["handoffs"].([]any)
+	require.True(t, ok, "handoffs should decode as a sequence, got %T", s.Extra["handoffs"])
+	require.Len(t, handoffs, 1)
+	first, ok := handoffs[0].(map[string]any)
+	require.True(t, ok, "handoff entry should decode as a string-keyed map, got %T", handoffs[0])
+	assert.Equal(t, "Review", first["label"])
+	assert.Equal(t, "demo.review", first["agent"])
+
+	assert.Equal(t, []any{"plan"}, s.Metadata.Extra["phases"])
+	assert.Equal(t, []any{"meta-only"}, s.Metadata.Extra["tags"])
+
+	// Keys nested inside skern-owned sub-blocks are captured too.
+	assert.Equal(t, "alice", s.Metadata.Author.Name)
+	assert.Equal(t, "alice@example.com", s.Metadata.Author.Extra["email"])
+	assert.NotContains(t, s.Metadata.Author.Extra, "name")
+	require.Len(t, s.Metadata.ModifiedBy, 1)
+	assert.Equal(t, "bob", s.Metadata.ModifiedBy[0].Name)
+	assert.Equal(t, "typo fix", s.Metadata.ModifiedBy[0].Extra["reason"])
+}
+
+func TestParseManifest_NoExtraKeysLeavesMapsNil(t *testing.T) {
+	content := `---
+name: plain
+description: No unmodeled keys here.
+metadata:
+  author:
+    name: bob
+    type: human
+  version: "0.1.0"
+---
+
+Body.
+`
+	s, err := ParseManifestFromBytes([]byte(content))
+	require.NoError(t, err)
+	assert.Nil(t, s.Extra)
+	assert.Nil(t, s.Metadata.Extra)
+}
+
+func TestManifest_Roundtrip_ExtraKeys(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.md")
+	require.NoError(t, os.WriteFile(src, []byte(extraKeysManifest), 0o644))
+
+	s, err := ParseManifest(src)
+	require.NoError(t, err)
+
+	// Mutate a modeled field the way skill edit / version would, then write.
+	s.Metadata.Version = "2.1.0"
+	dst := filepath.Join(dir, "SKILL.md")
+	require.NoError(t, WriteManifest(s, dst))
+
+	written, err := os.ReadFile(dst)
+	require.NoError(t, err)
+	text := string(written)
+	assert.Contains(t, text, "compatibility: requires a project checkout")
+	assert.Contains(t, text, "handoffs:")
+	assert.Contains(t, text, "label: Review")
+	assert.Contains(t, text, "agent: demo.review")
+	assert.Contains(t, text, "phases:")
+	assert.Contains(t, text, "version: 2.1.0")
+	assert.Contains(t, text, "email: alice@example.com")
+	assert.Contains(t, text, "reason: typo fix")
+
+	// Modeled keys come first, extras after — and nothing is duplicated.
+	assert.Less(t, strings.Index(text, "name: demo.plan"), strings.Index(text, "compatibility:"))
+	assert.Equal(t, 1, strings.Count(text, "\ntags:"), "top-level tags must be written exactly once")
+
+	// A second parse sees the same extras and the updated modeled field.
+	again, err := ParseManifest(dst)
+	require.NoError(t, err)
+	assert.Equal(t, "2.1.0", again.Metadata.Version)
+	assert.Equal(t, s.Extra, again.Extra)
+	assert.Equal(t, s.Metadata.Extra, again.Metadata.Extra)
+	assert.Equal(t, []string{"workflow", "planning"}, again.Tags)
+	assert.Equal(t, []any{"meta-only"}, again.Metadata.Extra["tags"])
+	assert.Equal(t, "alice@example.com", again.Metadata.Author.Extra["email"])
+	assert.Equal(t, "typo fix", again.Metadata.ModifiedBy[0].Extra["reason"])
+}
+
+func TestWriteManifest_ExtraKeyCollisionIsError(t *testing.T) {
+	s := &Skill{
+		Name:        "clash",
+		Description: "Extra shadows a modeled key.",
+		Extra:       map[string]any{"description": "shadow", "zzz": 1},
+		Metadata: Metadata{
+			Version: "0.1.0",
+			Extra:   map[string]any{"version": "9.9.9"},
+		},
+		Body: "Body.",
+	}
+	path := filepath.Join(t.TempDir(), "SKILL.md")
+
+	// Must return an error, not panic (yaml.v3 panics on inline-key collisions).
+	require.NotPanics(t, func() {
+		err := WriteManifest(s, path)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "description")
+		assert.Contains(t, err.Error(), "collide")
+	})
+	_, statErr := os.Stat(path)
+	assert.True(t, os.IsNotExist(statErr), "nothing should be written on collision")
+
+	// Fix the top-level clash; the metadata clash is reported next.
+	delete(s.Extra, "description")
+	err := WriteManifest(s, path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "metadata")
+	assert.Contains(t, err.Error(), "version")
+
+	delete(s.Metadata.Extra, "version")
+	require.NoError(t, WriteManifest(s, path))
+
+	// Nested sections are guarded too.
+	s.Metadata.Author.Extra = map[string]any{"name": "shadow"}
+	err = WriteManifest(s, path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "metadata.author")
+	s.Metadata.Author.Extra = nil
+	s.Metadata.ModifiedBy = []ModifiedByEntry{{Name: "x", Type: "human", Date: "d", Extra: map[string]any{"date": "shadow"}}}
+	err = WriteManifest(s, path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "metadata.modified-by[0]")
+}
+
+func TestYamlKeys_UntaggedFieldUsesLowercasedName(t *testing.T) {
+	type probe struct {
+		Tagged   string `yaml:"tagged-key"`
+		Untagged string
+		Skipped  string         `yaml:"-"`
+		Inline   map[string]any `yaml:",inline"`
+	}
+	keys := yamlKeys(reflect.TypeOf(probe{}))
+	assert.Equal(t, map[string]bool{"tagged-key": true, "untagged": true}, keys)
+}
+
+func TestRenderExtraValue(t *testing.T) {
+	assert.Equal(t, "", RenderExtraValue(nil))
+	assert.Equal(t, "plain", RenderExtraValue("plain"))
+	assert.Equal(t, "42", RenderExtraValue(42))
+	assert.Equal(t, "[plan, review]", RenderExtraValue([]any{"plan", "review"}))
+	assert.Equal(t, "{agent: demo.review, label: Review}",
+		RenderExtraValue(map[string]any{"label": "Review", "agent": "demo.review"}))
+	// Nested collections stay on one line, and int vs int64 render the same.
+	assert.Equal(t, RenderExtraValue(map[string]any{"n": 1}), RenderExtraValue(map[string]any{"n": int64(1)}))
+	assert.Equal(t, "[{a: 1}]", RenderExtraValue([]any{map[string]any{"a": 1}}))
 }

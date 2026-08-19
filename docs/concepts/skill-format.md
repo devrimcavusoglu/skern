@@ -58,6 +58,12 @@ The main technique or pattern (before/after for techniques).
 
 `name` and `description` are the only hard requirements. The rest help discovery, validation, and provenance.
 
+### Unrecognized keys pass through
+
+The table above is the set of keys skern *models*. Every other frontmatter key — top-level (`license`, `compatibility`, `handoffs`, …), under `metadata` (`metadata.phases`, a `metadata.tags` list distinct from top-level `tags`, …), or nested inside `metadata.author` / a `metadata.modified-by` entry (`author.email`, `reason`) — is preserved whenever skern rewrites a `SKILL.md`: `skill create --from-template`, `skill import`, `skill edit`, `skill version`. Extended skill contracts survive the round trip, and since platform installs copy the registry file byte-for-byte, the keys reach the agent too.
+
+What is preserved is the *data as YAML 1.2 parses it*: keys and values. Formatting is normalized on write — skern's own keys come first in a fixed order, pass-through keys follow sorted by name (nested mapping keys are sorted too), comments and quoting style are dropped, and YAML 1.1-only scalars are canonicalized: an unquoted date-like scalar (`created: 2024-01-15`) is re-emitted in RFC 3339 form, and bare `yes`/`no`/`on`/`off` are re-emitted quoted so they stay strings. `skern skill diff` reports pass-through keys that differ between two skills under their own names (`compatibility`, `metadata.phases`, `author.email`); an explicit `key: null` is reported as `null`, distinct from an absent key. Pass-through keys are not shown by `skill show` yet.
+
 ## Body
 
 The markdown body contains the skill's instructions. This is what the agent reads when the skill is activated. It must be non-empty.
