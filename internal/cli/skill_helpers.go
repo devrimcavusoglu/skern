@@ -383,7 +383,7 @@ func resolveActionTargets(newRegistry func() (*registry.Registry, error), scope 
 		}
 		names, warnings, err := resolveSkillsByFilter(reg, scope, f)
 		if len(warnings) > 0 && err == nil {
-			fmt.Fprint(errOut, formatParseWarnings(warnings))
+			_, _ = fmt.Fprint(errOut, formatParseWarnings(warnings))
 		}
 		return names, err
 	}
