@@ -342,9 +342,6 @@ request.
 
 Everything planned is a tracked issue; this list is a map, not a commitment.
 
-**Correctness and ergonomics (near-term)**
-
-
 **Adapter model** — all three need the declarative-hook mechanism from design
 decision 3; settle the mechanism once rather than special-casing each.
 

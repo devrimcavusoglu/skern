@@ -7,6 +7,7 @@ import (
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/platform"
 	"github.com/devrimcavusoglu/skern/internal/registry"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
 
