@@ -278,7 +278,10 @@ func TestMatchExclude(t *testing.T) {
 }
 
 func TestValidateExcludePattern(t *testing.T) {
-	for _, ok := range []string{"eval", "eval/", "fixtures/*", "*.test.md", "a/b/c", "./scratch", "[abc]*"} {
+	// `*` / `*.md` are legal: SKILL.md is protected at match time, so they
+	// mean "everything except SKILL.md". `\*.md` is path.Match's escape for
+	// a literal star, not a separator.
+	for _, ok := range []string{"eval", "eval/", "fixtures/*", "*.test.md", "a/b/c", "./scratch", "[abc]*", "*", "*.md", "SKILL.[m]d", `\*.md`, "./SKILL.md/x"} {
 		assert.NoError(t, ValidateExcludePattern(ok), ok)
 	}
 	bad := map[string]string{
@@ -288,16 +291,27 @@ func TestValidateExcludePattern(t *testing.T) {
 		"../up":       `must not contain ".."`,
 		"a/../b":      `must not contain ".."`,
 		"[unclosed":   "not a valid glob",
-		"SKILL.md":    "must always be installed",
-		"*.md":        "must always be installed",
-		"SKILL.[m]d":  "must always be installed",
-		`\\server\\x`: "must be relative",
+		"SKILL.md":    "is always installed",
+		"./SKILL.md/": "is always installed",
+		"**/x":        `"**" is not supported`,
+		"a/**":        `"**" is not supported`,
+		"a**b":        `"**" is not supported`,
 	}
 	for pattern, wantMsg := range bad {
 		err := ValidateExcludePattern(pattern)
 		require.Error(t, err, "pattern %q", pattern)
 		assert.Contains(t, err.Error(), wantMsg, "pattern %q", pattern)
 	}
+
+	// ValidateExcludePatterns prefixes the index only for multi-entry lists.
+	assert.NoError(t, ValidateExcludePatterns(nil))
+	err := ValidateExcludePatterns([]string{"ok", "[x"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "install.exclude[1]")
+	err = ValidateExcludePatterns([]string{"[x"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "install.exclude: ")
+	assert.NotContains(t, err.Error(), "[0]")
 }
 
 func TestExcludedFiles(t *testing.T) {

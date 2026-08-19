@@ -205,11 +205,14 @@ exclusive with positional names.
 **`install.exclude`** ([#103]) lists `path.Match` globs, relative to the skill
 directory, that `skill install` leaves out of the platform copy (the registry
 keeps everything). A pattern matches a path or any leading directory of it,
-so a bare directory name excludes its subtree; `SKILL.md` is never excluded.
-Matching lives in `skill.MatchExclude` (`internal/skill/folder.go`) and is
-applied by `platform.copyDir` via `InstallOptions.Exclude`; `skill validate`
-errors on malformed patterns and warns on no-match / excluded-but-referenced
-files.
+so a bare directory name excludes its subtree; `**` is rejected; `SKILL.md`
+is never excluded (so `*` is legal). Matching lives in `skill.MatchExclude`
+(`internal/skill/folder.go`) and is applied by `platform.copyDir` via
+`InstallOptions.Exclude`; `skill validate` errors on malformed patterns and
+warns on no-match / excluded-but-referenced files; `skill install` refuses a
+skill whose patterns fail validation; `skill diff` reports a changed list
+under `install.exclude`. Other keys under `install:` pass through via
+`InstallConfig.Extra`.
 
 **Unmodeled keys pass through.** The fields above are the keys skern models;
 any other key — top-level, `metadata.*`, or nested in `metadata.author` /
@@ -341,7 +344,6 @@ Everything planned is a tracked issue; this list is a map, not a commitment.
 
 **Correctness and ergonomics (near-term)**
 
-- [#103] — exclude companion directories (eval corpora, fixtures) from install
 
 **Adapter model** — all three need the declarative-hook mechanism from design
 decision 3; settle the mechanism once rather than special-casing each.

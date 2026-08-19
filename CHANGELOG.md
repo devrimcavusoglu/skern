@@ -39,11 +39,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registry but not in an agent's context — evaluation corpora, fixtures,
   scratch. `skern skill install` skips them; the registry keeps everything.
   A bare directory name excludes its subtree (`eval`), `fixtures/*` its
-  children, `*.draft.md` top-level files by suffix; `SKILL.md` can never be
-  excluded. `skill validate` errors on malformed, absolute, or `..` patterns
-  and warns when a pattern matches nothing or excludes a file the body
-  references. Platform adapters take an `InstallOptions` argument on
-  `Install`. ([#103])
+  children, `*.draft.md` top-level files by suffix; `**` is rejected;
+  `SKILL.md` is never excluded (so `*` means "everything else").
+  `skill validate` errors on malformed, absolute, `..`, or `**` patterns and
+  warns when a pattern matches nothing or excludes a file the body
+  references; `skill install` refuses a skill whose patterns fail
+  validation; `skill diff` reports a changed exclude list. Platform adapters
+  take an `InstallOptions` argument on `Install`. Compatibility: `install`
+  is now a modeled frontmatter key — a top-level `install:` that is not a
+  mapping fails to parse, and other keys under `install:` pass through like
+  any unmodeled key. ([#103])
 
 ### Changed
 

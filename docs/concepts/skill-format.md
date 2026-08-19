@@ -117,11 +117,12 @@ install:
 
 Rules:
 
-- Patterns are slash-separated paths relative to the skill directory, using Go `path.Match` syntax (`*`, `?`, `[…]`). There is no `**`; a pattern matches a path when it matches the full relative path **or any leading directory of it**, which is what makes a bare directory name exclude its whole subtree. A trailing `/` or leading `./` is ignored.
-- `SKILL.md` can never be excluded; absolute paths, `..` segments, and malformed globs are validation **errors**.
-- The registry always keeps the full directory — `skill create --from-template`, `skill import`, and `skill show --files` are unaffected. Only the copy made by `skern skill install` is trimmed.
+- Patterns are slash-separated paths relative to the skill directory, using Go `path.Match` syntax (`*`, `?`, `[…]`; `\` escapes a metacharacter). `*` does not cross `/`, and `**` is **not** supported (it is rejected, not silently treated as `*`); a pattern matches a path when it matches the full relative path **or any leading directory of it**, which is what makes a bare directory name exclude its whole subtree. A trailing `/` or leading `./` is ignored. `exclude: eval` (a bare string) is accepted as shorthand for a one-element list.
+- `SKILL.md` is never excluded, whatever the patterns say — so `*` or `*.md` are legal and mean "everything except `SKILL.md`". Naming `SKILL.md` literally, absolute paths, `..` segments, `**`, and malformed globs are validation **errors**, and `skern skill install` refuses a skill whose patterns fail validation rather than silently copying what the author meant to leave out.
+- The registry always keeps the full directory — `skill create --from-template` and `skill import` copy everything, and `skill show` lists every file. Only the copy made by `skern skill install` is trimmed. (A pattern such as `fixtures/*` prunes the directory's contents; the now-empty `fixtures/` itself is still created.)
 - `skern skill validate` **warns** when a pattern matches no file in the skill directory, and when a file the body references (`` `references/guide.md` ``) is excluded — it would exist in the registry but be missing from every installed copy.
-- `skern skill diff` compares manifests (frontmatter and body), not file trees, so excluded files never show up as drift.
+- `skern skill diff` compares manifests (frontmatter and body), not file trees, so excluded files never show up as drift — but a change to the `install.exclude` list itself *is* reported (`install.exclude`), since it changes what the next install copies.
+- `install` is a skern-modeled key: other keys under it (`install.mode`, …) round-trip like any other unmodeled key, but a top-level `install:` that is not a mapping (e.g. `install: pip install foo`) is a parse error.
 
 ## Creating Skills
 

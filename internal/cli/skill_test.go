@@ -1533,7 +1533,7 @@ See `+"`references/guide.md`"+`.
 	// The install block survives the registry write (needs #100's modeling).
 	regManifest := filepath.Join(projectReg, "demo.skill", "SKILL.md")
 	parsed := requireParsedManifest(t, regManifest)
-	assert.Equal(t, []string{"eval", "*.draft.md"}, parsed.Install.Exclude)
+	assert.Equal(t, skill.StringList{"eval", "*.draft.md"}, parsed.Install.Exclude)
 	raw, err := os.ReadFile(regManifest)
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), "install:\n    exclude:\n        - eval\n        - '*.draft.md'\n")
@@ -1594,8 +1594,104 @@ Body text long enough to avoid lint noise about brevity in this validation test.
 	out, err := runCmd(t, cc, "skill", "validate", "bad-exclude", "--scope", "project", "--json")
 	require.Error(t, err, "errors in install.exclude must fail validation")
 	assert.Contains(t, out, `must not contain \"..\"`)
-	assert.Contains(t, out, "must always be installed")
+	assert.Contains(t, out, "is always installed")
 	assert.Contains(t, out, `exclude pattern \"ghost\" matches no file`)
 	// "eval" is valid and matches: neither error nor warning mentions it.
 	assert.NotContains(t, out, `\"eval\"`)
+}
+
+// An invalid install.exclude pattern must not be silently ignored by
+// install (path.Match would just return false and copy the file the author
+// meant to leave out) — the skill is refused with a per-skill error.
+func TestSkillInstall_RefusesInvalidExcludePattern(t *testing.T) {
+	cc, _, projectReg := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	dir := filepath.Join(projectReg, "bad-glob")
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "eval"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "eval", "s1.md"), []byte("x"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(`---
+name: bad-glob
+description: Use when testing refused installs.
+install:
+  exclude: ["[eval", "ok-dir"]
+---
+
+Body.
+`), 0o644))
+
+	out, err := runCmd(t, cc, "skill", "install", "bad-glob", "--platform", "claude-code", "--scope", "project", "--json")
+	require.Error(t, err)
+	var result output.SkillInstallResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Len(t, result.Skills, 1)
+	assert.False(t, result.Skills[0].Success)
+	assert.Contains(t, result.Skills[0].Error, "install.exclude[0]")
+	assert.Contains(t, result.Skills[0].Error, "not a valid glob")
+	_, statErr := os.Stat(filepath.Join(project, ".claude", "skills", "bad-glob"))
+	assert.True(t, os.IsNotExist(statErr), "nothing may be installed when a pattern is invalid")
+}
+
+// Changing install.exclude changes what an install copies, so diff must
+// report it (it is a modeled key now, not an Extra one). Unmodeled keys
+// under install: round-trip and diff like any other extra.
+func TestSkillDiff_InstallExcludeAndExtras(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+	write := func(name, install string) {
+		dir := filepath.Join(userDir, name)
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(`---
+name: `+name+`
+description: Use when diffing install blocks.
+`+install+`metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+---
+
+Body.
+`), 0o644))
+	}
+	write("inst-a", "install:\n  exclude: [eval]\n  mode: strict\n")
+	write("inst-b", "install:\n  exclude: eval\n")
+
+	// Scalar shorthand parses as a one-element list.
+	b := requireParsedManifest(t, filepath.Join(userDir, "inst-b", "SKILL.md"))
+	assert.Equal(t, skill.StringList{"eval"}, b.Install.Exclude)
+	a := requireParsedManifest(t, filepath.Join(userDir, "inst-a", "SKILL.md"))
+	assert.Equal(t, "strict", a.Install.Extra["mode"])
+
+	// Identical exclude lists, differing extra key under install:.
+	out, err := runCmd(t, cc, "skill", "diff", "inst-a", "inst-b", "--json")
+	require.NoError(t, err)
+	var result output.SkillDiffResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	fieldMap := map[string]output.FieldDiff{}
+	for _, f := range result.Fields {
+		fieldMap[f.Field] = f
+	}
+	assert.NotContains(t, fieldMap, "install.exclude")
+	require.Contains(t, fieldMap, "install.mode")
+	assert.Equal(t, "strict", fieldMap["install.mode"].Left)
+
+	// Edit the exclude list on one side: reported under install.exclude, and
+	// the extra key survives the rewrite.
+	_, err = runCmd(t, cc, "skill", "edit", "inst-a", "--description", "Use when diffing install blocks (edited).")
+	require.NoError(t, err)
+	a = requireParsedManifest(t, filepath.Join(userDir, "inst-a", "SKILL.md"))
+	assert.Equal(t, "strict", a.Install.Extra["mode"], "unmodeled install.* keys must survive edit")
+	write("inst-b", "install:\n  exclude: [eval, fixtures/*]\n")
+	out, err = runCmd(t, cc, "skill", "diff", "inst-a", "inst-b", "--json")
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	fieldMap = map[string]output.FieldDiff{}
+	for _, f := range result.Fields {
+		fieldMap[f.Field] = f
+	}
+	require.Contains(t, fieldMap, "install.exclude")
+	assert.Equal(t, "eval", fieldMap["install.exclude"].Left)
+	assert.Equal(t, "eval, fixtures/*", fieldMap["install.exclude"].Right)
 }

@@ -50,10 +50,14 @@ func Validate(s *Skill) []ValidationIssue {
 // a relative, well-formed glob that cannot match SKILL.md.
 func validateInstall(c InstallConfig) []ValidationIssue {
 	var issues []ValidationIssue
-	for _, pattern := range c.Exclude {
+	for i, pattern := range c.Exclude {
 		if err := ValidateExcludePattern(pattern); err != nil {
+			field := "install.exclude"
+			if len(c.Exclude) > 1 {
+				field = fmt.Sprintf("install.exclude[%d]", i)
+			}
 			issues = append(issues, ValidationIssue{
-				Field:    "install.exclude",
+				Field:    field,
 				Severity: SeverityError,
 				Message:  err.Error(),
 			})

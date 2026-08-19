@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Scope represents where a skill is stored.
@@ -66,12 +68,38 @@ type InstallConfig struct {
 	// Exclude lists glob patterns (relative to the skill directory, slash
 	// separated) for files and directories that stay in the registry but are
 	// not copied on install — evaluation corpora, fixtures, development
-	// scratch. See MatchExclude for the matching rules.
-	Exclude []string `yaml:"exclude,omitempty" json:"exclude,omitempty"`
+	// scratch. See MatchExclude for the matching rules. A single string is
+	// accepted in YAML as shorthand for a one-element list.
+	Exclude StringList `yaml:"exclude,omitempty" json:"exclude,omitempty"`
+	// Extra carries unmodeled keys under install: (see Metadata.Extra).
+	Extra map[string]any `yaml:",inline" json:"-"`
 }
 
 // IsZero lets yaml omit an empty install block on write.
-func (c InstallConfig) IsZero() bool { return len(c.Exclude) == 0 }
+func (c InstallConfig) IsZero() bool { return len(c.Exclude) == 0 && len(c.Extra) == 0 }
+
+// StringList is a []string that also accepts a bare scalar in YAML
+// (`exclude: eval` means `exclude: [eval]`). It always marshals as a
+// sequence.
+type StringList []string
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (l *StringList) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		var one string
+		if err := node.Decode(&one); err != nil {
+			return err
+		}
+		*l = StringList{one}
+		return nil
+	}
+	var many []string
+	if err := node.Decode(&many); err != nil {
+		return err
+	}
+	*l = StringList(many)
+	return nil
+}
 
 // Skill represents an Agent Skill with frontmatter and body content.
 //
@@ -84,7 +112,7 @@ type Skill struct {
 	Tags         []string       `yaml:"tags,omitempty" json:"tags,omitempty"`
 	AllowedTools []string       `yaml:"allowed-tools,omitempty" json:"allowed_tools,omitempty"`
 	Metadata     Metadata       `yaml:"metadata" json:"metadata"`
-	Install      InstallConfig  `yaml:"install,omitempty" json:"install,omitempty"`
+	Install      InstallConfig  `yaml:"install,omitempty" json:"install,omitzero"`
 	Extra        map[string]any `yaml:",inline" json:"-"`
 	Body         string         `yaml:"-" json:"-"`
 }

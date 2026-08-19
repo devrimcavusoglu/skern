@@ -34,6 +34,7 @@ var (
 	modeledMetadataKeys   = yamlKeys(reflect.TypeOf(Metadata{}))
 	modeledAuthorKeys     = yamlKeys(reflect.TypeOf(Author{}))
 	modeledModifiedByKeys = yamlKeys(reflect.TypeOf(ModifiedByEntry{}))
+	modeledInstallKeys    = yamlKeys(reflect.TypeOf(InstallConfig{}))
 )
 
 // yamlKeys returns the set of YAML keys yaml.v3 would use for a struct type:
@@ -117,6 +118,9 @@ func WriteManifest(s *Skill, path string) error {
 		if err := checkExtraCollisions(fmt.Sprintf("metadata.modified-by[%d]", i), m.Extra, modeledModifiedByKeys); err != nil {
 			return err
 		}
+	}
+	if err := checkExtraCollisions("install", s.Install.Extra, modeledInstallKeys); err != nil {
+		return err
 	}
 
 	fm := frontmatter{

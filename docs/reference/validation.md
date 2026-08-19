@@ -44,7 +44,7 @@ If `allowed-tools` is set, no entry may be empty.
 
 ### Install Exclusions
 
-Every `install.exclude` entry must be a non-empty, relative, well-formed glob (`path.Match` syntax) with no `..` segment, and must not match `SKILL.md`. See [Skill Format › Install-time exclusions](/concepts/skill-format#install-time-exclusions).
+Every `install.exclude` entry must be a non-empty, relative, well-formed glob (`path.Match` syntax) with no `..` or `**` segment, and must not name `SKILL.md` literally (wildcards that merely also match it are fine — `SKILL.md` is never excluded). With more than one entry the field is reported as `install.exclude[N]`. `skern skill install` refuses a skill whose patterns fail these checks. See [Skill Format › Install-time exclusions](/concepts/skill-format#install-time-exclusions).
 
 ## Warnings
 

@@ -495,7 +495,7 @@ func TestValidate_InstallExclude(t *testing.T) {
 	issuesFor := func(s *Skill) []ValidationIssue {
 		var out []ValidationIssue
 		for _, i := range Validate(s) {
-			if i.Field == "install.exclude" {
+			if strings.HasPrefix(i.Field, "install.exclude") {
 				out = append(out, i)
 			}
 		}
@@ -505,11 +505,19 @@ func TestValidate_InstallExclude(t *testing.T) {
 	assert.Empty(t, issuesFor(base()))
 	assert.Empty(t, issuesFor(base("eval", "fixtures/*", "*.test.md")))
 
-	got := issuesFor(base("eval", "../up", "SKILL.md", "[x"))
-	require.Len(t, got, 3)
+	// Wildcards that also match SKILL.md are fine (it is never excluded).
+	assert.Empty(t, issuesFor(base("*", "*.md")))
+
+	got := issuesFor(base("eval", "../up", "SKILL.md", "[x", "a/**/b"))
+	require.Len(t, got, 4)
 	for _, i := range got {
 		assert.Equal(t, SeverityError, i.Severity)
+		assert.Regexp(t, `^install\.exclude\[\d\]$`, i.Field, "multi-entry lists carry the index")
 	}
+	// A single bad entry is reported without an index.
+	single := issuesFor(base("[x"))
+	require.Len(t, single, 1)
+	assert.Equal(t, "install.exclude", single[0].Field)
 	assert.True(t, HasErrors(got))
 }
 

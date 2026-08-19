@@ -99,36 +99,56 @@ func ExtractFileReferences(body string) []string {
 
 // ValidateExcludePattern checks one `install.exclude` entry. Patterns are
 // slash-separated paths relative to the skill directory using path.Match
-// syntax (`*`, `?`, `[...]`; no `**`). Rejected: empty, absolute, any `..`
-// segment, a malformed glob, and anything that would match SKILL.md itself.
+// syntax (`*`, `?`, `[...]`, `\` escapes a metacharacter; no `**`).
+// Rejected: empty, absolute, any `..` segment, a `**` segment, a malformed
+// glob, and the literal SKILL.md. (A wildcard that merely also matches
+// SKILL.md — `*`, `*.md` — is allowed: MatchExclude never excludes the
+// manifest, so such a pattern means "everything except SKILL.md".)
 func ValidateExcludePattern(pattern string) error {
 	p := normalizeExcludePattern(pattern)
 	if p == "" {
 		return fmt.Errorf("exclude pattern must not be empty")
 	}
-	if strings.HasPrefix(p, "/") || filepath.IsAbs(pattern) || strings.HasPrefix(pattern, "\\") {
+	if strings.HasPrefix(p, "/") || filepath.IsAbs(pattern) {
 		return fmt.Errorf("exclude pattern %q must be relative to the skill directory", pattern)
 	}
 	for _, seg := range strings.Split(p, "/") {
 		if seg == ".." {
 			return fmt.Errorf("exclude pattern %q must not contain \"..\"", pattern)
 		}
+		if strings.Contains(seg, "**") {
+			return fmt.Errorf("exclude pattern %q: \"**\" is not supported (a bare directory name already excludes its whole subtree; `*` does not cross \"/\")", pattern)
+		}
 	}
 	if _, err := path.Match(p, "x"); err != nil {
 		return fmt.Errorf("exclude pattern %q is not a valid glob: %v", pattern, err)
 	}
-	if ok, _ := path.Match(p, ManifestFile); ok {
-		return fmt.Errorf("exclude pattern %q would exclude %s, which must always be installed", pattern, ManifestFile)
+	if p == ManifestFile {
+		return fmt.Errorf("exclude pattern %q names %s, which is always installed", pattern, ManifestFile)
 	}
 	return nil
 }
 
-// normalizeExcludePattern trims whitespace, converts backslashes to slashes,
-// and strips a leading "./" and any trailing "/" (a directory pattern
-// written as "eval/" means the same as "eval").
+// ValidateExcludePatterns validates every pattern and returns the first
+// error, prefixed with the pattern's index for multi-entry lists.
+func ValidateExcludePatterns(patterns []string) error {
+	for i, p := range patterns {
+		if err := ValidateExcludePattern(p); err != nil {
+			if len(patterns) > 1 {
+				return fmt.Errorf("install.exclude[%d]: %w", i, err)
+			}
+			return fmt.Errorf("install.exclude: %w", err)
+		}
+	}
+	return nil
+}
+
+// normalizeExcludePattern trims whitespace and strips a leading "./" and any
+// trailing "/" (a directory pattern written as "eval/" means the same as
+// "eval"). Backslashes are left alone: patterns are slash-separated and `\`
+// is path.Match's escape character.
 func normalizeExcludePattern(pattern string) string {
 	p := strings.TrimSpace(pattern)
-	p = strings.ReplaceAll(p, "\\", "/")
 	p = strings.TrimPrefix(p, "./")
 	p = strings.TrimRight(p, "/")
 	return p
