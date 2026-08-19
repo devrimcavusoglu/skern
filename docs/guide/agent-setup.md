@@ -65,6 +65,7 @@ skern skill list --with-platforms --json   # adds installed_on per skill
 skern skill search "review" --json
 skern skill show code-review --json
 skern skill install code-review --platform claude-code --json
+skern skill install --tag workflow --platform claude-code --json   # group install by tag
 ```
 
 The `install`/`uninstall` JSON envelope carries a `skills[]` array (one entry per skill) and a top-level `capacity` block (`installed`, `threshold`, `headroom`, `over_budget`). Agents can react to capacity pressure without an extra query.

@@ -12,11 +12,9 @@ import (
 
 func newSkillListCmd() *cobra.Command {
 	var (
-		scope           string
-		tag             string
-		categories      []string
-		includeUntagged bool
-		withPlatforms   bool
+		scope         string
+		filter        skillFilter
+		withPlatforms bool
 	)
 
 	cmd := &cobra.Command{
@@ -30,7 +28,7 @@ func newSkillListCmd() *cobra.Command {
 				return err
 			}
 
-			categoryFilters, err := parseCategoryFilters(categories)
+			matchFilter, err := filter.matcher()
 			if err != nil {
 				return err
 			}
@@ -92,10 +90,7 @@ func newSkillListCmd() *cobra.Command {
 			}
 
 			for _, d := range discovered {
-				if tag != "" && !hasTag(d.Skill.Tags, tag) {
-					continue
-				}
-				if !matchesCategories(d.Skill.Tags, categoryFilters, includeUntagged) {
+				if !matchFilter(d.Skill.Tags) {
 					continue
 				}
 				r := toDiscoveredSkillResult(d)
@@ -155,9 +150,7 @@ func newSkillListCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&scope, "scope", "all", "skill scope (user, project, or all)")
-	cmd.Flags().StringVar(&tag, "tag", "", "filter skills by tag")
-	cmd.Flags().StringArrayVar(&categories, "category", nil, "filter by namespaced tag \"category:value\" (repeatable; comma-lists values; OR within a category, AND across categories)")
-	cmd.Flags().BoolVar(&includeUntagged, "include-untagged", false, "treat a skill with no tag in a requested category as matching that category")
+	filter.register(cmd)
 	cmd.Flags().BoolVar(&withPlatforms, "with-platforms", false, "include the list of detected platforms each skill is installed on")
 
 	return cmd
