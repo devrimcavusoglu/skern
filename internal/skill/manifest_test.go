@@ -3,6 +3,7 @@ package skill
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -276,6 +277,15 @@ metadata:
   version: "2.0.0"
   phases: [plan]
   tags: [meta-only]
+  author:
+    name: alice
+    type: human
+    email: alice@example.com
+  modified-by:
+    - name: bob
+      type: human
+      date: "2026-01-01T00:00:00Z"
+      reason: typo fix
 handoffs:
   - label: Review
     agent: demo.review
@@ -308,6 +318,14 @@ func TestParseManifest_ExtraKeysCaptured(t *testing.T) {
 
 	assert.Equal(t, []any{"plan"}, s.Metadata.Extra["phases"])
 	assert.Equal(t, []any{"meta-only"}, s.Metadata.Extra["tags"])
+
+	// Keys nested inside skern-owned sub-blocks are captured too.
+	assert.Equal(t, "alice", s.Metadata.Author.Name)
+	assert.Equal(t, "alice@example.com", s.Metadata.Author.Extra["email"])
+	assert.NotContains(t, s.Metadata.Author.Extra, "name")
+	require.Len(t, s.Metadata.ModifiedBy, 1)
+	assert.Equal(t, "bob", s.Metadata.ModifiedBy[0].Name)
+	assert.Equal(t, "typo fix", s.Metadata.ModifiedBy[0].Extra["reason"])
 }
 
 func TestParseManifest_NoExtraKeysLeavesMapsNil(t *testing.T) {
@@ -351,6 +369,8 @@ func TestManifest_Roundtrip_ExtraKeys(t *testing.T) {
 	assert.Contains(t, text, "agent: demo.review")
 	assert.Contains(t, text, "phases:")
 	assert.Contains(t, text, "version: 2.1.0")
+	assert.Contains(t, text, "email: alice@example.com")
+	assert.Contains(t, text, "reason: typo fix")
 
 	// Modeled keys come first, extras after — and nothing is duplicated.
 	assert.Less(t, strings.Index(text, "name: demo.plan"), strings.Index(text, "compatibility:"))
@@ -364,6 +384,8 @@ func TestManifest_Roundtrip_ExtraKeys(t *testing.T) {
 	assert.Equal(t, s.Metadata.Extra, again.Metadata.Extra)
 	assert.Equal(t, []string{"workflow", "planning"}, again.Tags)
 	assert.Equal(t, []any{"meta-only"}, again.Metadata.Extra["tags"])
+	assert.Equal(t, "alice@example.com", again.Metadata.Author.Extra["email"])
+	assert.Equal(t, "typo fix", again.Metadata.ModifiedBy[0].Extra["reason"])
 }
 
 func TestWriteManifest_ExtraKeyCollisionIsError(t *testing.T) {
@@ -398,6 +420,28 @@ func TestWriteManifest_ExtraKeyCollisionIsError(t *testing.T) {
 
 	delete(s.Metadata.Extra, "version")
 	require.NoError(t, WriteManifest(s, path))
+
+	// Nested sections are guarded too.
+	s.Metadata.Author.Extra = map[string]any{"name": "shadow"}
+	err = WriteManifest(s, path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "metadata.author")
+	s.Metadata.Author.Extra = nil
+	s.Metadata.ModifiedBy = []ModifiedByEntry{{Name: "x", Type: "human", Date: "d", Extra: map[string]any{"date": "shadow"}}}
+	err = WriteManifest(s, path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "metadata.modified-by[0]")
+}
+
+func TestYamlKeys_UntaggedFieldUsesLowercasedName(t *testing.T) {
+	type probe struct {
+		Tagged   string `yaml:"tagged-key"`
+		Untagged string
+		Skipped  string         `yaml:"-"`
+		Inline   map[string]any `yaml:",inline"`
+	}
+	keys := yamlKeys(reflect.TypeOf(probe{}))
+	assert.Equal(t, map[string]bool{"tagged-key": true, "untagged": true}, keys)
 }
 
 func TestRenderExtraValue(t *testing.T) {

@@ -182,12 +182,6 @@ Required fields: `name`, `description`. The directory name must match `name`.
 Optional fields are omitted from output when empty rather than emitted as
 empty values.
 
-**Known gap:** the frontmatter model is a closed struct
-(`internal/skill/manifest.go`), so keys skern does not model are dropped on
-any write path — `registry.Create`/`Update`, `skill edit`, `skill version`,
-`skill import`. Tracked as [#100]. Installs are unaffected: they are a
-byte-for-byte directory copy.
-
 ### Validation Rules
 
 **Names** must match `^[a-z0-9]+([.-][a-z0-9]+)*$`, 1–64 characters. Dots and
@@ -203,13 +197,16 @@ and `--category` (namespaced, repeatable, OR within a category, AND across
 categories).
 
 **Unmodeled keys pass through.** The fields above are the keys skern models;
-any other top-level or `metadata.*` key lands in `Skill.Extra` /
-`Metadata.Extra` (inline maps, `internal/skill/skill.go`) on parse and is
-written back by `WriteManifest`, so `create --from-template`, `import`,
-`edit`, and `version` never drop a consumer's extended contract ([#100]).
-Values are preserved, formatting is normalized (modeled keys first, extras
-sorted). An `Extra` key that shadows a modeled key is a `WriteManifest` error,
-never a silent overwrite — yaml.v3 would otherwise panic.
+any other key — top-level, `metadata.*`, or nested in `metadata.author` /
+a `modified-by` entry — lands in the matching `Extra` inline map
+(`internal/skill/skill.go`) on parse and is written back by `WriteManifest`,
+so `create --from-template`, `import`, `edit`, and `version` never drop a
+consumer's extended contract ([#100]). Values are preserved as YAML 1.2 parses
+them; formatting is normalized (modeled keys first, extras sorted, 1.1-only
+scalars like bare dates and `yes`/`no` canonicalized). An `Extra` key that
+shadows a modeled key is a `WriteManifest` error, never a silent overwrite —
+yaml.v3 would otherwise panic; the modeled-key sets are derived from the
+struct tags (`yamlKeys`), so a new modeled field is guarded automatically.
 
 ### Writing Skills Guidelines
 
@@ -329,7 +326,6 @@ Everything planned is a tracked issue; this list is a map, not a commitment.
 
 **Correctness and ergonomics (near-term)**
 
-- [#100] — unmodeled frontmatter keys dropped on write (data loss)
 - [#102] — `--tag` on `skill install` / `skill uninstall` for group installs
 - [#103] — exclude companion directories (eval corpora, fixtures) from install
 - [#104] — explicit non-interactive opt-out for `skern init`

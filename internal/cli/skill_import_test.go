@@ -257,3 +257,40 @@ func TestSkillImport_NoArgs(t *testing.T) {
 	_, err := runCmd(t, cc, "skill", "import")
 	assert.Error(t, err)
 }
+
+// #100: skill import re-serializes the fetched SKILL.md through the registry;
+// unmodeled keys must survive that write too.
+func TestSkillImport_PreservesUnmodeledKeys(t *testing.T) {
+	manifest := `---
+name: test-skill
+description: A test skill for import testing
+compatibility: needs git
+metadata:
+  author:
+    name: alice
+    type: human
+    email: alice@example.com
+  version: "1.0.0"
+  phases: [plan, review]
+---
+
+## Instructions
+
+Do the thing.
+`
+	srv := newImportTestServer(t, manifest, nil)
+	defer srv.Close()
+
+	cc := testImportContext(t, srv)
+	out, err := runCmd(t, cc, "skill", "import",
+		"https://github.com/owner/repo/tree/main/skills/test-skill", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillImportResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+
+	parsed := requireParsedManifest(t, filepath.Join(result.Path, "SKILL.md"))
+	assert.Equal(t, "needs git", parsed.Extra["compatibility"])
+	assert.Equal(t, []any{"plan", "review"}, parsed.Metadata.Extra["phases"])
+	assert.Equal(t, "alice@example.com", parsed.Metadata.Author.Extra["email"])
+}

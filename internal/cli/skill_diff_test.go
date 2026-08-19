@@ -441,7 +441,7 @@ description: Use when comparing extras.
 Body.
 `), 0o644))
 	}
-	write("extra-a", "compatibility: needs git\nhandoffs: [{label: Review, agent: demo.review}]\nsame: yes\n")
+	write("extra-a", "compatibility: needs git\nhandoffs: [{label: Review, agent: demo.review}]\nsame: yes\nnullable: null\n")
 	write("extra-b", "compatibility: needs docker\nsame: yes\n")
 
 	out, err := runCmd(t, cc, "skill", "diff", "extra-a", "extra-b", "--json")
@@ -462,8 +462,12 @@ Body.
 	assert.Equal(t, "[{agent: demo.review, label: Review}]", fieldMap["handoffs"].Left)
 	assert.Equal(t, "", fieldMap["handoffs"].Right)
 	assert.NotContains(t, fieldMap, "same")
+	// An explicit `key: null` is not the same as an absent key.
+	require.Contains(t, fieldMap, "nullable")
+	assert.Equal(t, "null", fieldMap["nullable"].Left)
+	assert.Equal(t, "", fieldMap["nullable"].Right)
 	// "name" differs too, but that's the modeled field — it must appear
 	// once under its own name, not again via the extra-key path.
 	assert.Contains(t, fieldMap, "name")
-	assert.Len(t, result.Fields, 3)
+	assert.Len(t, result.Fields, 4)
 }

@@ -29,19 +29,27 @@ type frontmatter struct {
 // types. They guard WriteManifest against an Extra key that shadows a modeled
 // field — yaml.v3 panics on that collision at marshal time.
 var (
-	modeledTopLevelKeys = yamlKeys(reflect.TypeOf(frontmatter{}))
-	modeledMetadataKeys = yamlKeys(reflect.TypeOf(Metadata{}))
+	modeledTopLevelKeys   = yamlKeys(reflect.TypeOf(frontmatter{}))
+	modeledMetadataKeys   = yamlKeys(reflect.TypeOf(Metadata{}))
+	modeledAuthorKeys     = yamlKeys(reflect.TypeOf(Author{}))
+	modeledModifiedByKeys = yamlKeys(reflect.TypeOf(ModifiedByEntry{}))
 )
 
-// yamlKeys returns the set of explicit `yaml:"<name>"` keys on a struct type,
-// skipping inline and ignored ("-") fields.
+// yamlKeys returns the set of YAML keys yaml.v3 would use for a struct type:
+// the explicit `yaml:"<name>"` tag, or the lowercased field name when a field
+// is untagged (yaml.v3's default). Inline and ignored ("-") fields are
+// skipped.
 func yamlKeys(t reflect.Type) map[string]bool {
 	keys := map[string]bool{}
 	for i := 0; i < t.NumField(); i++ {
-		tag := t.Field(i).Tag.Get("yaml")
-		name, _, _ := strings.Cut(tag, ",")
-		if name == "" || name == "-" {
+		f := t.Field(i)
+		tag := f.Tag.Get("yaml")
+		name, opts, _ := strings.Cut(tag, ",")
+		if name == "-" || strings.Contains(","+opts+",", ",inline,") {
 			continue
+		}
+		if name == "" {
+			name = strings.ToLower(f.Name)
 		}
 		keys[name] = true
 	}
@@ -90,14 +98,23 @@ func ParseManifestFromBytes(data []byte) (*Skill, error) {
 // WriteManifest writes a Skill to a SKILL.md file.
 //
 // Modeled fields are written first in declaration order; unmodeled keys held
-// in Skill.Extra and Skill.Metadata.Extra follow, sorted by key. An Extra key
-// that collides with a modeled key is an error rather than a silent overwrite.
+// in the Extra maps (top level, metadata, metadata.author, modified-by
+// entries) follow their section, sorted by key. An Extra key that collides
+// with a modeled key is an error rather than a silent overwrite.
 func WriteManifest(s *Skill, path string) error {
 	if err := checkExtraCollisions("frontmatter", s.Extra, modeledTopLevelKeys); err != nil {
 		return err
 	}
 	if err := checkExtraCollisions("metadata", s.Metadata.Extra, modeledMetadataKeys); err != nil {
 		return err
+	}
+	if err := checkExtraCollisions("metadata.author", s.Metadata.Author.Extra, modeledAuthorKeys); err != nil {
+		return err
+	}
+	for i, m := range s.Metadata.ModifiedBy {
+		if err := checkExtraCollisions(fmt.Sprintf("metadata.modified-by[%d]", i), m.Extra, modeledModifiedByKeys); err != nil {
+			return err
+		}
 	}
 
 	fm := frontmatter{
