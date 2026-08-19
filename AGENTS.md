@@ -202,6 +202,15 @@ hand-edited tags still match. `skill list` filters on them via `--tag` (flat)
 and `--category` (namespaced, repeatable, OR within a category, AND across
 categories).
 
+**Unmodeled keys pass through.** The fields above are the keys skern models;
+any other top-level or `metadata.*` key lands in `Skill.Extra` /
+`Metadata.Extra` (inline maps, `internal/skill/skill.go`) on parse and is
+written back by `WriteManifest`, so `create --from-template`, `import`,
+`edit`, and `version` never drop a consumer's extended contract ([#100]).
+Values are preserved, formatting is normalized (modeled keys first, extras
+sorted). An `Extra` key that shadows a modeled key is a `WriteManifest` error,
+never a silent overwrite — yaml.v3 would otherwise panic.
+
 ### Writing Skills Guidelines
 
 Guidelines for authoring skill content, adapted from

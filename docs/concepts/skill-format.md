@@ -58,6 +58,12 @@ The main technique or pattern (before/after for techniques).
 
 `name` and `description` are the only hard requirements. The rest help discovery, validation, and provenance.
 
+### Unrecognized keys pass through
+
+The table above is the set of keys skern *models*. Every other frontmatter key — top-level (`license`, `compatibility`, `handoffs`, …) or under `metadata` (`metadata.phases`, a `metadata.tags` list distinct from top-level `tags`, …) — is preserved verbatim whenever skern rewrites a `SKILL.md`: `skill create --from-template`, `skill import`, `skill edit`, `skill version`. Extended skill contracts survive the round trip, and since platform installs copy the registry file byte-for-byte, the keys reach the agent too.
+
+What is preserved is the *data*: keys and values. Formatting is normalized on write — skern's own keys come first in a fixed order, pass-through keys follow sorted by name, comments and quoting style are dropped, and an unquoted date-like scalar (`created: 2024-01-15`) is re-emitted in RFC 3339 form. `skern skill diff` reports pass-through keys that differ between two skills under their own names (`compatibility`, `metadata.phases`).
+
 ## Body
 
 The markdown body contains the skill's instructions. This is what the agent reads when the skill is activated. It must be non-empty.

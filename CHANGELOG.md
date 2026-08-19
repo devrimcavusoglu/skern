@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Unrecognized frontmatter keys are no longer dropped.** Every `SKILL.md`
+  rewrite — `skill create --from-template`, `skill import`, `skill edit`,
+  `skill version` — used to re-serialize only the keys skern models, silently
+  discarding everything else (`compatibility`, `handoffs`, `metadata.phases`,
+  a `metadata.tags` list, …). Unmodeled top-level and `metadata.*` keys now
+  round-trip verbatim (values preserved; modeled keys written first, extras
+  sorted after). `skill diff` reports differing pass-through keys under their
+  own names. ([#100])
 - **Release workflow is idempotent on duplicate tag-push deliveries.** A
   redelivered tag push no longer fails the run or produces a partial release.
   ([#95])
@@ -53,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#96]: https://github.com/devrimcavusoglu/skern/issues/96
 [#97]: https://github.com/devrimcavusoglu/skern/pull/97
 [#98]: https://github.com/devrimcavusoglu/skern/pull/98
+[#100]: https://github.com/devrimcavusoglu/skern/issues/100
 
 ## [v0.3.1] — 2026-05-13
 

@@ -418,3 +418,52 @@ func TestSkillDiff_RegistryVsPlatform_DefaultScope(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.True(t, result.Identical)
 }
+
+// Unmodeled frontmatter keys (#100) participate in diff: a key present on one
+// side only, or with a different value, is reported under its own name;
+// identical extras are not.
+func TestSkillDiff_TwoSkills_ExtraKeys(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+
+	write := func(name, extra string) {
+		dir := filepath.Join(userDir, name)
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(`---
+name: `+name+`
+description: Use when comparing extras.
+`+extra+`metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+---
+
+Body.
+`), 0o644))
+	}
+	write("extra-a", "compatibility: needs git\nhandoffs: [{label: Review, agent: demo.review}]\nsame: yes\n")
+	write("extra-b", "compatibility: needs docker\nsame: yes\n")
+
+	out, err := runCmd(t, cc, "skill", "diff", "extra-a", "extra-b", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillDiffResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.False(t, result.Identical)
+
+	fieldMap := make(map[string]output.FieldDiff)
+	for _, f := range result.Fields {
+		fieldMap[f.Field] = f
+	}
+	require.Contains(t, fieldMap, "compatibility")
+	assert.Equal(t, "needs git", fieldMap["compatibility"].Left)
+	assert.Equal(t, "needs docker", fieldMap["compatibility"].Right)
+	require.Contains(t, fieldMap, "handoffs")
+	assert.Equal(t, "[{agent: demo.review, label: Review}]", fieldMap["handoffs"].Left)
+	assert.Equal(t, "", fieldMap["handoffs"].Right)
+	assert.NotContains(t, fieldMap, "same")
+	// "name" differs too, but that's the modeled field — it must appear
+	// once under its own name, not again via the extra-key path.
+	assert.Contains(t, fieldMap, "name")
+	assert.Len(t, result.Fields, 3)
+}

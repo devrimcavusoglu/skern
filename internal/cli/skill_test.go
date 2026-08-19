@@ -1389,3 +1389,109 @@ func TestSkillSearch_FilterByTag(t *testing.T) {
 	assert.Equal(t, 1, result.Count)
 	assert.Equal(t, "code-lint", result.Results[0].Name)
 }
+
+// Regression for #100: skill create --from-template must preserve frontmatter
+// keys skern does not model (top-level and metadata.*), and the platform
+// install must carry them through byte-for-byte.
+func TestSkillCreate_FromTemplate_PreservesUnmodeledKeys(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	srcDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "SKILL.md"), []byte(`---
+name: demo.plan
+description: top level tags round trip check
+tags: [workflow, planning]
+compatibility: "requires a project checkout"
+metadata:
+  version: "2.0.0"
+  phases: [plan]
+  tags: [meta-only]
+handoffs:
+  - label: Review
+    agent: demo.review
+---
+
+## Overview
+
+Plan things.
+`), 0o644))
+
+	out, err := runCmd(t, cc, "skill", "create", "demo.plan", "--from-template", srcDir, "--json")
+	require.NoError(t, err)
+	var created output.SkillCreateResult
+	require.NoError(t, json.Unmarshal([]byte(out), &created))
+
+	manifestPath := filepath.Join(created.Path, "SKILL.md")
+	raw, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	text := string(raw)
+	for _, want := range []string{
+		"compatibility: requires a project checkout",
+		"handoffs:",
+		"label: Review",
+		"agent: demo.review",
+		"phases:",
+		"- plan",
+		"- meta-only",
+	} {
+		assert.Contains(t, text, want, "registry SKILL.md lost %q", want)
+	}
+
+	parsed := requireParsedManifest(t, manifestPath)
+	assert.Equal(t, []string{"workflow", "planning"}, parsed.Tags, "top-level tags stay modeled")
+	assert.Equal(t, "2.0.0", parsed.Metadata.Version)
+	assert.Equal(t, "requires a project checkout", parsed.Extra["compatibility"])
+	assert.Equal(t, []any{"plan"}, parsed.Metadata.Extra["phases"])
+	assert.Equal(t, []any{"meta-only"}, parsed.Metadata.Extra["tags"])
+
+	// Install to a platform — the copy must be byte-identical to the registry.
+	_, err = runCmd(t, cc, "skill", "install", "demo.plan", "--platform", "claude-code")
+	require.NoError(t, err)
+	installed, err := os.ReadFile(filepath.Join(home, ".claude", "skills", "demo.plan", "SKILL.md"))
+	require.NoError(t, err)
+	assert.Equal(t, text, string(installed))
+
+	// And diff sees no drift between them.
+	out, err = runCmd(t, cc, "skill", "diff", "demo.plan", "--platform", "claude-code", "--scope", "user", "--json")
+	require.NoError(t, err)
+	var diff output.SkillDiffResult
+	require.NoError(t, json.Unmarshal([]byte(out), &diff))
+	assert.True(t, diff.Identical)
+}
+
+// skill edit and skill version re-serialize the manifest; both must keep
+// unmodeled keys intact.
+func TestSkillEditAndVersion_PreserveUnmodeledKeys(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+
+	skillDir := filepath.Join(userDir, "keep-extra")
+	require.NoError(t, os.MkdirAll(skillDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(`---
+name: keep-extra
+description: Use when extras must survive edits.
+compatibility: needs git
+metadata:
+  author:
+    name: alice
+    type: human
+  version: "0.1.0"
+  phases: [plan, review]
+---
+
+Body.
+`), 0o644))
+
+	_, err := runCmd(t, cc, "skill", "edit", "keep-extra", "--description", "Edited description.")
+	require.NoError(t, err)
+	_, err = runCmd(t, cc, "skill", "version", "keep-extra", "--bump", "minor")
+	require.NoError(t, err)
+
+	parsed := requireParsedManifest(t, filepath.Join(skillDir, "SKILL.md"))
+	assert.Equal(t, "Edited description.", parsed.Description)
+	assert.Equal(t, "0.2.0", parsed.Metadata.Version)
+	assert.Equal(t, "needs git", parsed.Extra["compatibility"])
+	assert.Equal(t, []any{"plan", "review"}, parsed.Metadata.Extra["phases"])
+}
