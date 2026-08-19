@@ -21,6 +21,15 @@ const (
 	TypeContinue      Type = "continue"
 )
 
+// InstallOptions shapes how a skill is copied onto a platform. The zero
+// value copies the whole skill directory.
+type InstallOptions struct {
+	// Exclude holds the skill's `install.exclude` glob patterns; matching
+	// files and directories stay in the registry but are not copied. See
+	// skill.MatchExclude for the rules.
+	Exclude []string
+}
+
 // Platform defines the interface that each platform adapter must implement.
 type Platform interface {
 	// Name returns the platform type identifier.
@@ -31,8 +40,9 @@ type Platform interface {
 	UserSkillsDir() string
 	// ProjectSkillsDir returns the absolute path to the project-level skills directory.
 	ProjectSkillsDir() string
-	// Install copies a skill from the registry into the platform's skills directory.
-	Install(skillDir string, skillName string, scope skill.Scope) error
+	// Install copies a skill from the registry into the platform's skills
+	// directory, honoring opts.Exclude.
+	Install(skillDir string, skillName string, scope skill.Scope, opts InstallOptions) error
 	// Uninstall removes a skill from the platform's skills directory.
 	Uninstall(skillName string, scope skill.Scope) error
 	// InstalledSkills returns the names of skills installed for the given scope.

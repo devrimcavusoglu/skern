@@ -21,6 +21,7 @@ type frontmatter struct {
 	Tags         []string       `yaml:"tags,omitempty"`
 	AllowedTools []string       `yaml:"allowed-tools,omitempty"`
 	Metadata     Metadata       `yaml:"metadata"`
+	Install      InstallConfig  `yaml:"install,omitempty"`
 	Extra        map[string]any `yaml:",inline"`
 }
 
@@ -33,6 +34,7 @@ var (
 	modeledMetadataKeys   = yamlKeys(reflect.TypeOf(Metadata{}))
 	modeledAuthorKeys     = yamlKeys(reflect.TypeOf(Author{}))
 	modeledModifiedByKeys = yamlKeys(reflect.TypeOf(ModifiedByEntry{}))
+	modeledInstallKeys    = yamlKeys(reflect.TypeOf(InstallConfig{}))
 )
 
 // yamlKeys returns the set of YAML keys yaml.v3 would use for a struct type:
@@ -90,6 +92,7 @@ func ParseManifestFromBytes(data []byte) (*Skill, error) {
 		Tags:         f.Tags,
 		AllowedTools: f.AllowedTools,
 		Metadata:     f.Metadata,
+		Install:      f.Install,
 		Extra:        f.Extra,
 		Body:         body,
 	}, nil
@@ -116,6 +119,9 @@ func WriteManifest(s *Skill, path string) error {
 			return err
 		}
 	}
+	if err := checkExtraCollisions("install", s.Install.Extra, modeledInstallKeys); err != nil {
+		return err
+	}
 
 	fm := frontmatter{
 		Name:         s.Name,
@@ -123,6 +129,7 @@ func WriteManifest(s *Skill, path string) error {
 		Tags:         s.Tags,
 		AllowedTools: s.AllowedTools,
 		Metadata:     s.Metadata,
+		Install:      s.Install,
 		Extra:        s.Extra,
 	}
 

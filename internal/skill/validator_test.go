@@ -1,6 +1,8 @@
 package skill
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -478,4 +480,77 @@ func TestScaffold_FreshSkillProducesNoLintHints(t *testing.T) {
 
 	issues := lintStyle(s)
 	assert.Empty(t, issues, "freshly scaffolded skill must produce zero lint hints")
+}
+
+func TestValidate_InstallExclude(t *testing.T) {
+	base := func(exclude ...string) *Skill {
+		return &Skill{
+			Name:        "lean-skill",
+			Description: "Use when you need to complete tasks with step-by-step guidance",
+			Body:        "## Overview\n\nUse this skill to do things carefully and well with plenty of words here.\n",
+			Metadata:    Metadata{Author: Author{Name: "a", Type: "human"}, Version: "0.1.0"},
+			Install:     InstallConfig{Exclude: exclude},
+		}
+	}
+	issuesFor := func(s *Skill) []ValidationIssue {
+		var out []ValidationIssue
+		for _, i := range Validate(s) {
+			if strings.HasPrefix(i.Field, "install.exclude") {
+				out = append(out, i)
+			}
+		}
+		return out
+	}
+
+	assert.Empty(t, issuesFor(base()))
+	assert.Empty(t, issuesFor(base("eval", "fixtures/*", "*.test.md")))
+
+	// Wildcards that also match SKILL.md are fine (it is never excluded).
+	assert.Empty(t, issuesFor(base("*", "*.md")))
+
+	got := issuesFor(base("eval", "../up", "SKILL.md", "[x", "a/**/b"))
+	require.Len(t, got, 4)
+	for _, i := range got {
+		assert.Equal(t, SeverityError, i.Severity)
+		assert.Regexp(t, `^install\.exclude\[\d\]$`, i.Field, "multi-entry lists carry the index")
+	}
+	// A single bad entry is reported without an index.
+	single := issuesFor(base("[x"))
+	require.Len(t, single, 1)
+	assert.Equal(t, "install.exclude", single[0].Field)
+	assert.True(t, HasErrors(got))
+}
+
+func TestValidateFolder_InstallExcludeWarnings(t *testing.T) {
+	dir := t.TempDir()
+	mk := func(rel, content string) {
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		require.NoError(t, os.WriteFile(p, []byte(content), 0o644))
+	}
+	mk("SKILL.md", "x")
+	mk("eval/s1.md", "x")
+	mk("references/guide.md", "x")
+
+	s := &Skill{
+		Name:        "lean-skill",
+		Description: "Use when testing.",
+		Body:        "See `references/guide.md` for details.\n",
+		Install:     InstallConfig{Exclude: []string{"eval", "references", "nothing-here", "[bad"}},
+	}
+	issues := ValidateFolder(s, dir)
+
+	var msgs []string
+	for _, i := range issues {
+		assert.Equal(t, SeverityWarning, i.Severity)
+		msgs = append(msgs, i.Message)
+	}
+	joined := strings.Join(msgs, "\n")
+	assert.Contains(t, joined, `referenced file "references/guide.md" is excluded from install`)
+	assert.Contains(t, joined, `exclude pattern "nothing-here" matches no file`)
+	// "eval" matches eval/s1.md: no warning. The malformed pattern is an
+	// error for Validate, not a folder warning.
+	assert.NotContains(t, joined, `"eval" matches no file`)
+	assert.NotContains(t, joined, "[bad")
+	assert.Len(t, issues, 2)
 }

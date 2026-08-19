@@ -55,6 +55,7 @@ The main technique or pattern (before/after for techniques).
 | `metadata.author.platform` | No | Platform name (e.g. `claude-code`) — used when `type: agent` |
 | `metadata.version` | No | Semantic version (e.g. `1.0.0`); defaults to `0.0.1` on `skill create` |
 | `metadata.modified-by` | No | Append-only modification history (set via `skern skill edit --modified-by`) |
+| `install.exclude` | No | Glob patterns (relative to the skill directory) for files and directories that stay in the registry but are **not** copied on `skern skill install`. See [Install-time exclusions](#install-time-exclusions). |
 
 `name` and `description` are the only hard requirements. The rest help discovery, validation, and provenance.
 
@@ -98,9 +99,30 @@ my-skill/
     └── template.json
 ```
 
-When a skill is installed to a platform, the **entire directory** is copied. The `scripts/` directory is language-agnostic — skills can include Python, shell, JavaScript, or any other scripts. The agent decides which language is appropriate.
+When a skill is installed to a platform, the directory is copied — minus anything the skill's `install.exclude` rules out (below). The `scripts/` directory is language-agnostic — skills can include Python, shell, JavaScript, or any other scripts. The agent decides which language is appropriate.
 
 `skern skill validate <name>` checks that files referenced in the body (via backticks or markdown links) actually exist in the skill directory. Missing references produce **warnings**, not errors. `skern skill show <name>` lists every file bundled with the skill.
+
+### Install-time exclusions
+
+A skill directory often carries assets that belong in the registry but not in a platform's skill directory — evaluation corpora, fixtures, development scratch. Because host agents load or index everything under an installed skill, that material is dead weight in the agent's context on every project. The skill author lists what to leave behind in frontmatter:
+
+```yaml
+install:
+  exclude:
+    - eval            # a directory: excludes eval/ and everything beneath it
+    - fixtures/*      # direct children of fixtures/ (and their subtrees)
+    - "*.draft.md"    # top-level files by suffix (globs do not cross "/")
+```
+
+Rules:
+
+- Patterns are slash-separated paths relative to the skill directory, using Go `path.Match` syntax (`*`, `?`, `[…]`; `\` escapes a metacharacter). `*` does not cross `/`, and `**` is **not** supported (it is rejected, not silently treated as `*`); a pattern matches a path when it matches the full relative path **or any leading directory of it**, which is what makes a bare directory name exclude its whole subtree. A trailing `/` or leading `./` is ignored. `exclude: eval` (a bare string) is accepted as shorthand for a one-element list.
+- `SKILL.md` is never excluded, whatever the patterns say — so `*` or `*.md` are legal and mean "everything except `SKILL.md`". Naming `SKILL.md` literally, absolute paths, `..` segments, `**`, and malformed globs are validation **errors**, and `skern skill install` refuses a skill whose patterns fail validation rather than silently copying what the author meant to leave out.
+- The registry always keeps the full directory — `skill create --from-template` and `skill import` copy everything, and `skill show` lists every file. Only the copy made by `skern skill install` is trimmed. (A pattern such as `fixtures/*` prunes the directory's contents; the now-empty `fixtures/` itself is still created.)
+- `skern skill validate` **warns** when a pattern matches no file in the skill directory, and when a file the body references (`` `references/guide.md` ``) is excluded — it would exist in the registry but be missing from every installed copy.
+- `skern skill diff` compares manifests (frontmatter and body), not file trees, so excluded files never show up as drift — but a change to the `install.exclude` list itself *is* reported (`install.exclude`), since it changes what the next install copies.
+- `install` is a skern-modeled key: other keys under it (`install.mode`, …) round-trip like any other unmodeled key, but a top-level `install:` that is not a mapping (e.g. `install: pip install foo`) is a parse error.
 
 ## Creating Skills
 

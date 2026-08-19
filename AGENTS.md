@@ -76,9 +76,10 @@ test isolation.
    Every platform is one row in `Specs` (`internal/platform/spec.go`) driving a
    single generic `Adapter` — adding a platform means a `Spec` row plus a
    `Type` constant, never a per-platform Go file. Installing is a directory
-   copy *today*, but pure-copy is **not** an invariant: a `Spec` may grow
-   declarative post-install behavior (companion files, per-platform
-   destination overrides) where a platform's loader demands it. Any such
+   copy filtered by the skill's own `install.exclude` ([#103]) *today*, but
+   pure-copy is **not** an invariant: a `Spec` may grow declarative
+   post-install behavior (companion files, per-platform destination
+   overrides) where a platform's loader demands it. Any such
    behavior belongs in the spec table as data, not as a hand-written
    per-platform code path, and `Uninstall` must reverse whatever `Install`
    produced. Open work depending on this: [#99], [#101], [#47].
@@ -155,6 +156,8 @@ metadata:
       type: agent
       platform: codex-cli
       date: "2025-07-15T10:30:00Z"
+install:                  # optional; shapes the platform copy only
+  exclude: [eval, fixtures/*]   # kept in the registry, not installed
 ---
 
 ## Overview
@@ -198,6 +201,18 @@ hand-edited tags still match. `skill list`, `skill install`, and
 `skillFilter` in `internal/cli/skill_helpers.go` defines the flags and match
 semantics for all three; on install/uninstall the filter is mutually
 exclusive with positional names.
+
+**`install.exclude`** ([#103]) lists `path.Match` globs, relative to the skill
+directory, that `skill install` leaves out of the platform copy (the registry
+keeps everything). A pattern matches a path or any leading directory of it,
+so a bare directory name excludes its subtree; `**` is rejected; `SKILL.md`
+is never excluded (so `*` is legal). Matching lives in `skill.MatchExclude`
+(`internal/skill/folder.go`) and is applied by `platform.copyDir` via
+`InstallOptions.Exclude`; `skill validate` errors on malformed patterns and
+warns on no-match / excluded-but-referenced files; `skill install` refuses a
+skill whose patterns fail validation; `skill diff` reports a changed list
+under `install.exclude`. Other keys under `install:` pass through via
+`InstallConfig.Extra`.
 
 **Unmodeled keys pass through.** The fields above are the keys skern models;
 any other key — top-level, `metadata.*`, or nested in `metadata.author` /
@@ -326,10 +341,6 @@ request.
 ## Roadmap
 
 Everything planned is a tracked issue; this list is a map, not a commitment.
-
-**Correctness and ergonomics (near-term)**
-
-- [#103] — exclude companion directories (eval corpora, fixtures) from install
 
 **Adapter model** — all three need the declarative-hook mechanism from design
 decision 3; settle the mechanism once rather than special-casing each.

@@ -58,8 +58,8 @@ func (a *Adapter) ProjectSkillsDir() string {
 }
 
 // Install implements Platform.
-func (a *Adapter) Install(skillDir, skillName string, scope skill.Scope) error {
-	return installSkill(skillDir, skillName, a.skillsDir(scope))
+func (a *Adapter) Install(skillDir, skillName string, scope skill.Scope, opts InstallOptions) error {
+	return installSkill(skillDir, skillName, a.skillsDir(scope), opts)
 }
 
 // Uninstall implements Platform.

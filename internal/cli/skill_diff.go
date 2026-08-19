@@ -186,9 +186,18 @@ func compareSkills(a *skill.Skill, nameA, sourceA string, b *skill.Skill, nameB,
 		fields = append(fields, output.FieldDiff{Field: "modified-by", Left: modA, Right: modB})
 	}
 
+	// install.exclude decides what an install copies; a change here is the
+	// signal to reinstall, so it must show up.
+	exA := strings.Join(a.Install.Exclude, ", ")
+	exB := strings.Join(b.Install.Exclude, ", ")
+	if exA != exB {
+		fields = append(fields, output.FieldDiff{Field: "install.exclude", Left: exA, Right: exB})
+	}
+
 	// Unmodeled keys round-trip through skern (see skill.Skill.Extra), so
 	// they are part of what an install or edit can change — diff them too.
 	fields = append(fields, extraDiffs("", a.Extra, b.Extra)...)
+	fields = append(fields, extraDiffs("install.", a.Install.Extra, b.Install.Extra)...)
 	fields = append(fields, extraDiffs("metadata.", a.Metadata.Extra, b.Metadata.Extra)...)
 	fields = append(fields, extraDiffs("author.", a.Metadata.Author.Extra, b.Metadata.Author.Extra)...)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/platform"
 	"github.com/devrimcavusoglu/skern/internal/registry"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +27,8 @@ func newSkillInstallCmd() *cobra.Command {
 
 Each skill must already exist in skern's registry — create it with 'skern skill
 create' or pull it in with 'skern skill import' before installing. Install copies
-the registered skill into the platform's skill directory; the registry copy is
+the registered skill directory into the platform's skill directory, minus any
+paths the skill's frontmatter lists under install.exclude; the registry copy is
 left untouched.
 
 Each invocation targets exactly one platform — agents are expected to specify
@@ -98,9 +100,17 @@ installed-skill count would meet or exceed the per-platform threshold (see
 			for _, name := range names {
 				entry := output.SkillActionEntry{Skill: name}
 
-				_, skillDir, getErr := reg.Get(name, scopeVal)
+				s, skillDir, getErr := reg.Get(name, scopeVal)
 				if getErr != nil {
 					entry.Error = fmt.Sprintf("not registered in skern (%s scope) — run 'skern skill create' or 'skern skill import' first, or 'skern skill list' to see available skills", scope)
+					entries = append(entries, entry)
+					continue
+				}
+
+				// A malformed exclude pattern would silently install what the
+				// author meant to leave out; refuse this skill instead.
+				if vErr := skill.ValidateExcludePatterns(s.Install.Exclude); vErr != nil {
+					entry.Error = fmt.Sprintf("%v (fix the skill's frontmatter; 'skern skill validate %s' lists every problem)", vErr, name)
 					entries = append(entries, entry)
 					continue
 				}
@@ -110,7 +120,8 @@ installed-skill count would meet or exceed the per-platform threshold (see
 					_ = p.Uninstall(name, scopeVal)
 				}
 
-				if installErr := p.Install(skillDir, name, scopeVal); installErr != nil {
+				opts := platform.InstallOptions{Exclude: s.Install.Exclude}
+				if installErr := p.Install(skillDir, name, scopeVal, opts); installErr != nil {
 					entry.Error = installErr.Error()
 				} else {
 					entry.Success = true

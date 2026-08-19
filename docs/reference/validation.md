@@ -42,6 +42,10 @@ If `allowed-tools` is set, no entry may be empty.
 
 `metadata.version` must be a valid semver string (`MAJOR.MINOR.PATCH`).
 
+### Install Exclusions
+
+Every `install.exclude` entry must be a non-empty, relative, well-formed glob (`path.Match` syntax) with no `..` or `**` segment, and must not name `SKILL.md` literally (wildcards that merely also match it are fine — `SKILL.md` is never excluded). With more than one entry the field is reported as `install.exclude[N]`. `skern skill install` refuses a skill whose patterns fail these checks. See [Skill Format › Install-time exclusions](/concepts/skill-format#install-time-exclusions).
+
 ## Warnings
 
 ### Folder Integrity
@@ -49,6 +53,10 @@ If `allowed-tools` is set, no entry may be empty.
 When the body references files (backtick-enclosed paths like `` `scripts/run.py` `` or markdown links like `[script](scripts/run.py)`), validation checks that those files exist in the skill directory. Missing references produce **warnings**, not errors — references may be aspirational or provided at runtime.
 
 Inline code spans and URLs are excluded from this check (no false positives from `` `--flag` `` or `https://…`).
+
+### Install Exclusions
+
+Two warnings relate to `install.exclude`: a pattern that matches no file in the skill directory (usually a typo, or stale after a rename), and a body-referenced file that an exclude pattern would drop — it exists in the registry but would be missing from every installed copy.
 
 ## Hints
 
