@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`--category` filter on `skern skill list`.** Filters by namespaced tag
+  (`--category lang:python`), repeatable, comma-lists values, OR within a
+  category and AND across categories. `--include-untagged` treats a skill with
+  no tag in a requested category as matching it. Tag validation now enforces a
+  single canonical form: lowercase alphanumeric segments joined by hyphens,
+  with at most one colon separating category from value. Tag *filters* remain
+  case-insensitive, so legacy hand-edited uppercase tags still match.
+  ([#96], [#98])
+
+### Changed
+
+- **Docs and agent guide restructured.** `AGENTS.md` now carries conventions,
+  architecture, and design decisions only; contributor setup (build/test
+  matrix, directory tree, dependencies) lives in
+  `docs/contributing/development.md`, with each cross-linking the other
+  instead of restating it. Closed milestone history (M0–M7) was dropped in
+  favor of this changelog. Design decision 3 was amended: adapters remain
+  declarative, but pure-copy is no longer an invariant — a `Spec` may carry
+  post-install behavior where a platform's loader requires it.
+- **`skern skill --help` lists every supported platform** instead of a
+  hardcoded first three, derived from the spec table.
+
+### Fixed
+
+- **Release workflow is idempotent on duplicate tag-push deliveries.** A
+  redelivered tag push no longer fails the run or produces a partial release.
+  ([#95])
+
+### Internal
+
+- GitHub Actions modernized: Node 24 action majors, floating tool versions
+  pinned. ([#90], [#97])
+- Corrected stale claims in the agent guide: `santhosh-tekuri/jsonschema` was
+  listed as a planned dependency but was never adopted (validation is
+  bespoke); the per-platform project capacity path was documented as
+  `<platform>/.skern/skills/` rather than the platform's own project skills
+  directory; the milestone-numbered branch convention was replaced with the
+  `<type>/<slug>` scheme actually in use.
+
+[#90]: https://github.com/devrimcavusoglu/skern/issues/90
+[#95]: https://github.com/devrimcavusoglu/skern/pull/95
+[#96]: https://github.com/devrimcavusoglu/skern/issues/96
+[#97]: https://github.com/devrimcavusoglu/skern/pull/97
+[#98]: https://github.com/devrimcavusoglu/skern/pull/98
+
 ## [v0.3.1] — 2026-05-13
 
 Patch release: widen skill-name validation to accept dot-namespaced names.

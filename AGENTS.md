@@ -1,146 +1,109 @@
 # AGENTS.md — Skern Development Guide
 
+Conventions, architecture, and design decisions for agents working in this repo.
+Human contributor setup — the full build/test matrix, directory tree, and
+dependency list — lives in [docs/contributing/development.md](./docs/contributing/development.md).
+Release history lives in [CHANGELOG.md](./CHANGELOG.md); neither is restated here.
+
 ## Project Overview
 
-Skern is a minimal, agent-first CLI tool for managing Agent Skills across agentic development platforms (Claude Code, Codex CLI, OpenCode, Cursor, Gemini CLI, GitHub Copilot, Windsurf, Continue, and more). It follows the Agent Skills open standard (agentskills.io) and uses `SKILL.md` files with YAML frontmatter as the canonical format.
+Skern is a minimal, agent-first CLI for managing Agent Skills across agentic
+development platforms. It follows the Agent Skills open standard
+([agentskills.io](https://agentskills.io)) and uses `SKILL.md` files with YAML
+frontmatter as the canonical format.
 
-The project is written in **Go 1.25+** and the current release is **v0.3.1**.
+Written in **Go 1.25+**. Latest release **v0.3.1**; `main` carries unreleased
+work (see the `[Unreleased]` section of the CHANGELOG).
 
-## Repository Layout
+### Scope
 
-```
-cmd/skern/main.go           # Entry point
-internal/
-  cli/                        # Cobra command definitions (root, version, init, completion, skill_*, platform_*)
-  skill/                      # Domain logic: Skill struct, manifest parsing, validation, scaffolding
-  overlap/                    # Fuzzy name matching and description similarity scoring
-  registry/                   # Filesystem CRUD over ~/.skern/skills/ and .skern/skills/
-  platform/                   # Platform adapters — declarative spec table + generic Adapter
-  output/                     # JSON/text structured output formatting
-scripts/
-  install.sh                  # Installer script
-  install_test.sh             # Installer tests
-  smoke_test.sh               # Smoke tests for built binary
-tests/manual/                 # Manual (agent-driven) test scenarios
-docs/                         # Documentation site (VitePress)
-go.mod, go.sum
-Makefile
-.goreleaser.yaml
-.golangci.yml
-.github/
-  workflows/ci.yml
-  workflows/release.yml
-  workflows/docs-deploy.yml
-  workflows/docs-pr-check.yml
-  CODEOWNERS
-```
+**The registry is the center of gravity.** Skern's value is being the single
+cross-platform source of truth for skills: one `SKILL.md` per skill, stored
+once, managed through skern regardless of which agent is running. Registry
+commands (`create`, `import`, `edit`, `list`, `search`, `show`, `validate`,
+`version`, `diff`, `recommend`, `remove`) are the primary surface, and
+`skern init --instructions` exists so an agent can be told to reach for skern
+directly instead of hunting through platform directories.
 
-## Build, Test & Lint
+**Platform install/uninstall is first-class and stays.** Copying skills out to
+native platform directories serves real cases the registry alone does not:
+native progressive disclosure, sandboxed agents that cannot shell out to
+skern, and one-shot migration from an existing `.claude/skills/`. Adapters are
+maintained and extended, and adapter bugs are ordinary product bugs — they are
+just not the headline drive. The `skern skill` command tree encodes this split
+directly via two cobra groups: *Registry commands* and *Platform commands*
+(`internal/cli/skill.go`).
 
-```sh
-make build                  # Build binary with version/commit/date injected
-make test                   # go test ./...
-make test-v                 # Verbose test output
-make test-cover             # Generate coverage report (coverage.out + coverage.html)
-make test-install           # Run installer script tests
-make test-smoke             # Build binary then run smoke tests
-make test-manual-setup      # Set up manual test scenarios
-make test-manual-report     # Report manual test results
-make test-manual-teardown   # Clean up manual test environment
-make lint                   # golangci-lint run
-make fmt                    # gofmt -w .
-make clean                  # Remove binary and coverage files
-```
+When proposing features, weigh them against the registry thesis first. New
+work that only makes sense as a per-platform copy needs a use case from the
+list above.
 
-Tests use stdlib `testing` + `testify`. Follow table-driven test patterns. Integration tests should use temporary directories to simulate filesystem layouts.
+**Deliberately out of scope.** Remote skill discovery — a hosted catalog,
+community index, or remote search inside `skern skill search` — was considered
+and set aside ([#19], [#50], closed April 2026) in favor of existing
+ecosystems such as [skild](https://github.com/Peiiii/skild) and skills.sh.
+Skern's job there is *import*, not hosting; widening import sources is
+tracked as [#79]. An MCP server mode, sandboxed execution backends, and
+usage-based eviction have likewise been floated and never tracked; treat them
+as unplanned unless an issue appears.
 
-Linter configuration lives in `.golangci.yml`.
+## Package Responsibilities
 
-## Issue Tracking Workflow
+| Package | Responsibility |
+|---|---|
+| `cli/` | Command wiring, flag parsing, output. **No business logic.** |
+| `cli/instructions/` | Embedded snippets rendered by `skern init --instructions` |
+| `skill/` | Domain types and operations: `Skill`, `Author`, `ModifiedByEntry`, manifest parse/serialize, validation, scaffolding, versioning, import |
+| `registry/` | Filesystem CRUD over `~/.skern/skills/` and `.skern/skills/` |
+| `platform/` | Declarative `Spec` table (`spec.go`) + one generic `Adapter` (`adapter.go`) implementing the `Platform` interface |
+| `overlap/` | Similarity scoring (Levenshtein, keyword overlap); returns `float64` in [0, 1] |
+| `output/` | `--json` / `--quiet` formatting. All commands print through this package. |
 
-Development is tracked using **GitHub Issues** via the `gh` CLI.
+`cli/` uses injectable `NewRegistry` / `NewDetector` on `CommandContext` for
+test isolation.
 
-```sh
-gh issue list                             # List open issues
-gh issue create --title "Title" --body "" # Create a new issue
-gh issue view <number>                    # View issue details
-gh issue close <number>                   # Close an issue
-gh issue edit <number> --add-label "bug"  # Add labels
-```
+## Design Decisions
 
-Reference issues in commit messages as `#<number>` (e.g. `Fix validation edge case (#42)`).
+1. **`SKILL.md` is the canonical format.** Skern does not invent a
+   `skill.yaml`. A skill is a directory containing a `SKILL.md` plus optional
+   supporting files.
 
-## Branching Strategy
+2. **The registry is a filesystem directory.** `~/.skern/skills/` for user
+   scope, `.skern/skills/` for project scope. No database, no daemon, no lock
+   files.
 
-All work is organized by milestone using feature branches:
+3. **Adapters are declarative, and may carry behavior beyond copying.**
+   Every platform is one row in `Specs` (`internal/platform/spec.go`) driving a
+   single generic `Adapter` — adding a platform means a `Spec` row plus a
+   `Type` constant, never a per-platform Go file. Installing is a directory
+   copy *today*, but pure-copy is **not** an invariant: a `Spec` may grow
+   declarative post-install behavior (companion files, per-platform
+   destination overrides) where a platform's loader demands it. Any such
+   behavior belongs in the spec table as data, not as a hand-written
+   per-platform code path, and `Uninstall` must reverse whatever `Install`
+   produced. Open work depending on this: [#99], [#101], [#47].
 
-- **Branch naming**: `feature/m<N>-<slug>` (e.g., `feature/m1-skill-registry`)
-- **Created from**: `main`
-- **Merged back via**: Pull request to `main`
+4. **Platform detection is per-platform, not per-directory.** Skern checks
+   each spec's home-relative `DetectHome` paths (`~/.claude/`, `~/.cursor/`,
+   `~/.gemini/`, …). This matters because several platforms share
+   `.agents/skills/` as their project directory, so the directory's existence
+   cannot identify the agent. Consequence: a skill installed to a shared
+   directory is visible to every platform reading it, and capacity counts
+   protect the *directory*, not the logical agent.
 
-Each milestone gets its own feature branch. All commits for that milestone go on the branch, then a PR merges everything back to `main` upon completion.
+5. **One platform per invocation.** `install`/`uninstall` target exactly one
+   platform — there is no `--platform all`, and skern never broadcasts across
+   platforms. Agents state the platform they run on. Multiple *skill names*
+   per call are supported for batch operations.
 
-## Code Conventions
+6. **JSON output is first-class.** Every command supports `--json`. Default
+   output is human-readable text. Exit codes are semantic: `0` success, `1`
+   error, `2` validation failure.
 
-### Go Style
+## Tool-Forming Loop
 
-- Follow standard Go idioms and `gofmt` formatting
-- Exported names use `CamelCase`; unexported use `camelCase`
-- Prefer stdlib over third-party packages unless there is a strong reason
-- Keep packages small and focused on a single responsibility
-- Use `internal/` to prevent external imports of implementation details
-
-### Package Responsibilities
-
-- **`cli/`** — Only command wiring, flag parsing, and output. No business logic.
-- **`skill/`** — Domain types and operations. The `Skill` struct, `Author`, `ModifiedByEntry` types, manifest parsing/serialization, validation rules, and scaffolding templates.
-- **`registry/`** — Filesystem operations for skill storage. CRUD and discovery across user/project scopes.
-- **`platform/`** — Declarative `Spec` table (`spec.go`) plus a single generic `Adapter` (`adapter.go`) that implements the `Platform` interface (`Name()`, `Detect()`, `UserSkillsDir()`, `ProjectSkillsDir()`, `Install()`, `Uninstall()`, `InstalledSkills()`) from any spec row. Adding a platform = one row in `Specs` plus one `Type` constant; no per-platform Go file.
-- **`overlap/`** — Similarity scoring (Levenshtein distance, keyword overlap). Returns a float64 score in [0, 1].
-- **`output/`** — Handles `--json` and `--quiet` flags. All commands go through this package for consistent formatting.
-
-### Testing Conventions
-
-- Use table-driven tests with descriptive subtest names
-- Use `testify/assert` and `testify/require` for assertions
-- Integration tests that touch the filesystem must use `t.TempDir()`
-- Name test files as `*_test.go` in the same package
-
-### Error Handling
-
-- Return `error` values; do not panic
-- Wrap errors with `fmt.Errorf("context: %w", err)` for stack tracing
-- Use semantic exit codes: 0 = success, 1 = error, 2 = validation failure
-
-### CLI Output
-
-- Every command must support `--json` for machine-readable output
-- Default output is human-friendly text
-- Use `--quiet` to suppress non-essential output
-- Error messages should include actionable suggestions
-
-### Commit Messages
-
-- Keep the subject line concise and imperative ("Add manifest parser", not "Added manifest parser")
-- Reference GitHub issues when applicable: `#<number>`
-
-## Architecture Notes
-
-### Design Decisions
-
-1. **SKILL.md as the canonical format** — Skern does NOT invent its own `skill.yaml`. It reads and writes `SKILL.md` files directly, matching the Agent Skills spec. A skill is a directory containing a `SKILL.md` and optional supporting files.
-
-2. **Skern registry = filesystem directory** — `~/.skern/skills/` stores user-level skills. `.skern/skills/` stores project-level skills. No database, no daemon, no lock files.
-
-3. **Platform adapters are copiers** — Installing a skill to a platform means copying the skill directory to the platform's expected location. Each adapter knows its platform's directory convention.
-
-4. **Platform auto-detection** — Skern detects which platforms are installed by checking each adapter's home-relative `DetectHome` paths (e.g. `~/.claude/`, `~/.cursor/`, `~/.gemini/`). Detection is per-platform even when several adapters share `.agents/skills/` as their project directory. Each `install`/`uninstall` invocation targets exactly one platform (per #52 D6); `--platform all` is not accepted. Agents specify the platform they are running on, and `skill install`/`skill uninstall` accept multiple skill names per call for batch operations.
-
-5. **JSON output as first-class** — Every command supports `--json` for machine-readable output. Default is human-friendly text. Exit codes are semantic: 0=success, 1=error, 2=validation failure.
-
-### Tool-Forming Loop
-
-The core differentiator of skern is enabling a **tool-forming loop** — agents don't just *use* skills, they *create* them when a recurring need arises:
+Skern's core differentiator: agents don't just *use* skills, they *create*
+them when a recurring need appears.
 
 ```
 Agent identifies a recurring need
@@ -151,9 +114,10 @@ Agent identifies a recurring need
   --> Skill becomes reusable
 ```
 
-On subsequent encounters, the agent finds the existing skill via `skern skill search` and reuses it.
+On later encounters the agent finds the existing skill via
+`skern skill search` and reuses it.
 
-**Guardrails:**
+### Guardrails
 
 | Guardrail | Mechanism | Default |
 |---|---|---|
@@ -161,26 +125,30 @@ On subsequent encounters, the agent finds the existing skill via `skern skill se
 | Overlap block threshold | Similarity score | Block at >= 0.9, require `--force` |
 | Skill count warning (project) | Count in `.skern/skills/` | Warn at >= 20 |
 | Skill count warning (user) | Count in `~/.skern/skills/` | Warn at >= 50 |
-| Per-platform capacity (project scope) | Count installed at `<platform>/.skern/skills/` (project) | Warn at >= 20 |
-| Per-platform capacity (user scope) | Count installed at user-level platform skills dir | Warn at >= 50 |
-| Capacity enforcement (install) | `--enforce-budget` | Off by default; refuses install when threshold would be exceeded |
-| Deduplication hints | On `skern skill list` | Flag potential duplicates |
+| Per-platform capacity (project scope) | Count in the platform's project skills dir (e.g. `.claude/skills/`) | Warn at >= 20 |
+| Per-platform capacity (user scope) | Count in the platform's user skills dir (e.g. `~/.claude/skills/`) | Warn at >= 50 |
+| Capacity enforcement (install) | `--enforce-budget` | Off by default; refuses install when the threshold would be exceeded |
+| Deduplication hints | On `skern skill list` | Flags potential duplicates |
 
-Capacity thresholds are defined in `internal/skill/capacity.go`. Every `install`/`uninstall` JSON response carries a `capacity` block (count, threshold, headroom, over-budget flag) so agents can react to capacity pressure without an extra query.
+Thresholds are defined in `internal/skill/capacity.go`; overlap thresholds in
+`internal/overlap/detector.go`. Every `install`/`uninstall` JSON response
+carries a `capacity` block (count, threshold, headroom, over-budget flag) so
+agents can react to capacity pressure without a second query.
 
-### SKILL.md Format (Agent Skills Spec)
+## SKILL.md Format
 
 ```markdown
 ---
 name: skill-name
 description: |
   Use when <triggering conditions for this skill>.
-allowed-tools: []
+tags: [code-review, lang:python]   # optional
+allowed-tools: []                  # optional; omitted when empty
 metadata:
   author:
     name: author-name
     type: human           # human | agent
-    platform: claude-code  # only when type=agent
+    platform: claude-code # only when type=agent
   version: "0.0.1"
   modified-by:            # append-only provenance list
     - name: codex-cli
@@ -210,80 +178,181 @@ The main technique or pattern (before/after for techniques).
 - Frequent errors and fixes
 ```
 
-Required fields: `name`, `description`. Directory name must match the `name` field.
+Required fields: `name`, `description`. The directory name must match `name`.
+Optional fields are omitted from output when empty rather than emitted as
+empty values.
+
+**Known gap:** the frontmatter model is a closed struct
+(`internal/skill/manifest.go`), so keys skern does not model are dropped on
+any write path — `registry.Create`/`Update`, `skill edit`, `skill version`,
+`skill import`. Tracked as [#100]. Installs are unaffected: they are a
+byte-for-byte directory copy.
+
+### Validation Rules
+
+**Names** must match `^[a-z0-9]+([.-][a-z0-9]+)*$`, 1–64 characters. Dots and
+hyphens are both valid segment separators; dots enable namespace-style names
+(e.g. `myorg.bootstrap`).
+
+**Tags** are either flat (`code-review`) or categorical (`lang:python`):
+lowercase alphanumeric segments joined by hyphens, with at most one colon
+separating category from value. Uppercase is rejected on write so stored tags
+have one canonical form; tag *filters* stay case-insensitive so legacy
+hand-edited tags still match. `skill list` filters on them via `--tag` (flat)
+and `--category` (namespaced, repeatable, OR within a category, AND across
+categories).
 
 ### Writing Skills Guidelines
 
-When creating or editing skills (via `skern skill create` or manually), follow these guidelines adapted from [superpowers/writing-skills](https://github.com/obra/superpowers/tree/main/skills/writing-skills). For full details, see [docs/writing-skills.md](docs/writing-skills.md).
+Guidelines for authoring skill content, adapted from
+[superpowers/writing-skills](https://github.com/obra/superpowers/tree/main/skills/writing-skills),
+are enforced in two places — `internal/skill/scaffold.go` (the scaffolded
+template) and `internal/skill/validator.go` (stylistic hints on
+`skill validate`). Full details: [docs/writing-skills.md](./docs/writing-skills.md).
 
 Key points:
 
-- **Description**: Start with "Use when..." — describe triggering conditions, not a workflow summary
-- **Naming**: `kebab-case`, verb-first active voice (`creating-skills` not `skill-creation`)
-- **Body structure**: Overview → When to Use → Core Pattern → Quick Reference → Common Mistakes
-- **Token budget**: Getting-started < 150 words; frequently-loaded < 200 words; others < 500 words
-- **Examples**: One excellent example beats many mediocre ones
+- **Description**: start with "Use when..." — triggering conditions, not a
+  workflow summary
+- **Naming**: `kebab-case`, verb-first active voice (`creating-skills`, not
+  `skill-creation`)
+- **Body structure**: Overview → When to Use → Core Pattern → Quick Reference
+  → Common Mistakes
+- **Token budget**: getting-started < 150 words; frequently-loaded < 200
+  words; others < 500 words
+- **Examples**: one excellent example beats many mediocre ones
 
-### Skill Name Validation
+## Paths
 
-Names must match `^[a-z0-9]+([.-][a-z0-9]+)*$` and be 1-64 characters. Dots and hyphens are both valid segment separators; dots enable namespace-style names (e.g. `myorg.bootstrap`).
+### Registry
 
-### Registry Paths
+| Scope | Path |
+|---|---|
+| User | `~/.skern/skills/` |
+| Project | `.skern/skills/` |
 
-| Scope   | Path                    |
-|---------|-------------------------|
-| User    | `~/.skern/skills/`     |
-| Project | `.skern/skills/`       |
+### Platforms
 
-### Platform Paths
+Generated from `internal/platform/spec.go` — append a row there to add a
+platform. Paths follow
+[vercel-labs/skills](https://github.com/vercel-labs/skills#supported-agents)
+where possible.
 
-| Adapter name     | User-level                          | Project-level              |
-|------------------|--------------------------------------|----------------------------|
-| `claude-code`    | `~/.claude/skills/<name>/`          | `.claude/skills/<name>/`   |
-| `codex-cli`      | `~/.agents/skills/<name>/`          | `.agents/skills/<name>/`   |
-| `opencode`       | `~/.config/opencode/skills/<name>/` | `.opencode/skills/<name>/` |
-| `cursor`         | `~/.cursor/skills/<name>/`          | `.agents/skills/<name>/`   |
-| `gemini-cli`     | `~/.gemini/skills/<name>/`          | `.agents/skills/<name>/`   |
-| `github-copilot` | `~/.copilot/skills/<name>/`         | `.agents/skills/<name>/`   |
-| `windsurf`       | `~/.codeium/windsurf/skills/<name>/`| `.windsurf/skills/<name>/` |
-| `continue`       | `~/.continue/skills/<name>/`        | `.continue/skills/<name>/` |
+| Adapter name | User-level | Project-level |
+|---|---|---|
+| `claude-code` | `~/.claude/skills/<name>/` | `.claude/skills/<name>/` |
+| `codex-cli` | `~/.agents/skills/<name>/` | `.agents/skills/<name>/` |
+| `opencode` | `~/.config/opencode/skills/<name>/` | `.opencode/skills/<name>/` |
+| `cursor` | `~/.cursor/skills/<name>/` | `.agents/skills/<name>/` |
+| `gemini-cli` | `~/.gemini/skills/<name>/` | `.agents/skills/<name>/` |
+| `github-copilot` | `~/.copilot/skills/<name>/` | `.agents/skills/<name>/` |
+| `windsurf` | `~/.codeium/windsurf/skills/<name>/` | `.windsurf/skills/<name>/` |
+| `continue` | `~/.continue/skills/<name>/` | `.continue/skills/<name>/` |
 
-The full list is generated from `internal/platform/spec.go` — append a row there to add a platform.
+`codex-cli` keeps `~/.agents/skills/` rather than vercel's `~/.codex/skills/`
+so existing skern users see no disk-layout change. GitHub Copilot accepts
+`.github/skills`, `.claude/skills`, **and** `.agents/skills` for project
+scope, and `~/.copilot/skills` or `~/.agents/skills` for personal scope — the
+values above are valid Copilot paths, not a skern-specific convention
+([GitHub docs](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills)).
 
-### Overlap Detection Thresholds
+## Code Conventions
 
-- Score < 0.6 — proceed normally
-- Score >= 0.6 — warn, show similar skills
-- Score >= 0.9 — block creation, require `--force`
+### Go Style
 
-### Dependencies
+- Standard Go idioms and `gofmt` formatting
+- Exported names `CamelCase`; unexported `camelCase`
+- Prefer stdlib over third-party unless there is a strong reason
+- Keep packages small and single-responsibility
+- Use `internal/` to prevent external imports of implementation details
 
-| Dependency | Purpose |
-|------------|---------|
-| `github.com/spf13/cobra` | CLI framework |
-| `gopkg.in/yaml.v3` | YAML frontmatter parsing |
-| `santhosh-tekuri/jsonschema/v6` | Agent Skills spec validation (planned) |
-| `github.com/stretchr/testify` | Test assertions |
+### Error Handling
 
-## Current Status
+- Return `error` values; do not panic
+- Wrap with `fmt.Errorf("context: %w", err)`
+- Error messages include actionable suggestions
+- Semantic exit codes: `0` success, `1` error, `2` validation failure
 
-Milestones M0–M7 are complete (v0.3.0).
+### CLI Output
 
-- **M6** (v0.2.0) — dynamic skill loading per #52: batch install/uninstall, capacity reporting in install/uninstall output, `--enforce-budget` opt-in, `--with-platforms` flag on `skill list`, removal of `--platform all`. The v0.1.x → v0.2.0 transition introduced a breaking change to the JSON shape of install/uninstall results (`skills[]` + top-level `platform`/`capacity` instead of `platforms[]`).
-- **M7** (v0.3.0) — declarative platform registry: per-platform Go files collapsed into a single `Spec` table (`internal/platform/spec.go`) plus a generic `Adapter`. Five new adapters (`cursor`, `gemini-cli`, `github-copilot`, `windsurf`, `continue`) shipped alongside the rewrite. Also in v0.3.0: `skern init --instructions` writes the skern usage snippet into agent instruction files, `--from-template` requires a skill directory (small breaking change), and Windows joins the CI matrix.
+- Every command supports `--json`
+- Default output is human-friendly text
+- `--quiet` suppresses non-essential output
+- All printing goes through `internal/output`
 
-### Future Roadmap
+### Testing
 
-These items are tracked as GitHub issues:
+- Table-driven tests with descriptive subtest names
+- `testify/assert` and `testify/require` for assertions
+- Filesystem-touching tests must use `t.TempDir()`
+- `*_test.go` in the same package
 
-- MCP server mode (`skern serve`) — expose skills as MCP tools
-- Community skill catalog integration
-- Remote catalog search in `skern skill search`
-- Skill dependencies and composition (#45)
-- Platform-specific skill variants (#47)
-- Skill sync: bulk reconcile registry with platforms (#48)
-- Dry run / preview mode for mutating commands (#51)
-- WASI/Docker execution backends
-- LRU usage tracking for dynamic loading (#52 Phase 3) — state file at `~/.skern/state/usage.json`, `skern skill touch`/`skern skill evict` commands; deferred until the agent-side "skill use" signal is settled
-- Skill stats for context optimization (#75) — byte size, cross-platform presence, future token estimation
+### Essential Commands
 
+```sh
+make build   # build with version/commit/date injected
+make test    # go test ./...
+make lint    # golangci-lint run
+make fmt     # gofmt -w .
+```
+
+The full matrix — coverage, installer tests, smoke tests, and the manual
+agent-driven harness — is documented in
+[docs/contributing/development.md](./docs/contributing/development.md).
+
+### Git Workflow
+
+Work is tracked as GitHub issues via the `gh` CLI and merged to `main` by pull
+request.
+
+- **Branch naming**: `<type>/<slug>` where type is `feature`, `fix`, `chore`,
+  `docs`, or `release` — e.g. `feature/category-tag-filter`,
+  `fix/release-duplicate-trigger`, `release/v0.3.1`. (Milestone-numbered
+  branches like `feature/m7-…` are historical; milestones M0–M7 are closed.)
+- **Commits**: concise, imperative subject ("Add manifest parser", not
+  "Added manifest parser"), referencing issues as `#<number>`
+- **User-facing changes** land a `CHANGELOG.md` `[Unreleased]` entry in the
+  same PR
+
+## Roadmap
+
+Everything planned is a tracked issue; this list is a map, not a commitment.
+
+**Correctness and ergonomics (near-term)**
+
+- [#100] — unmodeled frontmatter keys dropped on write (data loss)
+- [#102] — `--tag` on `skill install` / `skill uninstall` for group installs
+- [#103] — exclude companion directories (eval corpora, fixtures) from install
+- [#104] — explicit non-interactive opt-out for `skern init`
+
+**Adapter model** — all three need the declarative-hook mechanism from design
+decision 3; settle the mechanism once rather than special-casing each.
+
+- [#99] — OpenCode's loader rejects dot-named skills; bridge via command shims
+- [#101] — four platforms share `.agents/skills/`, blocking per-platform content
+- [#47] — platform-specific skill variants
+
+**Registry and workflow**
+
+- [#48] — skill sync: bulk reconcile registry with platforms
+- [#51] — dry run / preview mode for mutating commands
+- [#45] — skill dependencies and composition
+- [#79] — import sources beyond GitHub (GitLab, Bitbucket, skills.sh, skild)
+- [#88] — ship `writing-skills` as a built-in skill
+- [#75] — skill stats for context optimization
+
+[#19]: https://github.com/devrimcavusoglu/skern/issues/19
+[#45]: https://github.com/devrimcavusoglu/skern/issues/45
+[#47]: https://github.com/devrimcavusoglu/skern/issues/47
+[#48]: https://github.com/devrimcavusoglu/skern/issues/48
+[#50]: https://github.com/devrimcavusoglu/skern/issues/50
+[#51]: https://github.com/devrimcavusoglu/skern/issues/51
+[#75]: https://github.com/devrimcavusoglu/skern/issues/75
+[#79]: https://github.com/devrimcavusoglu/skern/issues/79
+[#88]: https://github.com/devrimcavusoglu/skern/issues/88
+[#99]: https://github.com/devrimcavusoglu/skern/issues/99
+[#100]: https://github.com/devrimcavusoglu/skern/issues/100
+[#101]: https://github.com/devrimcavusoglu/skern/issues/101
+[#102]: https://github.com/devrimcavusoglu/skern/issues/102
+[#103]: https://github.com/devrimcavusoglu/skern/issues/103
+[#104]: https://github.com/devrimcavusoglu/skern/issues/104
