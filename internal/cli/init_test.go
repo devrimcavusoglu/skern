@@ -240,3 +240,56 @@ func TestInit_Instructions_NoPromptInJSONMode(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Nil(t, result.Instructions)
 }
+
+// #104: --no-instructions is the explicit non-interactive opt-out. It must
+// write nothing, prompt nothing, and report no instructions result — even
+// when an instruction file is present to be discovered.
+func TestInit_NoInstructions_WritesNothing(t *testing.T) {
+	dir := withTempCwd(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte("# Project\n"), 0o644))
+
+	out, err := runCmd(t, nil, "init", "--no-instructions", "--json")
+	require.NoError(t, err)
+
+	var result output.InitResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Nil(t, result.Instructions)
+	assert.True(t, result.Created)
+
+	got, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	require.NoError(t, err)
+	assert.Equal(t, "# Project\n", string(got), "AGENTS.md must be untouched")
+	assert.NotContains(t, out, "Append skern usage instructions", "no prompt text may be emitted")
+}
+
+func TestInit_NoInstructions_TextMode(t *testing.T) {
+	withTempCwd(t)
+
+	out, err := runCmd(t, nil, "init", "--no-instructions")
+	require.NoError(t, err)
+	assert.Contains(t, out, "Initialized")
+	assert.NotContains(t, out, "instruction")
+}
+
+// Opting out and opting in at once is a contradiction: validation error
+// (exit 2), nothing written.
+func TestInit_NoInstructions_ConflictsWithOptIn(t *testing.T) {
+	for _, optIn := range [][]string{
+		{"--instructions"},
+		{"--print-instructions"},
+		{"--target", "AGENTS.md"},
+		{"--tool-forming-loop"},
+	} {
+		t.Run(optIn[0], func(t *testing.T) {
+			dir := withTempCwd(t)
+			args := append([]string{"init", "--no-instructions"}, optIn...)
+			_, err := runCmd(t, nil, args...)
+			require.Error(t, err)
+			var ve *ValidationError
+			require.ErrorAs(t, err, &ve)
+			assert.Contains(t, err.Error(), "--no-instructions cannot be combined with "+optIn[0])
+			_, statErr := os.Stat(filepath.Join(dir, "AGENTS.md"))
+			assert.True(t, os.IsNotExist(statErr), "nothing should be written on a flag conflict")
+		})
+	}
+}
