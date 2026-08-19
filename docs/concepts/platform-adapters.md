@@ -48,6 +48,9 @@ Two consequences:
 
 - **Detection is per-platform**, not per-directory. The presence of `.agents/skills/` does not by itself indicate which agents are installed; skern looks at each platform's distinct user-level config dir (`~/.cursor`, `~/.gemini`, `~/.copilot`, `~/.codex`) to disambiguate.
 - **Capacity is per-directory.** When two platforms share a directory, both adapters see the same installed-skills count. Capacity thresholds protect the directory, not the logical agent — installing 50 skills via `cursor` will register as full capacity for `gemini-cli` too, because the agent will load all of them.
+- **One body per skill name.** Because the four adapters write to the same path, you cannot install different content for the same skill name to, say, `codex-cli` and `github-copilot` — the last install wins. Per-platform variants and a per-platform destination override are tracked in [#47](https://github.com/devrimcavusoglu/skern/issues/47) and [#101](https://github.com/devrimcavusoglu/skern/issues/101).
+
+The shared directory is not a skern invention: GitHub Copilot accepts `.github/skills/`, `.claude/skills/`, **and** `.agents/skills/` for project scope ([GitHub docs](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills)), and Codex CLI, Cursor, and Gemini CLI follow the [vercel-labs/skills](https://github.com/vercel-labs/skills#supported-agents) layout.
 
 ## One Platform per Invocation
 

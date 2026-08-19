@@ -119,13 +119,13 @@ setup_scenario() {
 # Scenario 01: Fresh Project — empty registry
 echo "Setting up 01-fresh-project..."
 DIR="$(setup_scenario 01 fresh-project)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 init_git "$DIR"
 
 # Scenario 02: Existing Skills — 3 pre-populated skills
 echo "Setting up 02-existing-skills..."
 DIR="$(setup_scenario 02 existing-skills)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 write_skill "$DIR" "go-formatter" "Formats Go source files using gofmt and goimports"
 write_skill "$DIR" "python-linter" "Lints Python code with ruff and reports issues"
 write_skill "$DIR" "markdown-toc" "Generates table of contents for markdown files"
@@ -134,7 +134,7 @@ init_git "$DIR"
 # Scenario 03: Overlap Detection — 2 skills with overlapping descriptions
 echo "Setting up 03-overlap-detection..."
 DIR="$(setup_scenario 03 overlap-detection)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 write_skill "$DIR" "code-review" "Review code changes and suggest code improvements"
 write_skill "$DIR" "lint-python" "Lint Python source code and report lint errors"
 init_git "$DIR"
@@ -142,7 +142,7 @@ init_git "$DIR"
 # Scenario 04: Multi-Platform Install — 1 skill, all 3 platform dirs
 echo "Setting up 04-multi-platform-install..."
 DIR="$(setup_scenario 04 multi-platform-install)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 write_skill "$DIR" "deploy-helper" "Assists with deployment steps and checklists"
 mkdir -p "$DIR/.claude" "$DIR/.agents" "$DIR/.opencode"
 init_git "$DIR"
@@ -150,14 +150,14 @@ init_git "$DIR"
 # Scenario 05: Full Lifecycle JSON — empty registry, .claude/ present
 echo "Setting up 05-full-lifecycle-json..."
 DIR="$(setup_scenario 05 full-lifecycle-json)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 mkdir -p "$DIR/.claude"
 init_git "$DIR"
 
 # Scenario 06: Error Recovery — 1 skill, .claude/ present
 echo "Setting up 06-error-recovery..."
 DIR="$(setup_scenario 06 error-recovery)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 write_skill "$DIR" "test-runner" "Run test suites and report test results for the project"
 mkdir -p "$DIR/.claude"
 init_git "$DIR"
@@ -165,13 +165,13 @@ init_git "$DIR"
 # Scenario 07: Scoped Skill Management — empty registry
 echo "Setting up 07-scoped-skill-management..."
 DIR="$(setup_scenario 07 scoped-skill-management)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 init_git "$DIR"
 
 # Scenario 08: Deduplication Advisory — 5 overlapping skills
 echo "Setting up 08-deduplication-advisory..."
 DIR="$(setup_scenario 08 deduplication-advisory)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 write_skill "$DIR" "test-runner" "Run test suites and report test results for the project"
 write_skill "$DIR" "run-tests" "Run test suites and report results across the project"
 write_skill "$DIR" "test-runner-v2" "Run test suites and report test results with coverage"
@@ -182,7 +182,7 @@ init_git "$DIR"
 # Scenario 09: Template Skills — empty registry, template files provided
 echo "Setting up 09-template-skills..."
 DIR="$(setup_scenario 09 template-skills)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 # Copy template files
 if [ -d "$SCENARIOS_DIR/09-template-skills/templates" ]; then
   mkdir -p "$DIR/templates"
@@ -193,7 +193,7 @@ init_git "$DIR"
 # Scenario 10: Platform Status Matrix — 3 skills, partial installs
 echo "Setting up 10-platform-status-matrix..."
 DIR="$(setup_scenario 10 platform-status-matrix)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 write_skill "$DIR" "go-formatter" "Formats Go source files using gofmt and goimports"
 write_skill "$DIR" "db-migrate" "Run database migrations and track schema changes"
 write_skill "$DIR" "api-docs" "Generate API documentation from source code annotations"
@@ -207,7 +207,7 @@ init_git "$DIR"
 # Scenario 11: Autonomous Skill Creation — Go project with inconsistencies, no mention of skills
 echo "Setting up 11-autonomous-skill-creation..."
 DIR="$(setup_scenario 11 autonomous-skill-creation)"
-(cd "$DIR" && skern init --quiet 2>/dev/null)
+(cd "$DIR" && skern init --no-instructions --quiet 2>/dev/null)
 mkdir -p "$DIR/.claude"
 
 # pkg/auth/auth.go — Clean formatting, no doc comments

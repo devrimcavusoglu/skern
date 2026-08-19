@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -239,4 +241,206 @@ func TestInit_Instructions_NoPromptInJSONMode(t *testing.T) {
 	var result output.InitResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	assert.Nil(t, result.Instructions)
+}
+
+// #104: --no-instructions is the explicit non-interactive opt-out. It must
+// write nothing, prompt nothing, and report no instructions result — even
+// when an instruction file is present to be discovered.
+func TestInit_NoInstructions_WritesNothing(t *testing.T) {
+	dir := withTempCwd(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte("# Project\n"), 0o644))
+
+	out, err := runCmd(t, nil, "init", "--no-instructions", "--json")
+	require.NoError(t, err)
+
+	var result output.InitResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	assert.Nil(t, result.Instructions)
+	assert.True(t, result.Created)
+
+	got, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	require.NoError(t, err)
+	assert.Equal(t, "# Project\n", string(got), "AGENTS.md must be untouched")
+	assert.NotContains(t, out, "Append skern usage instructions", "no prompt text may be emitted")
+}
+
+func TestInit_NoInstructions_TextMode(t *testing.T) {
+	withTempCwd(t)
+
+	out, err := runCmd(t, nil, "init", "--no-instructions")
+	require.NoError(t, err)
+	assert.Contains(t, out, "Initialized")
+	assert.NotContains(t, out, "instruction")
+}
+
+// Opting out and opting in at once is a contradiction: validation error
+// (exit 2), nothing written — not even .skern/.
+func TestInit_NoInstructions_ConflictsWithOptIn(t *testing.T) {
+	for _, optIn := range [][]string{
+		{"--instructions"},
+		{"--print-instructions"},
+		{"--target", "AGENTS.md"},
+		{"--tool-forming-loop"},
+	} {
+		t.Run(optIn[0], func(t *testing.T) {
+			dir := withTempCwd(t)
+			args := append([]string{"init", "--no-instructions"}, optIn...)
+			_, err := runCmd(t, nil, args...)
+			require.Error(t, err)
+			var ve *ValidationError
+			require.ErrorAs(t, err, &ve)
+			assert.Contains(t, err.Error(), "--no-instructions cannot be combined with "+optIn[0])
+			_, statErr := os.Stat(filepath.Join(dir, "AGENTS.md"))
+			assert.True(t, os.IsNotExist(statErr), "nothing should be written on a flag conflict")
+			_, statErr = os.Stat(filepath.Join(dir, ".skern"))
+			assert.True(t, os.IsNotExist(statErr), ".skern/ must not be created when flags are rejected")
+		})
+	}
+
+	// Values are compared, not "changed" state: an explicit false is consistent.
+	t.Run("explicit false is allowed", func(t *testing.T) {
+		dir := withTempCwd(t)
+		_, err := runCmd(t, nil, "init", "--no-instructions", "--instructions=false", "--tool-forming-loop=false")
+		require.NoError(t, err)
+		_, statErr := os.Stat(filepath.Join(dir, ".skern", "skills"))
+		require.NoError(t, statErr)
+	})
+}
+
+// lineReader hands out at most one line per Read, the way a terminal in
+// canonical mode does, so successive bufio.Scanners over the same stdin each
+// see exactly one answer (a plain strings.Reader would be slurped whole by
+// the first scanner).
+type lineReader struct{ rest string }
+
+func (l *lineReader) Read(p []byte) (int, error) {
+	if l.rest == "" {
+		return 0, io.EOF
+	}
+	n := strings.IndexByte(l.rest, '\n') + 1
+	if n == 0 {
+		n = len(l.rest)
+	}
+	n = copy(p, l.rest[:n])
+	l.rest = l.rest[n:]
+	return n, nil
+}
+
+// runInitWithTTY runs init with a simulated terminal on stdin feeding `input`.
+// It returns the combined stdout+stderr, the error, and whatever of `input`
+// was left unread (so tests can prove no prompt consumed it).
+func runInitWithTTY(t *testing.T, input string, args ...string) (out string, rest string, err error) {
+	t.Helper()
+	orig := isTerminalFn
+	isTerminalFn = func(io.Reader) bool { return true }
+	t.Cleanup(func() { isTerminalFn = orig })
+
+	in := &lineReader{rest: input}
+	cmd := newRootCmd(nil)
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cmd.SetIn(in)
+	cmd.SetArgs(append([]string{"init"}, args...))
+	err = cmd.Execute()
+	return buf.String(), in.rest, err
+}
+
+const promptInstr = "Append skern usage instructions"
+const promptToolForming = "Include tool-forming-loop section"
+
+// With a terminal and no flags, both prompts fire and are honored — this
+// proves the TTY simulation reaches the prompt path, so the negative tests
+// below are meaningful.
+func TestInit_TTY_NoFlags_Prompts(t *testing.T) {
+	dir := withTempCwd(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte("# Project\n"), 0o644))
+
+	out, rest, err := runInitWithTTY(t, "y\ny\n")
+	require.NoError(t, err)
+	assert.Contains(t, out, promptInstr)
+	assert.Contains(t, out, promptToolForming)
+	assert.Empty(t, rest, "both answers should have been consumed")
+	got, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	assert.Contains(t, string(got), instructions.StartMarker)
+	assert.Contains(t, string(got), "Tool-forming loop")
+
+	// Declining the first question skips the second.
+	withTempCwd(t)
+	out, rest, err = runInitWithTTY(t, "n\ny\n")
+	require.NoError(t, err)
+	assert.Contains(t, out, promptInstr)
+	assert.NotContains(t, out, promptToolForming)
+	assert.Equal(t, "y\n", rest)
+}
+
+// --no-instructions on a real terminal: no prompt text, stdin untouched,
+// nothing written. This is the guarantee #104 asks for.
+func TestInit_TTY_NoInstructions_NeverPrompts(t *testing.T) {
+	dir := withTempCwd(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte("# Project\n"), 0o644))
+
+	out, rest, err := runInitWithTTY(t, "y\ny\n", "--no-instructions")
+	require.NoError(t, err)
+	assert.NotContains(t, out, promptInstr)
+	assert.NotContains(t, out, promptToolForming)
+	assert.Equal(t, "y\ny\n", rest, "stdin must not be read")
+	got, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	assert.Equal(t, "# Project\n", string(got))
+}
+
+// Any instruction flag silences both prompts, including the second one: a
+// setup script running `skern init --instructions` in a terminal must not
+// hang on the tool-forming question.
+func TestInit_TTY_InstructionFlagsSilencePrompts(t *testing.T) {
+	for _, args := range [][]string{
+		{"--instructions"},
+		{"--print-instructions"},
+		{"--target", "AGENTS.md"},
+		{"--tool-forming-loop"},
+		{"--instructions=false"},
+		{"--json"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			dir := withTempCwd(t)
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte("# Project\n"), 0o644))
+			out, rest, err := runInitWithTTY(t, "y\ny\n", args...)
+			require.NoError(t, err)
+			assert.NotContains(t, out, promptInstr)
+			assert.NotContains(t, out, promptToolForming)
+			assert.Equal(t, "y\ny\n", rest, "stdin must not be read")
+		})
+	}
+
+	// And --instructions alone writes the snippet without the tool-forming
+	// section (the unasked question defaults to no).
+	dir := withTempCwd(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte("# Project\n"), 0o644))
+	_, _, err := runInitWithTTY(t, "", "--instructions")
+	require.NoError(t, err)
+	got, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	assert.Contains(t, string(got), instructions.StartMarker)
+	assert.NotContains(t, string(got), "Tool-forming loop")
+}
+
+// The real isTerminal must say "not a terminal" for the non-TTY inputs an
+// installer is likely to hand us: /dev/null, a pipe, a regular file, a
+// non-file reader. (A real pty is not available under go test.)
+func TestIsTerminal_NonTTYInputs(t *testing.T) {
+	devnull, err := os.Open(os.DevNull)
+	require.NoError(t, err)
+	defer func() { _ = devnull.Close() }()
+	assert.False(t, isTerminal(devnull), os.DevNull+" is a character device but not a terminal")
+
+	f, err := os.CreateTemp(t.TempDir(), "stdin")
+	require.NoError(t, err)
+	defer func() { _ = f.Close() }()
+	assert.False(t, isTerminal(f))
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	defer func() { _ = r.Close(); _ = w.Close() }()
+	assert.False(t, isTerminal(r))
+
+	assert.False(t, isTerminal(strings.NewReader("")))
 }

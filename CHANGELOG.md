@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with at most one colon separating category from value. Tag *filters* remain
   case-insensitive, so legacy hand-edited uppercase tags still match.
   ([#96], [#98])
+- **`skern init --no-instructions`** — an explicit opt-out from the
+  instruction-snippet prompt for installers and CI. Writes nothing, never
+  prompts, and is rejected (exit 2, before anything is created) when
+  combined with `--instructions`, `--print-instructions`, `--target`, or
+  `--tool-forming-loop`. The non-interactive contract is now documented and
+  enforced: when stdin is not a TTY or `--json` is set, `init` never prompts
+  and both questions resolve to "no". ([#104])
 
 ### Changed
 
@@ -43,6 +50,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after; YAML 1.1-only scalars such as bare dates and `yes`/`no` are
   canonicalized). `skill diff` reports differing pass-through keys under
   their own names. ([#100])
+- **`skern init` treated `/dev/null` as a terminal.** Interactivity was
+  detected with a character-device test, so `skern init < /dev/null` (the
+  installer / cron / `docker run` without `-i` case) still printed the
+  prompt before falling through to "no". Detection is now a real isatty
+  check. ([#104])
+- **`skern init --instructions` no longer stops to ask about the
+  tool-forming loop on a terminal.** Any instruction flag now disables both
+  prompts; an unasked question keeps its default. Previously a setup script
+  running `init --instructions` interactively would block on the second
+  question. ([#104])
 - **Release workflow is idempotent on duplicate tag-push deliveries.** A
   redelivered tag push no longer fails the run or produces a partial release.
   ([#95])
@@ -64,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#97]: https://github.com/devrimcavusoglu/skern/pull/97
 [#98]: https://github.com/devrimcavusoglu/skern/pull/98
 [#100]: https://github.com/devrimcavusoglu/skern/issues/100
+[#104]: https://github.com/devrimcavusoglu/skern/issues/104
 
 ## [v0.3.1] — 2026-05-13
 

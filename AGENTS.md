@@ -328,7 +328,6 @@ Everything planned is a tracked issue; this list is a map, not a commitment.
 
 - [#102] — `--tag` on `skill install` / `skill uninstall` for group installs
 - [#103] — exclude companion directories (eval corpora, fixtures) from install
-- [#104] — explicit non-interactive opt-out for `skern init`
 
 **Adapter model** — all three need the declarative-hook mechanism from design
 decision 3; settle the mechanism once rather than special-casing each.
