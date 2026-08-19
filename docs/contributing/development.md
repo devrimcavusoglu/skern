@@ -81,6 +81,7 @@ Two that shape where you'll be editing:
 |------------|---------|
 | `github.com/spf13/cobra` | CLI framework |
 | `gopkg.in/yaml.v3` | YAML frontmatter parsing |
+| `golang.org/x/term` | Real isatty check for `skern init` prompts (`/dev/null` is a char device but not a terminal) |
 | `github.com/stretchr/testify` | Test assertions |
 
 ## Issue Tracking & Branching

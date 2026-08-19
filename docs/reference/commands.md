@@ -58,14 +58,19 @@ skern init --no-instructions                  # explicit opt-out: never writes, 
 | Flag | Description |
 |------|-------------|
 | `--instructions` | Write the skern usage snippet to discovered agent config files. Default: off. |
-| `--no-instructions` | Explicit opt-out: do not write or offer the snippet, and never prompt. Mutually exclusive with `--instructions`, `--print-instructions`, `--target`, and `--tool-forming-loop` (exit 2 if combined). |
+| `--no-instructions` | Explicit opt-out: do not write or offer the snippet, and never prompt. Mutually exclusive with `--instructions`, `--print-instructions`, `--target`, and `--tool-forming-loop` (exit 2 if combined, and nothing — not even `.skern/` — is created). |
 | `--tool-forming-loop` | Include the tool-forming-loop section (search-before-create workflow). Default: off. |
 | `--target <path>` | Explicit instruction file path. Repeatable. Disables auto-discovery when set. |
 | `--print-instructions` | Print the rendered snippet to stdout instead of writing files. |
 
 The instruction snippet is wrapped in `<!-- skern:instructions:start -->` / `<!-- skern:instructions:end -->` markers so re-running `skern init --instructions` updates the block in place rather than appending a duplicate.
 
-**Interactivity contract.** When run on a TTY without `--json` or any of the instruction flags, `skern init` prompts for both choices (write instructions? include tool-forming loop?). Both default to **No**. When stdin is **not** a TTY (installers, CI, piped or redirected input) or `--json` is set, skern never prompts and never blocks on input — both answers resolve to **No** and only flag values are honored. This is a documented guarantee, not an accident of the prompt's default. Automated callers should still pass `--no-instructions` (or `--instructions`) so their intent is explicit rather than inferred from stdin.
+**Interactivity contract.** `skern init` asks its two questions (write instructions? include tool-forming loop?) only when **all** of these hold: no instruction flag was given, stdin is a terminal, and `--json` is not set. Both default to **No**.
+
+- Any instruction flag — `--instructions`, `--no-instructions`, `--print-instructions`, `--target`, `--tool-forming-loop` — disables **both** prompts; an unasked question keeps its default (so `--instructions` alone writes the snippet without the tool-forming section, and never waits on the second question).
+- When stdin is **not** a terminal (installers, CI, piped or redirected input, `/dev/null`) or `--json` is set, skern never prompts and never blocks on input — both answers resolve to **No** and only flag values are honored. Terminal detection is a real isatty check, not a character-device test, so `< /dev/null` counts as non-interactive.
+
+This is a documented guarantee, not an accident of the prompt's default. Automated callers should still pass `--no-instructions` (or `--instructions`) so their intent is explicit rather than inferred from stdin.
 
 ## `skern skill create`
 

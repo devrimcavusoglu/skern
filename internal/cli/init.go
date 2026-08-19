@@ -11,6 +11,7 @@ import (
 	"github.com/devrimcavusoglu/skern/internal/cli/instructions"
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 func newInitCmd() *cobra.Command {
@@ -33,12 +34,15 @@ all skill-related tasks.
 Idempotent — safe to run multiple times. The instruction snippet is
 wrapped in start/end markers so re-running updates the block in place.
 
-Interactivity: when no instruction flag is given, init asks whether to write
-the snippet only if stdin is a terminal and --json is not set. When stdin is
-not a TTY (installers, CI, piped input) or --json is set, skern never prompts
-and never blocks on input — the answer defaults to "no". Pass
---no-instructions to state that opt-out explicitly instead of relying on the
-non-TTY default, or --instructions to opt in.`,
+Interactivity: init asks its two questions (write the snippet? include the
+tool-forming loop?) only when no instruction flag is given, stdin is a
+terminal, and --json is not set. Any instruction flag (--instructions,
+--no-instructions, --print-instructions, --target, --tool-forming-loop)
+disables both prompts. When stdin is not a TTY (installers, CI, piped or
+redirected input, /dev/null) or --json is set, skern never prompts and never
+blocks on input — both answers default to "no". Pass --no-instructions to
+state that opt-out explicitly instead of relying on the non-TTY default, or
+--instructions to opt in.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runInit(cmd, runInitOpts{
@@ -75,6 +79,12 @@ type runInitOpts struct {
 
 func runInit(cmd *cobra.Command, opts runInitOpts) error {
 	cc := getContext(cmd)
+
+	// Flag contradictions are usage errors; reject them before creating
+	// anything on disk so a failed run leaves no trace.
+	if err := validateInitFlags(opts); err != nil {
+		return err
+	}
 
 	skillsDir := filepath.Join(".", ".skern", "skills")
 	skernPath := filepath.Join(".", ".skern")
@@ -148,48 +158,69 @@ func handleInstructions(cmd *cobra.Command, cc *CommandContext, opts runInitOpts
 	return res, nil
 }
 
+// validateInitFlags rejects contradictory flag combinations (#104): the
+// explicit opt-out cannot be combined with any opt-in. Values, not
+// "changed" state, are compared, so `--instructions=false --no-instructions`
+// is accepted as the consistent statement it is.
+func validateInitFlags(opts runInitOpts) error {
+	if !opts.noInstr {
+		return nil
+	}
+	switch {
+	case opts.writeInstr:
+		return &ValidationError{Message: "--no-instructions cannot be combined with --instructions"}
+	case opts.printInstr:
+		return &ValidationError{Message: "--no-instructions cannot be combined with --print-instructions"}
+	case len(opts.targetPaths) > 0:
+		return &ValidationError{Message: "--no-instructions cannot be combined with --target"}
+	case opts.toolForming:
+		return &ValidationError{Message: "--no-instructions cannot be combined with --tool-forming-loop"}
+	}
+	return nil
+}
+
 // resolveInstructionChoices folds flag values + TTY interactivity into the
 // final (writeInstructions, toolFormingLoop) decision.
+//
+// The contract: prompts appear only when no instruction flag was given,
+// stdin is a terminal, and output is not JSON. Any instruction flag —
+// including the explicit opt-out — silences both prompts, and a
+// non-terminal stdin (pipe, file, /dev/null, CI) never prompts and never
+// blocks, resolving both questions to "no".
 func resolveInstructionChoices(cmd *cobra.Command, cc *CommandContext, opts runInitOpts) (bool, bool, error) {
 	flags := cmd.Flags()
 
 	// Explicit opt-out (#104): nothing is written and neither prompt runs,
-	// regardless of TTY state. Combining it with an opt-in flag is a
-	// contradiction, reported as a validation error (exit 2).
+	// regardless of TTY state (flag conflicts were rejected up front).
 	if opts.noInstr {
-		for _, name := range []string{"instructions", "print-instructions", "target", "tool-forming-loop"} {
-			if flags.Changed(name) {
-				return false, false, &ValidationError{Message: fmt.Sprintf("--no-instructions cannot be combined with --%s", name)}
-			}
-		}
 		return false, false, nil
 	}
 
 	wantInstr := opts.writeInstr || opts.printInstr || len(opts.targetPaths) > 0
 	wantToolForming := opts.toolForming
 
-	// Skip prompting when JSON mode (machine-driven) or when stdin is not a
-	// terminal (CI, scripts, redirected input, tests). This is the documented
-	// non-interactive contract: without a TTY skern never blocks on input and
-	// both questions resolve to their default, "no".
+	// Any instruction flag means the caller chose flags over prompts; only
+	// the no-flag, interactive case asks.
+	flagged := flags.Changed("instructions") || flags.Changed("print-instructions") ||
+		flags.Changed("target") || flags.Changed("tool-forming-loop")
 	in := cmd.InOrStdin()
-	canPrompt := !cc.Printer.IsJSON() && isTerminal(in)
+	canPrompt := !flagged && !cc.Printer.IsJSON() && isTerminalFn(in)
+	if !canPrompt {
+		return wantInstr, wantToolForming, nil
+	}
 
 	// Prompts go to stderr so they never collide with --print-instructions
 	// output on stdout when scripts pipe init through.
 	promptOut := cmd.ErrOrStderr()
 
-	if !wantInstr && canPrompt && !flags.Changed("instructions") &&
-		!flags.Changed("print-instructions") && len(opts.targetPaths) == 0 {
-		yes, err := promptYesNo(in, promptOut,
-			"Append skern usage instructions to agent config files (AGENTS.md, CLAUDE.md, .claude/CLAUDE.md)?", false)
-		if err != nil {
-			return false, false, err
-		}
-		wantInstr = yes
+	yes, err := promptYesNo(in, promptOut,
+		"Append skern usage instructions to agent config files (AGENTS.md, CLAUDE.md, .claude/CLAUDE.md)?", false)
+	if err != nil {
+		return false, false, err
 	}
+	wantInstr = yes
 
-	if wantInstr && !wantToolForming && canPrompt && !flags.Changed("tool-forming-loop") {
+	if wantInstr {
 		yes, err := promptYesNo(in, promptOut,
 			"Include tool-forming-loop section (instructs the agent to search before creating)?", false)
 		if err != nil {
@@ -210,19 +241,21 @@ func resolveTargets(opts runInitOpts) ([]string, error) {
 	return instructions.DiscoverTargets(".")
 }
 
-// isTerminal reports whether r is a *os.File backed by a character device
-// (terminal). Returns false for non-file readers (e.g. test injectees) so
-// tests never trigger interactive prompts.
+// isTerminalFn decides whether stdin is interactive. A package variable so
+// tests can simulate a terminal without a pty.
+var isTerminalFn = isTerminal
+
+// isTerminal reports whether r is a *os.File attached to a terminal, using a
+// real isatty check. A character-device test is not enough: /dev/null (and
+// NUL on Windows) is a character device but not a terminal, and an installer
+// running `skern init < /dev/null` must not see a prompt. Non-file readers
+// (test injectees) are never terminals.
 func isTerminal(r io.Reader) bool {
 	f, ok := r.(*os.File)
 	if !ok {
 		return false
 	}
-	info, err := f.Stat()
-	if err != nil {
-		return false
-	}
-	return (info.Mode() & os.ModeCharDevice) != 0
+	return term.IsTerminal(int(f.Fd()))
 }
 
 // promptYesNo writes prompt to w and reads a y/n answer from r. The default
