@@ -40,8 +40,25 @@ func Validate(s *Skill) []ValidationIssue {
 	issues = append(issues, validateTags(s.Tags)...)
 	issues = append(issues, validateAllowedTools(s.AllowedTools)...)
 	issues = append(issues, validateMetadata(s.Metadata)...)
+	issues = append(issues, validateInstall(s.Install)...)
 	issues = append(issues, lintStyle(s)...)
 
+	return issues
+}
+
+// validateInstall checks the `install.exclude` patterns: every entry must be
+// a relative, well-formed glob that cannot match SKILL.md.
+func validateInstall(c InstallConfig) []ValidationIssue {
+	var issues []ValidationIssue
+	for _, pattern := range c.Exclude {
+		if err := ValidateExcludePattern(pattern); err != nil {
+			issues = append(issues, ValidationIssue{
+				Field:    "install.exclude",
+				Severity: SeverityError,
+				Message:  err.Error(),
+			})
+		}
+	}
 	return issues
 }
 
@@ -144,6 +161,32 @@ func ValidateFolder(s *Skill, skillDir string) []ValidationIssue {
 				Field:    "folder",
 				Severity: SeverityWarning,
 				Message:  fmt.Sprintf("referenced file %q not found in skill directory", ref),
+			})
+			continue
+		}
+		// The file exists in the registry but would be missing from every
+		// installed copy — almost certainly a mistake in install.exclude.
+		if MatchExclude(s.Install.Exclude, ref) {
+			issues = append(issues, ValidationIssue{
+				Field:    "install.exclude",
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("referenced file %q is excluded from install by install.exclude", ref),
+			})
+		}
+	}
+
+	// A pattern that matches nothing on disk is usually a typo (or stale
+	// after a rename) — worth a warning, not an error.
+	for _, pattern := range s.Install.Exclude {
+		if ValidateExcludePattern(pattern) != nil {
+			continue // reported as an error by Validate
+		}
+		matched, err := ExcludedFiles(skillDir, []string{pattern})
+		if err == nil && len(matched) == 0 {
+			issues = append(issues, ValidationIssue{
+				Field:    "install.exclude",
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("exclude pattern %q matches no file in the skill directory", pattern),
 			})
 		}
 	}

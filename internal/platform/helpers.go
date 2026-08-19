@@ -5,13 +5,16 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/devrimcavusoglu/skern/internal/skill"
 )
 
 const manifestFile = "SKILL.md"
 
-// installSkill copies a skill directory into the target base directory.
-// It returns an error if the skill already exists at the destination.
-func installSkill(sourceDir, skillName, targetBaseDir string) error {
+// installSkill copies a skill directory into the target base directory,
+// skipping paths matched by opts.Exclude. It returns an error if the skill
+// already exists at the destination.
+func installSkill(sourceDir, skillName, targetBaseDir string, opts InstallOptions) error {
 	destDir := filepath.Join(targetBaseDir, skillName)
 
 	if _, err := os.Stat(destDir); err == nil {
@@ -22,7 +25,8 @@ func installSkill(sourceDir, skillName, targetBaseDir string) error {
 		return fmt.Errorf("creating skills directory: %w", err)
 	}
 
-	if err := copyDir(sourceDir, destDir); err != nil {
+	skip := func(rel string) bool { return skill.MatchExclude(opts.Exclude, rel) }
+	if err := copyDir(sourceDir, destDir, skip); err != nil {
 		// Clean up on failure
 		_ = os.RemoveAll(destDir)
 		return fmt.Errorf("copying skill: %w", err)
@@ -67,8 +71,10 @@ func listInstalledSkills(targetBaseDir string) ([]string, error) {
 	return names, nil
 }
 
-// copyDir recursively copies a directory tree from src to dst.
-func copyDir(src, dst string) error {
+// copyDir recursively copies a directory tree from src to dst. Entries whose
+// src-relative path satisfies skip (nil means "copy everything") are not
+// copied; a skipped directory is pruned from the walk entirely.
+func copyDir(src, dst string, skip func(rel string) bool) error {
 	return filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -77,6 +83,12 @@ func copyDir(src, dst string) error {
 		rel, err := filepath.Rel(src, path)
 		if err != nil {
 			return err
+		}
+		if rel != "." && skip != nil && skip(rel) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		target := filepath.Join(dst, rel)
 

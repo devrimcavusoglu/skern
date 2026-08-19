@@ -244,3 +244,79 @@ func TestValidateFolder(t *testing.T) {
 		})
 	}
 }
+
+func TestMatchExclude(t *testing.T) {
+	cases := []struct {
+		name     string
+		patterns []string
+		rel      string
+		want     bool
+	}{
+		{"dir name excludes subtree", []string{"eval"}, "eval/s1.md", true},
+		{"dir name excludes nested subtree", []string{"eval"}, "eval/deep/s1.md", true},
+		{"dir name excludes the dir itself", []string{"eval"}, "eval", true},
+		{"trailing slash is equivalent", []string{"eval/"}, "eval/s1.md", true},
+		{"leading ./ is equivalent", []string{"./eval"}, "eval/s1.md", true},
+		{"no partial name match", []string{"eval"}, "evaluation/notes.md", false},
+		{"children glob", []string{"fixtures/*"}, "fixtures/a.json", true},
+		{"children glob prunes nested too", []string{"fixtures/*"}, "fixtures/sub/a.json", true},
+		{"children glob does not match the dir", []string{"fixtures/*"}, "fixtures", false},
+		{"suffix glob at top level", []string{"*.test.md"}, "a.test.md", true},
+		{"suffix glob does not cross slashes", []string{"*.test.md"}, "sub/a.test.md", false},
+		{"nested suffix glob", []string{"sub/*.test.md"}, "sub/a.test.md", true},
+		{"SKILL.md never excluded", []string{"*"}, "SKILL.md", false},
+		{"star excludes everything else", []string{"*"}, "notes.md", true},
+		{"multiple patterns, any matches", []string{"a", "b"}, "b/x", true},
+		{"empty patterns match nothing", nil, "eval/s1.md", false},
+		{"blank pattern ignored", []string{"  "}, "eval/s1.md", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, MatchExclude(tc.patterns, tc.rel))
+		})
+	}
+}
+
+func TestValidateExcludePattern(t *testing.T) {
+	for _, ok := range []string{"eval", "eval/", "fixtures/*", "*.test.md", "a/b/c", "./scratch", "[abc]*"} {
+		assert.NoError(t, ValidateExcludePattern(ok), ok)
+	}
+	bad := map[string]string{
+		"":            "must not be empty",
+		"   ":         "must not be empty",
+		"/abs":        "must be relative",
+		"../up":       `must not contain ".."`,
+		"a/../b":      `must not contain ".."`,
+		"[unclosed":   "not a valid glob",
+		"SKILL.md":    "must always be installed",
+		"*.md":        "must always be installed",
+		"SKILL.[m]d":  "must always be installed",
+		`\\server\\x`: "must be relative",
+	}
+	for pattern, wantMsg := range bad {
+		err := ValidateExcludePattern(pattern)
+		require.Error(t, err, "pattern %q", pattern)
+		assert.Contains(t, err.Error(), wantMsg, "pattern %q", pattern)
+	}
+}
+
+func TestExcludedFiles(t *testing.T) {
+	dir := t.TempDir()
+	mk := func(rel string) {
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		require.NoError(t, os.WriteFile(p, []byte("x"), 0o644))
+	}
+	mk("SKILL.md")
+	mk("eval/s1.md")
+	mk("eval/s2.md")
+	mk("references/a.md")
+
+	got, err := ExcludedFiles(dir, []string{"eval"})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{filepath.FromSlash("eval/s1.md"), filepath.FromSlash("eval/s2.md")}, got)
+
+	got, err = ExcludedFiles(dir, []string{"nope"})
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}

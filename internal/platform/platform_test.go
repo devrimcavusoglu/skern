@@ -136,7 +136,7 @@ func TestAdapter_RoundTrip(t *testing.T) {
 			a := New(s.Name, home, project)
 
 			// User scope
-			require.NoError(t, a.Install(skillDir, "round-trip", skill.ScopeUser))
+			require.NoError(t, a.Install(skillDir, "round-trip", skill.ScopeUser, InstallOptions{}))
 			userInstalled := filepath.Join(home, s.UserDir, "round-trip", "SKILL.md")
 			_, err := os.Stat(userInstalled)
 			require.NoError(t, err, "expected SKILL.md at %s", userInstalled)
@@ -150,7 +150,7 @@ func TestAdapter_RoundTrip(t *testing.T) {
 			assert.True(t, os.IsNotExist(err))
 
 			// Project scope
-			require.NoError(t, a.Install(skillDir, "round-trip", skill.ScopeProject))
+			require.NoError(t, a.Install(skillDir, "round-trip", skill.ScopeProject, InstallOptions{}))
 			projectInstalled := filepath.Join(project, s.ProjectDir, "round-trip", "SKILL.md")
 			_, err = os.Stat(projectInstalled)
 			require.NoError(t, err, "expected SKILL.md at %s", projectInstalled)
@@ -166,9 +166,9 @@ func TestAdapter_Install_Duplicate(t *testing.T) {
 	skillDir := createSkillDir(t, registry, "dup")
 
 	a := New(TypeClaudeCode, home, t.TempDir())
-	require.NoError(t, a.Install(skillDir, "dup", skill.ScopeUser))
+	require.NoError(t, a.Install(skillDir, "dup", skill.ScopeUser, InstallOptions{}))
 
-	err := a.Install(skillDir, "dup", skill.ScopeUser)
+	err := a.Install(skillDir, "dup", skill.ScopeUser, InstallOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already installed")
 }
@@ -202,7 +202,7 @@ func TestAdapter_SharedProjectDir(t *testing.T) {
 	require.Equal(t, cursor.ProjectSkillsDir(), gemini.ProjectSkillsDir(),
 		"sanity: cursor and gemini-cli should share .agents/skills/")
 
-	require.NoError(t, cursor.Install(skillDir, "shared", skill.ScopeProject))
+	require.NoError(t, cursor.Install(skillDir, "shared", skill.ScopeProject, InstallOptions{}))
 
 	// Both adapters report the skill because they read the same directory.
 	cursorList, err := cursor.InstalledSkills(skill.ScopeProject)
@@ -322,10 +322,10 @@ func TestFullLifecycle(t *testing.T) {
 	codex := New(TypeCodexCLI, home, project)
 
 	// Install to Claude Code
-	require.NoError(t, claude.Install(skillDir, "lifecycle-skill", skill.ScopeUser))
+	require.NoError(t, claude.Install(skillDir, "lifecycle-skill", skill.ScopeUser, InstallOptions{}))
 
 	// Install to Codex CLI
-	require.NoError(t, codex.Install(skillDir, "lifecycle-skill", skill.ScopeUser))
+	require.NoError(t, codex.Install(skillDir, "lifecycle-skill", skill.ScopeUser, InstallOptions{}))
 
 	// List installed on both
 	claudeSkills, err := claude.InstalledSkills(skill.ScopeUser)
@@ -367,7 +367,7 @@ func TestCopyDir(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(src, "file1.txt"), []byte("hello"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(src, "sub", "file2.txt"), []byte("world"), 0o644))
 
-	require.NoError(t, copyDir(src, dst))
+	require.NoError(t, copyDir(src, dst, nil))
 
 	// Verify structure
 	data1, err := os.ReadFile(filepath.Join(dst, "file1.txt"))
@@ -396,4 +396,76 @@ func TestListInstalledSkills_SkipsNonSkillDirs(t *testing.T) {
 	names, err := listInstalledSkills(base)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"valid-skill"}, names)
+}
+
+// #103: install honors InstallOptions.Exclude — matched files and whole
+// directories stay out of the platform copy while the source is untouched.
+func TestAdapter_Install_Exclude(t *testing.T) {
+	home := t.TempDir()
+	registry := t.TempDir()
+	skillDir := createSkillDir(t, registry, "lean")
+	mk := func(rel string) {
+		p := filepath.Join(skillDir, filepath.FromSlash(rel))
+		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		require.NoError(t, os.WriteFile(p, []byte("x"), 0o644))
+	}
+	mk("eval/s1.md")
+	mk("eval/deep/s2.md")
+	mk("fixtures/a.json")
+	mk("fixtures/keep/b.json")
+	mk("references/notes.md")
+	mk("scratch.test.md")
+
+	a := New(TypeClaudeCode, home, t.TempDir())
+	opts := InstallOptions{Exclude: []string{"eval", "fixtures/*", "*.test.md"}}
+	require.NoError(t, a.Install(skillDir, "lean", skill.ScopeUser, opts))
+
+	dest := filepath.Join(home, ".claude", "skills", "lean")
+	for _, want := range []string{"SKILL.md", "references/notes.md"} {
+		_, err := os.Stat(filepath.Join(dest, filepath.FromSlash(want)))
+		assert.NoError(t, err, "%s should be installed", want)
+	}
+	for _, gone := range []string{"eval", "eval/s1.md", "eval/deep/s2.md", "fixtures/a.json", "fixtures/keep", "scratch.test.md"} {
+		_, err := os.Stat(filepath.Join(dest, filepath.FromSlash(gone)))
+		assert.True(t, os.IsNotExist(err), "%s should be excluded", gone)
+	}
+	// fixtures/* prunes children but the (now empty) directory itself is not matched.
+	_, err := os.Stat(filepath.Join(dest, "fixtures"))
+	assert.NoError(t, err)
+
+	// Source untouched.
+	for _, src := range []string{"eval/s1.md", "fixtures/a.json", "scratch.test.md"} {
+		_, err := os.Stat(filepath.Join(skillDir, filepath.FromSlash(src)))
+		require.NoError(t, err)
+	}
+
+	// Zero options still copies everything.
+	b := New(TypeCodexCLI, home, t.TempDir())
+	require.NoError(t, b.Install(skillDir, "lean", skill.ScopeUser, InstallOptions{}))
+	_, err = os.Stat(filepath.Join(home, ".agents", "skills", "lean", "eval", "s1.md"))
+	assert.NoError(t, err)
+}
+
+func TestCopyDir_SkipFuncPrunesDirectories(t *testing.T) {
+	src := t.TempDir()
+	dst := filepath.Join(t.TempDir(), "out")
+	require.NoError(t, os.MkdirAll(filepath.Join(src, "keep"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(src, "drop", "nested"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(src, "keep", "a.txt"), []byte("a"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(src, "drop", "nested", "b.txt"), []byte("b"), 0o644))
+
+	var visited []string
+	skip := func(rel string) bool {
+		visited = append(visited, filepath.ToSlash(rel))
+		return filepath.ToSlash(rel) == "drop"
+	}
+	require.NoError(t, copyDir(src, dst, skip))
+
+	_, err := os.Stat(filepath.Join(dst, "keep", "a.txt"))
+	require.NoError(t, err)
+	_, err = os.Stat(filepath.Join(dst, "drop"))
+	assert.True(t, os.IsNotExist(err))
+	// The skipped directory's children were never visited (SkipDir pruned them).
+	assert.NotContains(t, visited, "drop/nested")
+	assert.NotContains(t, visited, "drop/nested/b.txt")
 }

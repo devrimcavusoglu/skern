@@ -6,9 +6,9 @@ Platform adapters bridge the skill registry with agent runtimes. Each adapter kn
 
 When you run `skern skill install`, the adapter:
 
-1. Reads the `SKILL.md` from the skern registry
+1. Reads the skill from the skern registry (its `SKILL.md` and companion files)
 2. Creates the platform-specific skill directory
-3. Copies the `SKILL.md` into the target location
+3. Copies the skill directory into the target location — minus any paths the skill's frontmatter lists under [`install.exclude`](/concepts/skill-format#install-time-exclusions) (eval corpora, fixtures, scratch), which stay in the registry only
 4. The agent runtime discovers the skill on its next invocation
 
 ## Supported Platforms

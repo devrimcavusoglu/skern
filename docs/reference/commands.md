@@ -310,6 +310,8 @@ Instead of names, select a group with the same filters [`skill list`](#skern-ski
 
 The response includes a top-level `capacity` block reporting the platform's installed-skill count after the operation, the threshold for that scope, and remaining headroom.
 
+The whole skill directory is copied except paths the skill's frontmatter lists under `install.exclude` — see [Skill Format › Install-time exclusions](/concepts/skill-format#install-time-exclusions). The registry copy is never trimmed.
+
 **Flags:**
 
 | Flag | Default | Description |

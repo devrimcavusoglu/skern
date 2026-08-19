@@ -1495,3 +1495,107 @@ Body.
 	assert.Equal(t, "needs git", parsed.Extra["compatibility"])
 	assert.Equal(t, []any{"plan", "review"}, parsed.Metadata.Extra["phases"])
 }
+
+// #103: a skill's install.exclude keeps companion directories in the
+// registry but out of every platform copy; the block itself round-trips
+// through create --from-template, and validate flags bad patterns.
+func TestSkillInstall_HonorsInstallExclude(t *testing.T) {
+	cc, _, projectReg := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+
+	srcDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "SKILL.md"), []byte(`---
+name: demo.skill
+description: Use when checking install exclusions.
+install:
+  exclude:
+    - eval
+    - "*.draft.md"
+metadata:
+  version: "0.1.0"
+---
+
+## Overview
+
+See `+"`references/guide.md`"+`.
+`), 0o644))
+	for _, rel := range []string{"eval/s1.md", "eval/nested/s2.md", "references/guide.md", "notes.draft.md"} {
+		p := filepath.Join(srcDir, filepath.FromSlash(rel))
+		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		require.NoError(t, os.WriteFile(p, []byte("x"), 0o644))
+	}
+
+	_, err := runCmd(t, cc, "skill", "create", "demo.skill", "--from-template", srcDir, "--scope", "project")
+	require.NoError(t, err)
+
+	// The install block survives the registry write (needs #100's modeling).
+	regManifest := filepath.Join(projectReg, "demo.skill", "SKILL.md")
+	parsed := requireParsedManifest(t, regManifest)
+	assert.Equal(t, []string{"eval", "*.draft.md"}, parsed.Install.Exclude)
+	raw, err := os.ReadFile(regManifest)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "install:\n    exclude:\n        - eval\n        - '*.draft.md'\n")
+	// Registry keeps everything.
+	for _, rel := range []string{"eval/s1.md", "eval/nested/s2.md", "notes.draft.md"} {
+		_, err := os.Stat(filepath.Join(projectReg, "demo.skill", filepath.FromSlash(rel)))
+		require.NoError(t, err, "registry must keep %s", rel)
+	}
+
+	_, err = runCmd(t, cc, "skill", "install", "demo.skill", "--platform", "claude-code", "--scope", "project")
+	require.NoError(t, err)
+
+	dest := filepath.Join(project, ".claude", "skills", "demo.skill")
+	for _, want := range []string{"SKILL.md", "references/guide.md"} {
+		_, err := os.Stat(filepath.Join(dest, filepath.FromSlash(want)))
+		assert.NoError(t, err, "%s should be installed", want)
+	}
+	for _, gone := range []string{"eval", "eval/s1.md", "eval/nested/s2.md", "notes.draft.md"} {
+		_, err := os.Stat(filepath.Join(dest, filepath.FromSlash(gone)))
+		assert.True(t, os.IsNotExist(err), "%s should be excluded from the platform copy", gone)
+	}
+
+	// diff compares manifests (not trees), so the installed copy is identical.
+	out, err := runCmd(t, cc, "skill", "diff", "demo.skill", "--platform", "claude-code", "--scope", "project", "--json")
+	require.NoError(t, err)
+	var diff output.SkillDiffResult
+	require.NoError(t, json.Unmarshal([]byte(out), &diff))
+	assert.True(t, diff.Identical)
+
+	// validate: clean skill passes; the two patterns match files so no warning.
+	out, err = runCmd(t, cc, "skill", "validate", "demo.skill", "--scope", "project")
+	require.NoError(t, err)
+	assert.NotContains(t, out, "install.exclude")
+}
+
+func TestSkillValidate_InstallExcludeErrors(t *testing.T) {
+	cc, _, projectReg := testRegistryWithDirs(t)
+	dir := filepath.Join(projectReg, "bad-exclude")
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "eval"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "eval", "s1.md"), []byte("x"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(`---
+name: bad-exclude
+description: Use when testing exclude validation.
+install:
+  exclude: ["../escape", "SKILL.md", "eval", "ghost"]
+metadata:
+  author:
+    name: a
+    type: human
+  version: "0.1.0"
+---
+
+## Overview
+
+Body text long enough to avoid lint noise about brevity in this validation test.
+`), 0o644))
+
+	out, err := runCmd(t, cc, "skill", "validate", "bad-exclude", "--scope", "project", "--json")
+	require.Error(t, err, "errors in install.exclude must fail validation")
+	assert.Contains(t, out, `must not contain \"..\"`)
+	assert.Contains(t, out, "must always be installed")
+	assert.Contains(t, out, `exclude pattern \"ghost\" matches no file`)
+	// "eval" is valid and matches: neither error nor warning mentions it.
+	assert.NotContains(t, out, `\"eval\"`)
+}

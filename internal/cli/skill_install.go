@@ -98,7 +98,7 @@ installed-skill count would meet or exceed the per-platform threshold (see
 			for _, name := range names {
 				entry := output.SkillActionEntry{Skill: name}
 
-				_, skillDir, getErr := reg.Get(name, scopeVal)
+				s, skillDir, getErr := reg.Get(name, scopeVal)
 				if getErr != nil {
 					entry.Error = fmt.Sprintf("not registered in skern (%s scope) — run 'skern skill create' or 'skern skill import' first, or 'skern skill list' to see available skills", scope)
 					entries = append(entries, entry)
@@ -110,7 +110,8 @@ installed-skill count would meet or exceed the per-platform threshold (see
 					_ = p.Uninstall(name, scopeVal)
 				}
 
-				if installErr := p.Install(skillDir, name, scopeVal); installErr != nil {
+				opts := platform.InstallOptions{Exclude: s.Install.Exclude}
+				if installErr := p.Install(skillDir, name, scopeVal, opts); installErr != nil {
 					entry.Error = installErr.Error()
 				} else {
 					entry.Success = true

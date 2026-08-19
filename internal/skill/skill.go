@@ -59,6 +59,20 @@ type Metadata struct {
 	Extra      map[string]any    `yaml:",inline" json:"-"`
 }
 
+// InstallConfig is the author-owned `install:` frontmatter block controlling
+// how a skill is copied onto a platform. The registry always keeps the whole
+// skill directory; these settings only shape the installed copy.
+type InstallConfig struct {
+	// Exclude lists glob patterns (relative to the skill directory, slash
+	// separated) for files and directories that stay in the registry but are
+	// not copied on install — evaluation corpora, fixtures, development
+	// scratch. See MatchExclude for the matching rules.
+	Exclude []string `yaml:"exclude,omitempty" json:"exclude,omitempty"`
+}
+
+// IsZero lets yaml omit an empty install block on write.
+func (c InstallConfig) IsZero() bool { return len(c.Exclude) == 0 }
+
 // Skill represents an Agent Skill with frontmatter and body content.
 //
 // Extra carries every top-level frontmatter key skern does not model
@@ -70,6 +84,7 @@ type Skill struct {
 	Tags         []string       `yaml:"tags,omitempty" json:"tags,omitempty"`
 	AllowedTools []string       `yaml:"allowed-tools,omitempty" json:"allowed_tools,omitempty"`
 	Metadata     Metadata       `yaml:"metadata" json:"metadata"`
+	Install      InstallConfig  `yaml:"install,omitempty" json:"install,omitempty"`
 	Extra        map[string]any `yaml:",inline" json:"-"`
 	Body         string         `yaml:"-" json:"-"`
 }

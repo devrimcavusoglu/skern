@@ -33,6 +33,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   swallowed). `uninstall --tag` narrows the group to what is actually
   installed on the platform and skips the rest. `--enforce-budget` counts
   the resolved group. ([#102])
+- **`install.exclude` frontmatter — keep companion files out of platform
+  copies.** A skill can now list `path.Match` globs (relative to its
+  directory) under `install.exclude` for assets that belong in the
+  registry but not in an agent's context — evaluation corpora, fixtures,
+  scratch. `skern skill install` skips them; the registry keeps everything.
+  A bare directory name excludes its subtree (`eval`), `fixtures/*` its
+  children, `*.draft.md` top-level files by suffix; `SKILL.md` can never be
+  excluded. `skill validate` errors on malformed, absolute, or `..` patterns
+  and warns when a pattern matches nothing or excludes a file the body
+  references. Platform adapters take an `InstallOptions` argument on
+  `Install`. ([#103])
 
 ### Changed
 
@@ -91,6 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#98]: https://github.com/devrimcavusoglu/skern/pull/98
 [#100]: https://github.com/devrimcavusoglu/skern/issues/100
 [#102]: https://github.com/devrimcavusoglu/skern/issues/102
+[#103]: https://github.com/devrimcavusoglu/skern/issues/103
 [#104]: https://github.com/devrimcavusoglu/skern/issues/104
 
 ## [v0.3.1] — 2026-05-13

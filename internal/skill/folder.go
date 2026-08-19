@@ -1,7 +1,9 @@
 package skill
 
 import (
+	"fmt"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -93,4 +95,86 @@ func ExtractFileReferences(body string) []string {
 	}
 
 	return refs
+}
+
+// ValidateExcludePattern checks one `install.exclude` entry. Patterns are
+// slash-separated paths relative to the skill directory using path.Match
+// syntax (`*`, `?`, `[...]`; no `**`). Rejected: empty, absolute, any `..`
+// segment, a malformed glob, and anything that would match SKILL.md itself.
+func ValidateExcludePattern(pattern string) error {
+	p := normalizeExcludePattern(pattern)
+	if p == "" {
+		return fmt.Errorf("exclude pattern must not be empty")
+	}
+	if strings.HasPrefix(p, "/") || filepath.IsAbs(pattern) || strings.HasPrefix(pattern, "\\") {
+		return fmt.Errorf("exclude pattern %q must be relative to the skill directory", pattern)
+	}
+	for _, seg := range strings.Split(p, "/") {
+		if seg == ".." {
+			return fmt.Errorf("exclude pattern %q must not contain \"..\"", pattern)
+		}
+	}
+	if _, err := path.Match(p, "x"); err != nil {
+		return fmt.Errorf("exclude pattern %q is not a valid glob: %v", pattern, err)
+	}
+	if ok, _ := path.Match(p, ManifestFile); ok {
+		return fmt.Errorf("exclude pattern %q would exclude %s, which must always be installed", pattern, ManifestFile)
+	}
+	return nil
+}
+
+// normalizeExcludePattern trims whitespace, converts backslashes to slashes,
+// and strips a leading "./" and any trailing "/" (a directory pattern
+// written as "eval/" means the same as "eval").
+func normalizeExcludePattern(pattern string) string {
+	p := strings.TrimSpace(pattern)
+	p = strings.ReplaceAll(p, "\\", "/")
+	p = strings.TrimPrefix(p, "./")
+	p = strings.TrimRight(p, "/")
+	return p
+}
+
+// MatchExclude reports whether rel — a slash-separated path relative to the
+// skill directory — is excluded by any of patterns. A pattern matches a path
+// when path.Match matches the full relative path or any of its leading
+// directory prefixes, so `eval` excludes `eval/` and everything beneath it,
+// `fixtures/*` excludes the direct children of fixtures/, and `*.test.md`
+// excludes top-level files with that suffix. SKILL.md is never excluded.
+func MatchExclude(patterns []string, rel string) bool {
+	rel = filepath.ToSlash(rel)
+	if rel == "" || rel == "." || rel == ManifestFile {
+		return false
+	}
+	for _, raw := range patterns {
+		p := normalizeExcludePattern(raw)
+		if p == "" {
+			continue
+		}
+		// Walk the path prefixes: "a/b/c" -> "a", "a/b", "a/b/c".
+		for i := 0; i <= len(rel); i++ {
+			if i == len(rel) || rel[i] == '/' {
+				if ok, _ := path.Match(p, rel[:i]); ok {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// ExcludedFiles returns the relative paths under skillDir (excluding
+// SKILL.md) that MatchExclude would drop for patterns, in walk order. Used by
+// the validator to warn about patterns that match nothing.
+func ExcludedFiles(skillDir string, patterns []string) ([]string, error) {
+	files, err := ListFiles(skillDir)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, f := range files {
+		if MatchExclude(patterns, f) {
+			out = append(out, f)
+		}
+	}
+	return out, nil
 }
