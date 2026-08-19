@@ -5,12 +5,14 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/platform"
 	"github.com/devrimcavusoglu/skern/internal/registry"
 	"github.com/devrimcavusoglu/skern/internal/skill"
+	"github.com/spf13/cobra"
 )
 
 func defaultNewRegistry() (*registry.Registry, error) {
@@ -278,6 +280,104 @@ func matchesCategories(tags []string, filters map[string][]string, includeUntagg
 		}
 	}
 	return true
+}
+
+// skillFilter is the tag/category selection shared by skill list, install,
+// and uninstall (#102). One definition keeps the flag names, help text, and
+// match semantics identical across the three commands.
+type skillFilter struct {
+	tag             string
+	categories      []string
+	includeUntagged bool
+}
+
+// register adds --tag, --category, and --include-untagged to cmd.
+func (f *skillFilter) register(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&f.tag, "tag", "", "filter skills by tag")
+	cmd.Flags().StringArrayVar(&f.categories, "category", nil, "filter by namespaced tag \"category:value\" (repeatable; comma-lists values; OR within a category, AND across categories)")
+	cmd.Flags().BoolVar(&f.includeUntagged, "include-untagged", false, "treat a skill with no tag in a requested category as matching that category")
+}
+
+// active reports whether any selection flag was given.
+func (f *skillFilter) active() bool {
+	return f.tag != "" || len(f.categories) > 0
+}
+
+// describe renders the active flags for error messages, e.g.
+// `--tag workflow --category lang:python`.
+func (f *skillFilter) describe() string {
+	var parts []string
+	if f.tag != "" {
+		parts = append(parts, "--tag "+f.tag)
+	}
+	for _, c := range f.categories {
+		parts = append(parts, "--category "+c)
+	}
+	return strings.Join(parts, " ")
+}
+
+// matcher validates the category flags and returns a predicate over a
+// skill's tags. An inactive filter matches everything.
+func (f *skillFilter) matcher() (func(tags []string) bool, error) {
+	categoryFilters, err := parseCategoryFilters(f.categories)
+	if err != nil {
+		return nil, err
+	}
+	return func(tags []string) bool {
+		if f.tag != "" && !hasTag(tags, f.tag) {
+			return false
+		}
+		return matchesCategories(tags, categoryFilters, f.includeUntagged)
+	}, nil
+}
+
+// resolveSkillsByFilter returns the names of registry skills in scope that
+// satisfy the filter, sorted for deterministic batch order. Install and
+// uninstall read the registry at --scope, so the filter resolves there too.
+// An empty result is reported as an error so a group operation never turns
+// into a silent no-op.
+func resolveSkillsByFilter(reg *registry.Registry, scope skill.Scope, f *skillFilter) ([]string, error) {
+	match, err := f.matcher()
+	if err != nil {
+		return nil, err
+	}
+	skills, _, err := reg.List(scope)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for i := range skills {
+		if match(skills[i].Tags) {
+			names = append(names, skills[i].Name)
+		}
+	}
+	if len(names) == 0 {
+		return nil, fmt.Errorf("no registered skills match %s in %s scope (run 'skern skill list --scope %s' to see available skills)", f.describe(), scope, scope)
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+// resolveActionTargets turns positional names or an active filter into the
+// list of skills an install/uninstall batch operates on. Names and filters
+// are mutually exclusive: mixing them is a validation error, and so is
+// passing neither.
+func resolveActionTargets(reg *registry.Registry, scope skill.Scope, args []string, f *skillFilter) ([]string, error) {
+	if f.active() {
+		if len(args) > 0 {
+			return nil, &ValidationError{Message: fmt.Sprintf("skill names and %s are mutually exclusive; pass one or the other", f.describe())}
+		}
+		return resolveSkillsByFilter(reg, scope, f)
+	}
+	if len(args) == 0 {
+		return nil, &ValidationError{Message: "requires at least one skill name, or a --tag/--category filter"}
+	}
+	for _, name := range args {
+		if err := skill.ValidateName(name); err != nil {
+			return nil, &ValidationError{Message: err.Error()}
+		}
+	}
+	return args, nil
 }
 
 // resolveSkill finds a skill by name, searching the specified scope or both scopes.

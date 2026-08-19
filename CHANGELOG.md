@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--tool-forming-loop`. The non-interactive contract is now documented and
   enforced: when stdin is not a TTY or `--json` is set, `init` never prompts
   and both questions resolve to "no". ([#104])
+- **`--tag` / `--category` on `skern skill install` and `skill uninstall`.**
+  Select a group of registry skills with the same filters `skill list`
+  accepts instead of naming each one — `skern skill install --tag workflow
+  --platform claude-code`. Names and filters are mutually exclusive (exit 2
+  if mixed or if neither is given); a filter that matches nothing is an error,
+  never a silent no-op. `uninstall --tag` narrows the group to what is
+  actually installed on the platform and skips the rest. `--enforce-budget`
+  counts the resolved group. ([#102])
 
 ### Changed
 
@@ -81,6 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#97]: https://github.com/devrimcavusoglu/skern/pull/97
 [#98]: https://github.com/devrimcavusoglu/skern/pull/98
 [#100]: https://github.com/devrimcavusoglu/skern/issues/100
+[#102]: https://github.com/devrimcavusoglu/skern/issues/102
 [#104]: https://github.com/devrimcavusoglu/skern/issues/104
 
 ## [v0.3.1] — 2026-05-13

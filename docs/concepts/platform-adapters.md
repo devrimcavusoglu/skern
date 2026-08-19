@@ -75,6 +75,15 @@ skern skill install code-review test-runner deploy-checker --platform claude-cod
 skern skill uninstall stale-a stale-b --platform claude-code
 ```
 
+A batch can also be selected by tag instead of by name, using the same `--tag` / `--category` filters as `skill list`:
+
+```sh
+skern skill install --tag workflow --platform claude-code --scope project
+skern skill uninstall --tag workflow --platform claude-code --scope project
+```
+
+Names and filters are mutually exclusive; a filter that matches nothing is an error, not a silent no-op. See [Commands › install](/reference/commands#group-installs-tag-category).
+
 Each skill's outcome is reported separately in the JSON output's `skills` array, and a `capacity` block reports the platform's installed-skill count after the batch.
 
 ## Platform Status Matrix

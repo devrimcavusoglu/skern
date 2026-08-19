@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -538,4 +539,209 @@ func TestPlatformStatus_ProjectScope(t *testing.T) {
 	assert.Equal(t, "project", result.Scope)
 	assert.Len(t, result.Status, 1)
 	assert.Equal(t, "proj-status", result.Status[0].Skill)
+}
+
+// --- #102: --tag / --category on install and uninstall ---
+
+// setupTaggedSkills creates four registry skills in user scope:
+// two tagged "workflow" (one also lang:go), one lang:python only, one untagged.
+func setupTaggedSkills(t *testing.T, cc *CommandContext) {
+	t.Helper()
+	for _, spec := range []struct{ name, tags string }{
+		{"wf-plan", "workflow,lang:go"},
+		{"wf-review", "workflow"},
+		{"py-only", "lang:python"},
+		{"plain", ""},
+	} {
+		args := []string{"skill", "create", spec.name, "--description", "Use when testing tag installs."}
+		if spec.tags != "" {
+			args = append(args, "--tags", spec.tags)
+		}
+		_, err := runCmd(t, cc, args...)
+		require.NoError(t, err)
+	}
+}
+
+func TestSkillInstall_ByTag(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	withTestDetector(t, cc, home, t.TempDir())
+	setupTaggedSkills(t, cc)
+
+	out, err := runCmd(t, cc, "skill", "install", "--tag", "workflow", "--platform", "claude-code", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillInstallResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Len(t, result.Skills, 2)
+	assert.Equal(t, "wf-plan", result.Skills[0].Skill, "resolved names are sorted")
+	assert.Equal(t, "wf-review", result.Skills[1].Skill)
+	for _, e := range result.Skills {
+		assert.True(t, e.Success, "%s should install", e.Skill)
+	}
+	for _, n := range []string{"wf-plan", "wf-review"} {
+		_, err := os.Stat(filepath.Join(home, ".claude", "skills", n, "SKILL.md"))
+		require.NoError(t, err)
+	}
+	for _, n := range []string{"py-only", "plain"} {
+		_, err := os.Stat(filepath.Join(home, ".claude", "skills", n))
+		assert.True(t, os.IsNotExist(err), "%s must not be installed", n)
+	}
+}
+
+func TestSkillInstall_ByCategory_AndsWithTag(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	withTestDetector(t, cc, home, t.TempDir())
+	setupTaggedSkills(t, cc)
+
+	// --tag and --category compose with AND: only wf-plan is workflow AND lang:go.
+	out, err := runCmd(t, cc, "skill", "install", "--tag", "workflow", "--category", "lang:go",
+		"--platform", "claude-code", "--json")
+	require.NoError(t, err)
+	var result output.SkillInstallResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Len(t, result.Skills, 1)
+	assert.Equal(t, "wf-plan", result.Skills[0].Skill)
+
+	// --category alone, comma list ORs within the namespace.
+	out, err = runCmd(t, cc, "skill", "install", "--category", "lang:go,python",
+		"--platform", "codex-cli", "--json")
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Len(t, result.Skills, 2)
+	assert.Equal(t, "py-only", result.Skills[0].Skill)
+	assert.Equal(t, "wf-plan", result.Skills[1].Skill)
+}
+
+func TestSkillInstall_Filter_EmptyMatchIsError(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	withTestDetector(t, cc, t.TempDir(), t.TempDir())
+	setupTaggedSkills(t, cc)
+
+	out, err := runCmd(t, cc, "skill", "install", "--tag", "nope", "--platform", "claude-code")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no registered skills match --tag nope in user scope")
+	assert.NotContains(t, out, "Installed", "an empty match must not be a silent no-op")
+	// Empty match is an operational error (exit 1), not a usage error.
+	var ve *ValidationError
+	assert.False(t, errors.As(err, &ve))
+}
+
+func TestSkillInstall_Filter_MutuallyExclusiveWithNames(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	withTestDetector(t, cc, t.TempDir(), t.TempDir())
+	setupTaggedSkills(t, cc)
+
+	_, err := runCmd(t, cc, "skill", "install", "plain", "--tag", "workflow", "--platform", "claude-code")
+	require.Error(t, err)
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve)
+	assert.Contains(t, err.Error(), "mutually exclusive")
+
+	// Neither names nor a filter is a usage error too.
+	_, err = runCmd(t, cc, "skill", "install", "--platform", "claude-code")
+	require.Error(t, err)
+	require.ErrorAs(t, err, &ve)
+	assert.Contains(t, err.Error(), "requires at least one skill name, or a --tag/--category filter")
+
+	// Malformed --category surfaces the same validation error list uses.
+	_, err = runCmd(t, cc, "skill", "install", "--category", "noncolon", "--platform", "claude-code")
+	require.Error(t, err)
+	require.ErrorAs(t, err, &ve)
+}
+
+func TestSkillInstall_Filter_RespectsScope(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	project := t.TempDir()
+	withTestDetector(t, cc, home, project)
+	setupTaggedSkills(t, cc) // user scope
+	_, err := runCmd(t, cc, "skill", "create", "proj-wf", "--description", "Use when testing.", "--tags", "workflow", "--scope", "project")
+	require.NoError(t, err)
+
+	// The filter resolves against the registry at --scope only.
+	out, err := runCmd(t, cc, "skill", "install", "--tag", "workflow", "--platform", "claude-code", "--scope", "project", "--json")
+	require.NoError(t, err)
+	var result output.SkillInstallResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Len(t, result.Skills, 1)
+	assert.Equal(t, "proj-wf", result.Skills[0].Skill)
+	_, err = os.Stat(filepath.Join(project, ".claude", "skills", "proj-wf", "SKILL.md"))
+	require.NoError(t, err)
+}
+
+func TestSkillInstall_Filter_EnforceBudgetCountsResolved(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	withTestDetector(t, cc, t.TempDir(), t.TempDir())
+	setupTaggedSkills(t, cc)
+
+	// Two workflow skills resolve; a budget check must see 2, not 0 args.
+	// Under the threshold it proceeds normally.
+	out, err := runCmd(t, cc, "skill", "install", "--tag", "workflow", "--platform", "claude-code", "--enforce-budget", "--json")
+	require.NoError(t, err)
+	var result output.SkillInstallResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	require.Len(t, result.Skills, 2)
+	require.NotNil(t, result.Capacity)
+	assert.Equal(t, 2, result.Capacity.Installed)
+}
+
+func TestSkillUninstall_ByTag_OnlyInstalledMatches(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	home := t.TempDir()
+	withTestDetector(t, cc, home, t.TempDir())
+	setupTaggedSkills(t, cc)
+
+	// Install one workflow skill and the untagged one; leave wf-review uninstalled.
+	_, err := runCmd(t, cc, "skill", "install", "wf-plan", "plain", "--platform", "claude-code")
+	require.NoError(t, err)
+
+	out, err := runCmd(t, cc, "skill", "uninstall", "--tag", "workflow", "--platform", "claude-code", "--json")
+	require.NoError(t, err)
+
+	var result output.SkillUninstallResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+	// wf-review is tagged but not installed: skipped, not a failure entry.
+	require.Len(t, result.Skills, 1)
+	assert.Equal(t, "wf-plan", result.Skills[0].Skill)
+	assert.True(t, result.Skills[0].Success)
+
+	_, err = os.Stat(filepath.Join(home, ".claude", "skills", "wf-plan"))
+	assert.True(t, os.IsNotExist(err), "wf-plan should be removed")
+	_, err = os.Stat(filepath.Join(home, ".claude", "skills", "plain", "SKILL.md"))
+	require.NoError(t, err, "untagged skill must survive a tag-scoped uninstall")
+	// Registry copies are untouched either way.
+	_, err = runCmd(t, cc, "skill", "show", "wf-plan")
+	require.NoError(t, err)
+}
+
+func TestSkillUninstall_ByTag_NothingInstalledIsError(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	withTestDetector(t, cc, t.TempDir(), t.TempDir())
+	setupTaggedSkills(t, cc)
+
+	_, err := runCmd(t, cc, "skill", "uninstall", "--tag", "workflow", "--platform", "claude-code")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no installed skills match --tag workflow on claude-code (user scope)")
+
+	// Unknown tag: fails at the registry step with the same message install uses.
+	_, err = runCmd(t, cc, "skill", "uninstall", "--tag", "nope", "--platform", "claude-code")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no registered skills match --tag nope in user scope")
+}
+
+func TestSkillUninstall_Filter_MutuallyExclusiveWithNames(t *testing.T) {
+	cc, _, _ := testRegistryWithDirs(t)
+	withTestDetector(t, cc, t.TempDir(), t.TempDir())
+
+	_, err := runCmd(t, cc, "skill", "uninstall", "plain", "--tag", "workflow", "--platform", "claude-code")
+	require.Error(t, err)
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve)
+	assert.Contains(t, err.Error(), "mutually exclusive")
+
+	_, err = runCmd(t, cc, "skill", "uninstall", "--platform", "claude-code")
+	require.Error(t, err)
+	require.ErrorAs(t, err, &ve)
 }

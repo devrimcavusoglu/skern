@@ -192,9 +192,12 @@ hyphens are both valid segment separators; dots enable namespace-style names
 lowercase alphanumeric segments joined by hyphens, with at most one colon
 separating category from value. Uppercase is rejected on write so stored tags
 have one canonical form; tag *filters* stay case-insensitive so legacy
-hand-edited tags still match. `skill list` filters on them via `--tag` (flat)
-and `--category` (namespaced, repeatable, OR within a category, AND across
-categories).
+hand-edited tags still match. `skill list`, `skill install`, and
+`skill uninstall` filter on them via `--tag` (flat) and `--category`
+(namespaced, repeatable, OR within a category, AND across categories) — one
+`skillFilter` in `internal/cli/skill_helpers.go` defines the flags and match
+semantics for all three; on install/uninstall the filter is mutually
+exclusive with positional names.
 
 **Unmodeled keys pass through.** The fields above are the keys skern models;
 any other key — top-level, `metadata.*`, or nested in `metadata.author` /
