@@ -40,10 +40,10 @@ This appends a section that tells the agent to:
 |------|------|
 | Write to a specific file (skips auto-discovery) | `--target ./MY_AGENT.md` (repeatable) |
 | Print the snippet to stdout instead of writing | `--print-instructions` |
-| Run non-interactively (CI, scripts) | Pass `--instructions` or `--no-instructions` — prompts only fire on a TTY, but say which you want |
+| Run non-interactively (CI, scripts) | Pass `--instructions` or `--no-instructions` — any instruction flag disables the prompts, and they never fire without a TTY anyway |
 | Skip the snippet entirely, no prompt | `--no-instructions` |
 
-When run on a TTY without `--instructions`/`--print-instructions`/`--target`, `skern init` asks whether to write the snippet and whether to include the tool-forming loop. Both default to **No**. When stdin is not a TTY or `--json` is set, skern never prompts — both answers resolve to No. Installers and CI that don't want the snippet should say so explicitly with `skern init --no-instructions`, which writes nothing and never prompts regardless of TTY state.
+When run on a TTY with no instruction flag at all, `skern init` asks whether to write the snippet and whether to include the tool-forming loop. Both default to **No**. Any instruction flag silences both questions (so `skern init --instructions` in a terminal writes the snippet and returns — it does not stop to ask about the tool-forming loop). When stdin is not a TTY or `--json` is set, skern never prompts — both answers resolve to No. Installers and CI that don't want the snippet should say so explicitly with `skern init --no-instructions`, which writes nothing and never prompts regardless of TTY state.
 
 ## How the Loop Works
 
