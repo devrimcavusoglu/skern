@@ -38,6 +38,15 @@ When proposing features, weigh them against the registry thesis first. New
 work that only makes sense as a per-platform copy needs a use case from the
 list above.
 
+**Deliberately out of scope.** Remote skill discovery — a hosted catalog,
+community index, or remote search inside `skern skill search` — was considered
+and set aside ([#19], [#50], closed April 2026) in favor of existing
+ecosystems such as [skild](https://github.com/Peiiii/skild) and skills.sh.
+Skern's job there is *import*, not hosting; widening import sources is
+tracked as [#79]. An MCP server mode, sandboxed execution backends, and
+usage-based eviction have likewise been floated and never tracked; treat them
+as unplanned unless an issue appears.
+
 ## Package Responsibilities
 
 | Package | Responsibility |
@@ -332,9 +341,11 @@ decision 3; settle the mechanism once rather than special-casing each.
 - [#88] — ship `writing-skills` as a built-in skill
 - [#75] — skill stats for context optimization
 
+[#19]: https://github.com/devrimcavusoglu/skern/issues/19
 [#45]: https://github.com/devrimcavusoglu/skern/issues/45
 [#47]: https://github.com/devrimcavusoglu/skern/issues/47
 [#48]: https://github.com/devrimcavusoglu/skern/issues/48
+[#50]: https://github.com/devrimcavusoglu/skern/issues/50
 [#51]: https://github.com/devrimcavusoglu/skern/issues/51
 [#75]: https://github.com/devrimcavusoglu/skern/issues/75
 [#79]: https://github.com/devrimcavusoglu/skern/issues/79

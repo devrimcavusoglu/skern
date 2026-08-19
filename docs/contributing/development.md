@@ -83,22 +83,14 @@ Two that shape where you'll be editing:
 | `gopkg.in/yaml.v3` | YAML frontmatter parsing |
 | `github.com/stretchr/testify` | Test assertions |
 
-## Issue Tracking
+## Issue Tracking & Branching
 
-Development is tracked using GitHub Issues via the `gh` CLI. Reference issues in commits as `#<number>`.
+Work is issue-driven: branch from `main`, merge back by pull request. Branch
+naming, commit style, and the CHANGELOG rule are defined once in
+[AGENTS.md › Git Workflow](https://github.com/devrimcavusoglu/skern/blob/main/AGENTS.md#git-workflow).
 
 ```sh
 gh issue list                              # List open issues
 gh issue create --title "Title" --body ""  # Create a new issue
 gh issue view <number>                     # View issue details
 ```
-
-## Branching
-
-Work is issue-driven. Branch from `main`, merge back by pull request.
-
-- **Branch naming**: `<type>/<slug>` where type is `feature`, `fix`, `chore`, `docs`, or `release` — e.g. `feature/category-tag-filter`, `fix/release-duplicate-trigger`, `release/v0.3.1`
-- **Commits**: concise imperative subject, referencing issues as `#<number>`
-- **User-facing changes**: add a `CHANGELOG.md` `[Unreleased]` entry in the same PR
-
-See [AGENTS.md](https://github.com/devrimcavusoglu/skern/blob/main/AGENTS.md) in the repo root for the complete development guide.

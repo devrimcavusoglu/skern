@@ -42,7 +42,7 @@ The current release is **v0.3.1**. Major capabilities already in place:
 - Stylistic lint hints in `skill validate`
 - Batch install/uninstall and per-platform capacity reporting
 
-See the [CHANGELOG](https://github.com/devrimcavusoglu/skern/blob/main/CHANGELOG.md) for full release notes and the project's [GitHub issues](https://github.com/devrimcavusoglu/skern/issues) for the live roadmap (MCP server mode, remote catalog search, skill dependencies, etc.).
+See the [CHANGELOG](https://github.com/devrimcavusoglu/skern/blob/main/CHANGELOG.md) for full release notes and the project's [GitHub issues](https://github.com/devrimcavusoglu/skern/issues) for the live roadmap (skill sync, dry-run mode, skill dependencies, more import sources, etc.). The roadmap and scope are summarized in [AGENTS.md](https://github.com/devrimcavusoglu/skern/blob/main/AGENTS.md).
 
 ## Next Steps
 
