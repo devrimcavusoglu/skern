@@ -6,6 +6,7 @@ import (
 
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/platform"
+	"github.com/devrimcavusoglu/skern/internal/registry"
 	"github.com/spf13/cobra"
 )
 
@@ -72,7 +73,7 @@ installed-skill count would meet or exceed the per-platform threshold (see
 
 			// Positional names, or the registry skills selected by --tag /
 			// --category (validated and fail-fast either way).
-			names, err := resolveActionTargets(reg, scopeVal, args, &filter)
+			names, err := resolveActionTargets(func() (*registry.Registry, error) { return reg, nil }, scopeVal, args, &filter, cmd.ErrOrStderr())
 			if err != nil {
 				return err
 			}

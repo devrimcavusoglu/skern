@@ -29,9 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepts instead of naming each one — `skern skill install --tag workflow
   --platform claude-code`. Names and filters are mutually exclusive (exit 2
   if mixed or if neither is given); a filter that matches nothing is an error,
-  never a silent no-op. `uninstall --tag` narrows the group to what is
-  actually installed on the platform and skips the rest. `--enforce-budget`
-  counts the resolved group. ([#102])
+  never a silent no-op (registry parse warnings are surfaced rather than
+  swallowed). `uninstall --tag` narrows the group to what is actually
+  installed on the platform and skips the rest. `--enforce-budget` counts
+  the resolved group. ([#102])
 
 ### Changed
 

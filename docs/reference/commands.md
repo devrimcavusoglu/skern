@@ -305,7 +305,7 @@ Each invocation targets exactly one platform — `--platform all` is not accepte
 Instead of names, select a group with the same filters [`skill list`](#skern-skill-list) accepts: `--tag <tag>` (flat tag) and/or `--category <category:value>` (repeatable, comma-lists values, OR within a category, AND across categories; `--include-untagged` applies as in `list`). The filter resolves against the registry at `--scope`, so `--tag workflow --scope project` installs the project-registry skills tagged `workflow`. Resolved names are installed in sorted order and reported per-skill exactly as a name batch would be.
 
 - Names and filters are **mutually exclusive** — passing both is a validation error (exit 2), as is passing neither.
-- A filter that matches no registered skill is an **error** (exit 1: `no registered skills match --tag workflow in user scope`), never a silent no-op.
+- A filter that matches no registered skill is an **error** (exit 1: `no registered skills match --tag workflow in user scope`), never a silent no-op. Registry parse warnings (a skill directory whose `SKILL.md` could not be read — which may be exactly why a tag matched nothing) are included in that error, and printed to stderr when the filter does match.
 - `--enforce-budget` counts the resolved group.
 
 The response includes a top-level `capacity` block reporting the platform's installed-skill count after the operation, the threshold for that scope, and remaining headroom.
@@ -332,6 +332,8 @@ skern skill uninstall --tag <tag> --platform <platform>     # evict a tagged gro
 ```
 
 `--tag` / `--category` select a group the same way as on `install`: the filter resolves against the registry at `--scope`, then is narrowed to the skills actually installed on the platform. Tagged-but-not-installed skills are skipped, not reported as failures. If nothing in the group is installed the command errors (`no installed skills match --tag workflow on claude-code (user scope)`); if the tag matches nothing in the registry, the error says so instead. Names and filters are mutually exclusive.
+
+Because the registry defines the group, a skill that was already removed from the registry (`skern skill remove`) is no longer reachable by tag — uninstall it by name. Retire a group by uninstalling it from platforms *before* removing it from the registry.
 
 **Flags:**
 

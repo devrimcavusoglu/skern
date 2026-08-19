@@ -11,6 +11,7 @@ import (
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/platform"
 	"github.com/devrimcavusoglu/skern/internal/registry"
+	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -673,18 +674,62 @@ func TestSkillInstall_Filter_RespectsScope(t *testing.T) {
 
 func TestSkillInstall_Filter_EnforceBudgetCountsResolved(t *testing.T) {
 	cc, _, _ := testRegistryWithDirs(t)
-	withTestDetector(t, cc, t.TempDir(), t.TempDir())
+	home := t.TempDir()
+	withTestDetector(t, cc, home, t.TempDir())
 	setupTaggedSkills(t, cc)
 
-	// Two workflow skills resolve; a budget check must see 2, not 0 args.
-	// Under the threshold it proceeds normally.
+	// Fill the platform to threshold-1 with fake installed skills. Two
+	// workflow skills resolve from the filter; the budget check must count
+	// those 2 (not the 0 positional args) and refuse: 49 + 2 > 50.
+	threshold := skill.PlatformThreshold(skill.ScopeUser)
+	for i := 0; i < threshold-1; i++ {
+		dir := filepath.Join(home, ".claude", "skills", fmt.Sprintf("filler-%02d", i))
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\nname: x\ndescription: y\n---\nbody\n"), 0o644))
+	}
+
+	_, err := runCmd(t, cc, "skill", "install", "--tag", "workflow", "--platform", "claude-code", "--enforce-budget")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "installing 2 more would exceed the threshold")
+	for _, n := range []string{"wf-plan", "wf-review"} {
+		_, statErr := os.Stat(filepath.Join(home, ".claude", "skills", n))
+		assert.True(t, os.IsNotExist(statErr), "%s must not be installed when the budget refuses", n)
+	}
+
+	// One filler fewer and the same group fits exactly at the threshold.
+	require.NoError(t, os.RemoveAll(filepath.Join(home, ".claude", "skills", "filler-00")))
 	out, err := runCmd(t, cc, "skill", "install", "--tag", "workflow", "--platform", "claude-code", "--enforce-budget", "--json")
 	require.NoError(t, err)
 	var result output.SkillInstallResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result))
 	require.Len(t, result.Skills, 2)
 	require.NotNil(t, result.Capacity)
-	assert.Equal(t, 2, result.Capacity.Installed)
+	assert.Equal(t, threshold, result.Capacity.Installed)
+}
+
+// A malformed SKILL.md in the registry is exactly why a tag may "match
+// nothing"; the filter must surface registry parse warnings instead of
+// swallowing them (as `skill list` does).
+func TestSkillInstall_Filter_SurfacesParseWarnings(t *testing.T) {
+	cc, userDir, _ := testRegistryWithDirs(t)
+	withTestDetector(t, cc, t.TempDir(), t.TempDir())
+	setupTaggedSkills(t, cc)
+	broken := filepath.Join(userDir, "broken-skill")
+	require.NoError(t, os.MkdirAll(broken, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(broken, "SKILL.md"), []byte("not frontmatter"), 0o644))
+
+	// Empty match: the warning rides along in the error.
+	_, err := runCmd(t, cc, "skill", "install", "--tag", "nope", "--platform", "claude-code")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no registered skills match --tag nope")
+	assert.Contains(t, err.Error(), "broken-skill")
+
+	// Non-empty match: the warning is printed (to stderr) and the install proceeds.
+	out, err := runCmd(t, cc, "skill", "install", "--tag", "workflow", "--platform", "claude-code")
+	require.NoError(t, err)
+	assert.Contains(t, out, "could not be parsed")
+	assert.Contains(t, out, "broken-skill")
+	assert.Contains(t, out, `Installed "wf-plan"`)
 }
 
 func TestSkillUninstall_ByTag_OnlyInstalledMatches(t *testing.T) {

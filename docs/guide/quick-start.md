@@ -42,10 +42,11 @@ for p in claude-code codex-cli opencode cursor gemini-cli; do
 done
 ```
 
-Multiple skill names can be installed in a single call:
+Multiple skill names can be installed in a single call, or a whole tagged group at once:
 
 ```sh
 skern skill install code-review test-runner deploy-checker --platform claude-code
+skern skill install --tag workflow --platform claude-code     # every registry skill tagged "workflow"
 ```
 
 The response includes a `capacity` block reporting the installed-skill count, threshold, and remaining headroom for the platform. Pass `--enforce-budget` to refuse the install when the count would exceed the threshold.

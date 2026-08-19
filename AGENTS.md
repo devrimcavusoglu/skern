@@ -329,7 +329,6 @@ Everything planned is a tracked issue; this list is a map, not a commitment.
 
 **Correctness and ergonomics (near-term)**
 
-- [#102] — `--tag` on `skill install` / `skill uninstall` for group installs
 - [#103] — exclude companion directories (eval corpora, fixtures) from install
 
 **Adapter model** — all three need the declarative-hook mechanism from design

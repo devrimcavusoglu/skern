@@ -6,7 +6,6 @@ import (
 
 	"github.com/devrimcavusoglu/skern/internal/output"
 	"github.com/devrimcavusoglu/skern/internal/platform"
-	"github.com/devrimcavusoglu/skern/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -59,20 +58,17 @@ installed is an error rather than a silent no-op.`,
 				return &ValidationError{Message: fmt.Sprintf("platform %q not recognized; valid platforms: %s", platformFlag, platformNamesList())}
 			}
 
-			names := args
+			// Positional names, or the registry skills selected by --tag /
+			// --category. Registry membership defines the group; the
+			// platform's installed set then decides which of them there is
+			// anything to remove — tagged-but-not-installed skills are
+			// skipped, not reported as failures. The registry is only opened
+			// when a filter is active.
+			names, err := resolveActionTargets(ctx.NewRegistry, scopeVal, args, &filter, cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
 			if filter.active() {
-				// Registry membership defines the group; the platform's
-				// installed set decides which of them there is anything to
-				// remove. Tagged-but-not-installed skills are skipped, not
-				// reported as failures.
-				reg, regErr := ctx.NewRegistry()
-				if regErr != nil {
-					return regErr
-				}
-				names, err = resolveActionTargets(reg, scopeVal, args, &filter)
-				if err != nil {
-					return err
-				}
 				installed, listErr := p.InstalledSkills(scopeVal)
 				if listErr != nil {
 					return fmt.Errorf("listing installed skills on %s: %w", p.Name(), listErr)
@@ -80,14 +76,6 @@ installed is an error rather than a silent no-op.`,
 				names = intersectNames(names, installed)
 				if len(names) == 0 {
 					return fmt.Errorf("no installed skills match %s on %s (%s scope)", filter.describe(), p.Name(), scopeVal)
-				}
-			} else if len(args) == 0 {
-				return &ValidationError{Message: "requires at least one skill name, or a --tag/--category filter"}
-			} else {
-				for _, name := range args {
-					if err := skill.ValidateName(name); err != nil {
-						return &ValidationError{Message: err.Error()}
-					}
 				}
 			}
 
