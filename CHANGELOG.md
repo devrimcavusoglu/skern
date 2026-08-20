@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.0] — 2026-08-20
+
+Tag/category group selection across the skill commands, `install.exclude`
+frontmatter for keeping companion files out of platform copies, frontmatter
+pass-through on `SKILL.md` rewrites, and a strict non-interactive contract
+for `skern init`.
+
 ### Added
 
 - **`--category` filter on `skern skill list`.** Filters by namespaced tag
@@ -100,6 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   directory; the milestone-numbered branch convention was replaced with the
   `<type>/<slug>` scheme actually in use.
 
+[v0.4.0]: https://github.com/devrimcavusoglu/skern/compare/v0.3.1...v0.4.0
 [#90]: https://github.com/devrimcavusoglu/skern/issues/90
 [#95]: https://github.com/devrimcavusoglu/skern/pull/95
 [#96]: https://github.com/devrimcavusoglu/skern/issues/96
@@ -127,6 +135,7 @@ valid, no migration required.
   names (e.g. GitHub Copilot maps `.copilot/skills/myorg.bootstrap/` to
   `/myorg.bootstrap`). ([#92], [#93])
 
+[v0.3.1]: https://github.com/devrimcavusoglu/skern/compare/v0.3.0...v0.3.1
 [#92]: https://github.com/devrimcavusoglu/skern/issues/92
 [#93]: https://github.com/devrimcavusoglu/skern/pull/93
 

@@ -46,11 +46,11 @@ Override with the `SKERN_INSTALL_DIR` environment variable.
 ## Pin a specific version
 
 ```sh
-SKERN_VERSION=v0.3.1 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.sh | bash
+SKERN_VERSION=v0.4.0 curl -fsSL https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.sh | bash
 ```
 
 ```powershell
-$env:SKERN_VERSION = 'v0.3.1'; irm https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.ps1 | iex
+$env:SKERN_VERSION = 'v0.4.0'; irm https://raw.githubusercontent.com/devrimcavusoglu/skern/main/scripts/install.ps1 | iex
 ```
 
 ## Build from source

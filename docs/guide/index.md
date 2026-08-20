@@ -33,14 +33,14 @@ Skills should not live inside models. They should live in code. Versioned. Compo
 
 ## What's Shipped
 
-The current release is **v0.3.1**. Major capabilities already in place:
+The current release is **v0.4.0**. Major capabilities already in place:
 
 - Eight platform adapters (Claude Code, Codex CLI, OpenCode, Cursor, Gemini CLI, GitHub Copilot, Windsurf, Continue)
 - Cross-platform binaries for macOS, Linux, and Windows
 - Skill versioning with semver (`skern skill version --bump major|minor|patch`)
 - `skill diff` and `skill import` (URL / GitHub repo / gist)
 - Stylistic lint hints in `skill validate`
-- Batch install/uninstall and per-platform capacity reporting
+- Batch install/uninstall, tag/category group selection, and per-platform capacity reporting
 
 See the [CHANGELOG](https://github.com/devrimcavusoglu/skern/blob/main/CHANGELOG.md) for full release notes and the project's [GitHub issues](https://github.com/devrimcavusoglu/skern/issues) for the live roadmap (skill sync, dry-run mode, skill dependencies, more import sources, etc.). The roadmap and scope are summarized in [AGENTS.md](https://github.com/devrimcavusoglu/skern/blob/main/AGENTS.md).
 

@@ -12,7 +12,7 @@ development platforms. It follows the Agent Skills open standard
 ([agentskills.io](https://agentskills.io)) and uses `SKILL.md` files with YAML
 frontmatter as the canonical format.
 
-Written in **Go 1.25+**. Latest release **v0.3.1**; `main` carries unreleased
+Written in **Go 1.25+**. Latest release **v0.4.0**; `main` carries unreleased
 work (see the `[Unreleased]` section of the CHANGELOG).
 
 ### Scope
